@@ -1,15 +1,16 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { BRANCHES, BUDGET_YEAR, WORK_TYPES } from '../constants';
-import { AppSettings, Submission } from '../types';
+import { AppSettings, Submission, UserProfile } from '../types';
 import { apiCreateSubmission, nowISO } from '../services/apiService';
 
 interface RegistrationProps {
   settings: AppSettings;
   onSuccess: () => void;
   showToast: (t: any) => void;
+  currentUser: UserProfile | null;
 }
 
-const Registration: React.FC<RegistrationProps> = ({ settings, onSuccess, showToast }) => {
+const Registration: React.FC<RegistrationProps> = ({ settings, onSuccess, showToast, currentUser }) => {
   const [form, setForm] = useState({
     firstName: "",
     lastName: "",
@@ -20,6 +21,28 @@ const Registration: React.FC<RegistrationProps> = ({ settings, onSuccess, showTo
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
+
+  // Auto fill if user exists
+  useEffect(() => {
+    if (currentUser) {
+        setForm(prev => ({
+            ...prev,
+            firstName: currentUser.firstName,
+            lastName: currentUser.lastName,
+            position: currentUser.position,
+            organization: currentUser.organization
+        }));
+    }
+  }, [currentUser]);
+
+  if (!currentUser) {
+      return (
+          <div className="rounded-3xl bg-white p-10 text-center ring-1 ring-slate-200">
+              <i className="fa-solid fa-lock text-4xl text-slate-300 mb-4"></i>
+              <h2 className="text-xl font-bold text-slate-700">กรุณาเข้าสู่ระบบก่อนส่งผลงาน</h2>
+          </div>
+      );
+  }
 
   const onChangeField = (key: string, value: any) => {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -53,6 +76,7 @@ const Registration: React.FC<RegistrationProps> = ({ settings, onSuccess, showTo
       const payload: Submission = {
         // Generate a pseudo-UUID
         id: crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2),
+        userId: currentUser.id,
         budgetYear: BUDGET_YEAR,
         firstName: form.firstName.trim(),
         lastName: form.lastName.trim(),
@@ -82,7 +106,12 @@ const Registration: React.FC<RegistrationProps> = ({ settings, onSuccess, showTo
 
       // Reset form
       setForm({
-        firstName: "", lastName: "", position: "", organization: "", workType: "", branchId: "",
+        firstName: currentUser.firstName, 
+        lastName: currentUser.lastName, 
+        position: currentUser.position, 
+        organization: currentUser.organization, 
+        workType: "", 
+        branchId: "",
       });
       onSuccess();
     } catch (e: any) {
@@ -98,7 +127,7 @@ const Registration: React.FC<RegistrationProps> = ({ settings, onSuccess, showTo
         <div>
           <div className="text-lg md:text-xl font-black text-slate-900">แบบฟอร์มลงทะเบียนส่งผลงาน</div>
           <div className="mt-1 text-sm text-slate-600">
-            ปีงบประมาณ {BUDGET_YEAR}
+            ปีงบประมาณ {BUDGET_YEAR} • ผู้ส่ง: {currentUser.firstName} {currentUser.lastName}
           </div>
         </div>
       </div>

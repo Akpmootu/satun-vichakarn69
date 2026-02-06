@@ -1,30 +1,87 @@
 import React from 'react';
 import { PR_NEWS } from '../constants';
+import { Submission, UserProfile } from '../types';
+import Timeline from './Timeline';
 
 interface HomeProps {
   onNavigate: (tabId: string) => void;
+  currentUser: UserProfile | null;
+  onLoginRequest: () => void;
+  userSubmissions: Submission[];
 }
 
-const Home: React.FC<HomeProps> = ({ onNavigate }) => {
+const Home: React.FC<HomeProps> = ({ onNavigate, currentUser, onLoginRequest, userSubmissions }) => {
+  
+  const handleActionClick = (action: string) => {
+    if (!currentUser) {
+        onLoginRequest();
+    } else {
+        if (action === 'register') onNavigate('register');
+        if (action === 'history') onNavigate('history');
+    }
+  };
+
   return (
     <div className="space-y-8 animate-fade-in pb-12">
       
       {/* Hero / Welcome Section */}
-      <div className="text-center py-8 md:py-12">
-         <h1 className="text-3xl md:text-5xl font-black text-slate-900 mb-4 tracking-tight">
-            ระบบประกวดผลงานวิชาการ
-         </h1>
-         <p className="text-lg text-slate-600 max-w-2xl mx-auto">
-            Satun Academic System: แพลตฟอร์มกลางสำหรับส่งผลงาน ติดตามสถานะ และแลกเปลี่ยนเรียนรู้งานวิชาการสาธารณสุข
-         </p>
+      <div className="text-center py-8 md:py-12 relative overflow-hidden rounded-3xl bg-slate-900 text-white shadow-2xl">
+         {/* Background Patterns */}
+         <div className="absolute top-0 left-0 w-full h-full opacity-10">
+             <i className="fa-solid fa-dna absolute top-10 left-10 text-9xl animate-pulse"></i>
+             <i className="fa-solid fa-microscope absolute bottom-10 right-10 text-8xl"></i>
+         </div>
+
+         <div className="relative z-10 px-4">
+             {currentUser ? (
+                 <>
+                    <div className="inline-block px-4 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-xs font-bold mb-4">
+                        <i className="fa-solid fa-circle-check mr-2"></i>
+                        ยืนยันตัวตนแล้ว
+                    </div>
+                    <h1 className="text-3xl md:text-5xl font-black mb-4 tracking-tight">
+                        ยินดีต้อนรับ, {currentUser.firstName}
+                    </h1>
+                    <p className="text-lg text-slate-300 max-w-2xl mx-auto mb-6">
+                        ติดตามสถานะผลงานวิชาการของคุณได้ที่ Timeline ด้านล่าง
+                    </p>
+                 </>
+             ) : (
+                 <>
+                    <h1 className="text-3xl md:text-5xl font-black mb-4 tracking-tight">
+                        ระบบประกวดผลงานวิชาการ
+                    </h1>
+                    <p className="text-lg text-slate-300 max-w-2xl mx-auto mb-8">
+                        Satun Academic System: แพลตฟอร์มกลางสำหรับส่งผลงาน ติดตามสถานะ
+                    </p>
+                    <button 
+                        onClick={onLoginRequest}
+                        className="px-8 py-3 rounded-2xl bg-white text-slate-900 font-black text-lg hover:scale-105 transition shadow-lg shadow-white/20"
+                    >
+                        <i className="fa-solid fa-right-to-bracket mr-2"></i>
+                        ลงทะเบียน / เข้าสู่ระบบ
+                    </button>
+                    <div className="mt-4 text-sm text-slate-400">
+                        * ต้องลงทะเบียนเข้าสู่ระบบก่อนส่งผลงาน
+                    </div>
+                 </>
+             )}
+         </div>
       </div>
+
+      {/* Timeline Section (Only if logged in) */}
+      {currentUser && (
+          <div className="animate-bounce-in">
+              <Timeline user={currentUser} submissions={userSubmissions} />
+          </div>
+      )}
 
       {/* Main Menu Grid */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           
           {/* Menu 1: Send Work */}
           <button 
-             onClick={() => onNavigate('register')}
+             onClick={() => handleActionClick('register')}
              className="group relative overflow-hidden rounded-3xl bg-white p-6 shadow-lg shadow-slate-200 ring-1 ring-slate-100 hover:shadow-xl hover:-translate-y-1 transition duration-300 text-left"
           >
              <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition group-hover:scale-110 duration-500">
@@ -37,14 +94,15 @@ const Home: React.FC<HomeProps> = ({ onNavigate }) => {
                 <h3 className="text-xl font-black text-slate-900 mb-1">ส่งผลงานวิชาการ</h3>
                 <p className="text-sm text-slate-500">สำหรับผู้ลงทะเบียน ลงทะเบียนและส่งผลงานใหม่</p>
                 <div className="mt-4 inline-flex items-center text-sm font-bold text-sky-600">
-                    เริ่มเลย <i className="fa-solid fa-arrow-right ml-2 group-hover:translate-x-1 transition"></i>
+                    {currentUser ? 'ส่งผลงานเลย' : 'ต้องล็อกอินก่อน'} 
+                    <i className={`fa-solid ${currentUser ? 'fa-arrow-right' : 'fa-lock'} ml-2 group-hover:translate-x-1 transition`}></i>
                 </div>
              </div>
           </button>
 
           {/* Menu 2: View Works (Gallery/History) */}
           <button 
-             onClick={() => onNavigate('history')}
+             onClick={() => handleActionClick('history')}
              className="group relative overflow-hidden rounded-3xl bg-white p-6 shadow-lg shadow-slate-200 ring-1 ring-slate-100 hover:shadow-xl hover:-translate-y-1 transition duration-300 text-left"
           >
              <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition group-hover:scale-110 duration-500">
@@ -57,7 +115,8 @@ const Home: React.FC<HomeProps> = ({ onNavigate }) => {
                 <h3 className="text-xl font-black text-slate-900 mb-1">รวมผลงานวิชาการ</h3>
                 <p className="text-sm text-slate-500">ทำเนียบผลงาน ตรวจสอบรายชื่อและสถานะ</p>
                 <div className="mt-4 inline-flex items-center text-sm font-bold text-indigo-600">
-                    ดูรายการ <i className="fa-solid fa-arrow-right ml-2 group-hover:translate-x-1 transition"></i>
+                    {currentUser ? 'ดูรายการ' : 'ต้องล็อกอินก่อน'}
+                    <i className={`fa-solid ${currentUser ? 'fa-arrow-right' : 'fa-lock'} ml-2 group-hover:translate-x-1 transition`}></i>
                 </div>
              </div>
           </button>

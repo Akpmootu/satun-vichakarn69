@@ -6,8 +6,19 @@ export interface AuditLog {
   note: string;
 }
 
+export interface UserProfile {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  organization: string;
+  position: string;
+}
+
 export interface Submission {
   id: string;
+  userId?: string; // Link to user
   budgetYear: number;
   firstName: string;
   lastName: string;

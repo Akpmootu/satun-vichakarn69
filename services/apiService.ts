@@ -1,8 +1,10 @@
-import { AppSettings, Submission } from '../types';
+import { AppSettings, Submission, UserProfile } from '../types';
 
 const LS_KEYS = {
   submissions: "svk_submissions_v1",
   settings: "svk_settings_v1",
+  users: "svk_users_v1",
+  currentUser: "svk_current_user_v1"
 };
 
 export function nowISO(): string {
@@ -16,6 +18,43 @@ function safeJsonParse<T>(v: string | null, fallback: T): T {
   } catch {
     return fallback;
   }
+}
+
+// --- Auth Helpers ---
+export function getCurrentUser(): UserProfile | null {
+    return safeJsonParse(localStorage.getItem(LS_KEYS.currentUser), null);
+}
+
+export function logoutUser() {
+    localStorage.removeItem(LS_KEYS.currentUser);
+}
+
+export async function apiRegisterUser(user: UserProfile): Promise<UserProfile> {
+    // Mock Registration
+    await new Promise((r) => setTimeout(r, 800));
+    const users: UserProfile[] = safeJsonParse(localStorage.getItem(LS_KEYS.users), []);
+    
+    // Check duplicate (simple check)
+    if (users.find(u => u.email === user.email)) {
+        throw new Error("อีเมลนี้ถูกลงทะเบียนแล้ว");
+    }
+
+    users.push(user);
+    localStorage.setItem(LS_KEYS.users, JSON.stringify(users));
+    localStorage.setItem(LS_KEYS.currentUser, JSON.stringify(user)); // Auto login
+    return user;
+}
+
+export async function apiLoginUser(email: string): Promise<UserProfile> {
+    // Mock Login (Check email only for prototype)
+    await new Promise((r) => setTimeout(r, 800));
+    const users: UserProfile[] = safeJsonParse(localStorage.getItem(LS_KEYS.users), []);
+    const found = users.find(u => u.email === email);
+    
+    if (!found) throw new Error("ไม่พบข้อมูลผู้ใช้งานนี้");
+    
+    localStorage.setItem(LS_KEYS.currentUser, JSON.stringify(found));
+    return found;
 }
 
 // --- LocalStorage Mock Helpers ---
@@ -71,13 +110,18 @@ async function fetchWithBackoff(url: string, options: RequestInit = {}, config =
 
 // --- API Methods ---
 
-export async function apiListSubmissions(settings: AppSettings): Promise<Submission[]> {
+export async function apiListSubmissions(settings: AppSettings, userId?: string): Promise<Submission[]> {
   if (settings.mode === "mock") {
     await new Promise((r) => setTimeout(r, 400)); // Simulate latency
-    return loadSubmissions();
+    const all = loadSubmissions();
+    if (userId) {
+        return all.filter(s => s.userId === userId);
+    }
+    return all;
   }
 
   if (!settings.apiBaseUrl) throw new Error("กรุณาตั้งค่า Base URL ของ API ก่อน");
+  // In real API, we would pass userId or token
   const res = await fetchWithBackoff(`${settings.apiBaseUrl}/submissions`);
   return await res.json();
 }
@@ -107,15 +151,6 @@ export async function apiUpdateSubmission(settings: AppSettings, id: string, pat
     const all = loadSubmissions();
     const idx = all.findIndex((x) => x.id === id);
     if (idx === -1) throw new Error("ไม่พบรายการ");
-    
-    // Check if we need to merge audit logs
-    let newAudit = patch.audit;
-    if (patch.audit && all[idx].audit) {
-       // In mock mode, we assume the patch contains the *new* log entry only or the full list?
-       // Let's assume the calling component sends the full list or we handle append logic here.
-       // For simplicity in this mock, we'll trust the payload or just merge if it's separate.
-       // To align with the App logic, the payload contains the FULL new object state usually.
-    }
     
     const updated = { ...all[idx], ...patch, updatedAt: nowISO() };
     all[idx] = updated;
