@@ -87,7 +87,7 @@ export default function App() {
       setTimeout(() => {
           setActiveTab(tabId);
           setIsPageLoading(false);
-      }, 800); // 0.8s artificial delay for effect
+      }, 2500); // Increased delay to 2.5s for better reading experience
   };
 
   // Reload data when settings change or tab switches to history/analytics
