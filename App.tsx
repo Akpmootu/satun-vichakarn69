@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { APP_NAME, BUDGET_YEAR } from "./constants";
+import { BUDGET_YEAR } from "./constants";
 import { AppSettings, Submission, ToastMessage, UserProfile } from "./types";
 import { apiListSubmissions, loadSettings, getCurrentUser, logoutUser } from "./services/apiService";
 
@@ -11,6 +11,8 @@ import Home from "./components/Home";
 import NewsModal from "./components/NewsModal";
 import UserAuthModal from "./components/UserAuthModal";
 import Toast from "./components/ui/Toast";
+import Logo from "./components/ui/Logo";
+import LoadingOverlay from "./components/ui/LoadingOverlay";
 
 export default function App() {
   const [activeTab, setActiveTab] = useState("home");
@@ -18,6 +20,7 @@ export default function App() {
   const [toast, setToast] = useState<ToastMessage | null>(null);
   const [showNews, setShowNews] = useState(false);
   const [showAuth, setShowAuth] = useState(false);
+  const [isPageLoading, setIsPageLoading] = useState(false);
   
   // User State
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(getCurrentUser());
@@ -32,7 +35,7 @@ export default function App() {
     const hasSeenSession = sessionStorage.getItem("svk_has_seen_news");
     
     if (!dontShowAgain && !hasSeenSession) {
-      setShowNews(true);
+      setTimeout(() => setShowNews(true), 1500); // Small delay to let initial load finish
     }
   }, []);
 
@@ -52,18 +55,14 @@ export default function App() {
   const handleLogout = () => {
       logoutUser();
       setCurrentUser(null);
-      setSubmissions([]); // Clear data
-      setActiveTab('home');
+      setSubmissions([]); 
+      handleTabChange('home');
       showToast({ type: 'info', title: 'ออกจากระบบ', message: 'ไว้พบกันใหม่ครับ' });
   };
 
   const loadData = async () => {
     setLoading(true);
     try {
-      // If we have a user, we might want to filter by user ID (but for history viewing all, maybe admin view?)
-      // For now, let's just load everything, but in History we will filter if needed, 
-      // or maybe we want to see ONLY my submissions?
-      // Let's pass the userId to the API to simulate filtering
       const userId = currentUser?.id; 
       const data = await apiListSubmissions(settings, userId);
       setSubmissions(Array.isArray(data) ? data : []);
@@ -72,6 +71,23 @@ export default function App() {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Simulate Page Loading when switching tabs
+  const handleTabChange = (tabId: string) => {
+      if (tabId === activeTab) return;
+
+      if ((tabId === 'register' || tabId === 'history') && !currentUser) {
+          showToast({ type: 'info', title: 'ต้องเข้าสู่ระบบ', message: 'กรุณาเข้าสู่ระบบก่อนใช้งานเมนูนี้' });
+          setShowAuth(true);
+          return;
+      }
+
+      setIsPageLoading(true);
+      setTimeout(() => {
+          setActiveTab(tabId);
+          setIsPageLoading(false);
+      }, 800); // 0.8s artificial delay for effect
   };
 
   // Reload data when settings change or tab switches to history/analytics
@@ -91,8 +107,11 @@ export default function App() {
   ];
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 font-sans pb-10">
+    <div className="min-h-screen bg-slate-50 text-slate-900 font-sans pb-10 flex flex-col">
       
+      {/* Full Screen Loading Overlay */}
+      <LoadingOverlay isLoading={isPageLoading} />
+
       {/* News Popup Modal */}
       <NewsModal isOpen={showNews} onClose={handleCloseNews} />
       
@@ -108,24 +127,18 @@ export default function App() {
       />
 
       {/* Top Header */}
-      <header className="bg-white border-b border-slate-200 sticky top-0 z-40">
-        <div className="max-w-6xl mx-auto px-4 h-16 md:h-20 flex items-center justify-between">
+      <header className="bg-white/80 backdrop-blur-md border-b border-slate-200 sticky top-0 z-40">
+        <div className="max-w-7xl mx-auto px-4 h-20 flex items-center justify-between">
           <div 
-             className="flex items-center gap-3 md:gap-4 cursor-pointer hover:opacity-80 transition"
-             onClick={() => setActiveTab('home')}
+             className="cursor-pointer hover:opacity-80 transition"
+             onClick={() => handleTabChange('home')}
           >
-             <div className="h-10 w-10 md:h-12 md:w-12 rounded-xl bg-slate-900 text-white flex items-center justify-center shadow-lg shadow-slate-200">
-               <i className="fa-solid fa-graduation-cap text-lg md:text-xl"></i>
-             </div>
-             <div>
-                <h1 className="text-lg md:text-xl font-black tracking-tight text-slate-900 leading-tight">{APP_NAME}</h1>
-                <p className="text-xs text-slate-500 font-medium">Academic System {BUDGET_YEAR}</p>
-             </div>
+             <Logo />
           </div>
           
           <div className="flex items-center gap-3">
-             <div className="hidden md:block px-3 py-1 rounded-full bg-slate-100 text-xs font-bold text-slate-600 border border-slate-200">
-                {settings.mode === 'mock' ? 'MOCK DATA' : 'REAL API'}
+             <div className="hidden md:block px-3 py-1 rounded-full bg-slate-100 text-[10px] font-bold text-slate-500 border border-slate-200 tracking-wider">
+                {settings.mode === 'mock' ? 'MOCK SYSTEM' : 'LIVE SYSTEM'}
              </div>
              
              {currentUser ? (
@@ -136,7 +149,7 @@ export default function App() {
                      </div>
                      <button 
                         onClick={handleLogout}
-                        className="h-9 w-9 rounded-full bg-rose-50 text-rose-600 flex items-center justify-center hover:bg-rose-100 transition"
+                        className="h-10 w-10 rounded-full bg-slate-900 text-white flex items-center justify-center hover:bg-slate-700 transition shadow-lg shadow-slate-300"
                         title="ออกจากระบบ"
                      >
                          <i className="fa-solid fa-power-off"></i>
@@ -145,53 +158,41 @@ export default function App() {
              ) : (
                  <button 
                     onClick={() => setShowAuth(true)}
-                    className="ml-2 px-4 py-2 rounded-xl bg-slate-900 text-white text-xs font-bold hover:bg-slate-800 transition shadow-md"
+                    className="ml-2 px-5 py-2.5 rounded-xl bg-slate-900 text-white text-sm font-bold hover:bg-slate-800 transition shadow-lg shadow-slate-300 flex items-center gap-2"
                  >
-                    เข้าสู่ระบบ
+                    <i className="fa-solid fa-right-to-bracket"></i>
+                    <span>เข้าสู่ระบบ</span>
                  </button>
              )}
           </div>
         </div>
       </header>
 
-      <main className="max-w-6xl mx-auto px-4 mt-6 md:mt-8">
+      <main className="flex-grow max-w-7xl w-full mx-auto px-4 mt-8">
         
         {/* Navigation Tabs */}
-        <nav className="flex overflow-x-auto pb-4 gap-2 no-scrollbar mb-4">
-          {tabs.map(tab => {
-             // Hide specific tabs if not logged in (optional, but good UX)
-             if ((tab.id === 'register' || tab.id === 'history') && !currentUser) {
-                 // return null; // Or keep them and redirect to login
-             }
-             return (
-                <button
+        <nav className="flex overflow-x-auto pb-4 gap-2 no-scrollbar mb-6 justify-center md:justify-start">
+          {tabs.map(tab => (
+             <button
                 key={tab.id}
-                onClick={() => {
-                    if ((tab.id === 'register' || tab.id === 'history') && !currentUser) {
-                        showToast({ type: 'info', title: 'ต้องเข้าสู่ระบบ', message: 'กรุณาเข้าสู่ระบบก่อนใช้งานเมนูนี้' });
-                        setShowAuth(true);
-                        return;
-                    }
-                    setActiveTab(tab.id);
-                }}
-                className={`whitespace-nowrap flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-bold transition-all ${
+                onClick={() => handleTabChange(tab.id)}
+                className={`whitespace-nowrap flex items-center gap-2 px-6 py-3 rounded-full text-sm font-bold transition-all duration-300 ${
                     activeTab === tab.id 
-                    ? 'bg-slate-900 text-white shadow-md shadow-slate-300 transform scale-105' 
-                    : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+                    ? 'bg-slate-900 text-white shadow-lg shadow-slate-300 transform -translate-y-1' 
+                    : 'bg-white text-slate-500 hover:bg-slate-100 border border-slate-200 hover:border-slate-300 hover:text-slate-700'
                 }`}
                 >
                 <i className={`fa-solid ${tab.icon}`} />
                 {tab.label}
-                </button>
-            )
-          })}
+             </button>
+          ))}
         </nav>
 
         {/* Content Area */}
-        <div className="min-h-[500px]">
+        <div className="min-h-[600px] animate-fade-in">
            {activeTab === 'home' && (
               <Home 
-                onNavigate={setActiveTab} 
+                onNavigate={handleTabChange} 
                 currentUser={currentUser}
                 onLoginRequest={() => setShowAuth(true)}
                 userSubmissions={submissions.filter(s => s.userId === currentUser?.id)}
@@ -205,29 +206,14 @@ export default function App() {
                 currentUser={currentUser} 
                 onSuccess={() => {
                   loadData(); 
-                  setActiveTab('history');
+                  handleTabChange('history');
                 }} 
              />
            )}
            
            {activeTab === 'history' && (
              <History 
-                submissions={submissions} // In real app, API filters by user. Here we might want to see ALL or just MINE? Let's show all for "Admin" feel or just MINE for user?
-                // For now, let's filter to show only mine if logged in, or all if we treat this as a "Public Gallery" (which the prompt "History Tracking" implies personal)
-                // Let's filter by User ID for "My History"
-                // Actually, the previous code showed ALL. Let's keep it ALL but maybe highlight mine? Or stick to personal.
-                // Given the requirement "User... track progress", it implies Personal History.
-                // Let's filter in the component prop for now.
-                // submissions={submissions.filter(s => s.userId === currentUser?.id)} 
-                // Wait, if I filter here, the "Export CSV" feature for admins won't work.
-                // Let's pass ALL submissions but maybe the History component handles the view?
-                // To keep it simple and safe: Show ALL (Public) but maybe highlight mine.
-                // OR: Since this is "Registration System", usually a user sees THEIR OWN data.
-                // I will filter to show ONLY user's data for privacy in this context.
-                // But wait, "Visual Analytics" needs all data. 
-                // Let's filter here for History tab to be "My History".
-                // *Self-Correction*: The prompt said "History Tracking" -> "Search/Filter by branch/org". This implies a public list or admin list.
-                // I will NOT filter it, so it remains a public directory/admin view for this prototype.
+                submissions={submissions}
                 loading={loading} 
                 refreshList={loadData} 
                 settings={settings} 
@@ -248,18 +234,83 @@ export default function App() {
            )}
         </div>
 
-        {/* Footer */}
-        <footer className="mt-12 pt-8 border-t border-slate-200 flex flex-col md:flex-row justify-between items-center gap-4 text-slate-500 pb-8">
-           <div className="text-sm font-medium">
-             พัฒนาโดย IT SSJ Satun 2569
-           </div>
-           <div className="flex items-center gap-2 text-sm opacity-50">
-             <i className="fa-solid fa-code" />
-             <span>Satun Vichakarn v1.2.0</span>
-           </div>
-        </footer>
-
       </main>
+
+      {/* Official Footer */}
+      <footer className="mt-20 bg-slate-900 text-white pt-16 pb-8 border-t-4 border-sky-500">
+          <div className="max-w-7xl mx-auto px-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-12 mb-12">
+                  {/* Column 1: Organization */}
+                  <div className="space-y-4">
+                      <div className="flex items-center gap-3 mb-2">
+                           <div className="h-10 w-10 bg-white rounded-lg flex items-center justify-center">
+                               <i className="fa-solid fa-building-columns text-slate-900 text-xl"></i>
+                           </div>
+                           <div>
+                               <h3 className="text-lg font-bold leading-tight">สำนักงานสาธารณสุข</h3>
+                               <p className="text-sm text-slate-400">จังหวัดสตูล</p>
+                           </div>
+                      </div>
+                      <p className="text-slate-400 text-sm leading-relaxed">
+                          มุ่งมั่นพัฒนาวิชาการ นวัตกรรม และเทคโนโลยีสารสนเทศ 
+                          เพื่อยกระดับบริการสาธารณสุข สู่คุณภาพชีวิตที่ดีของประชาชน
+                      </p>
+                      <div className="flex gap-4 pt-2">
+                          <a href="#" className="h-10 w-10 rounded-full bg-slate-800 flex items-center justify-center hover:bg-sky-600 transition text-white">
+                              <i className="fa-brands fa-facebook-f"></i>
+                          </a>
+                          <a href="#" className="h-10 w-10 rounded-full bg-slate-800 flex items-center justify-center hover:bg-sky-500 transition text-white">
+                              <i className="fa-brands fa-twitter"></i>
+                          </a>
+                          <a href="#" className="h-10 w-10 rounded-full bg-slate-800 flex items-center justify-center hover:bg-emerald-500 transition text-white">
+                              <i className="fa-brands fa-line"></i>
+                          </a>
+                      </div>
+                  </div>
+
+                  {/* Column 2: Quick Links */}
+                  <div>
+                      <h4 className="text-lg font-bold mb-6 border-l-4 border-sky-500 pl-3">เมนูระบบ</h4>
+                      <ul className="space-y-3 text-sm text-slate-300">
+                          <li><button onClick={() => handleTabChange('home')} className="hover:text-sky-400 transition flex items-center gap-2"><i className="fa-solid fa-chevron-right text-xs"></i> หน้าหลัก</button></li>
+                          <li><button onClick={() => handleTabChange('register')} className="hover:text-sky-400 transition flex items-center gap-2"><i className="fa-solid fa-chevron-right text-xs"></i> ลงทะเบียนส่งผลงาน</button></li>
+                          <li><button onClick={() => handleTabChange('history')} className="hover:text-sky-400 transition flex items-center gap-2"><i className="fa-solid fa-chevron-right text-xs"></i> ตรวจสอบสถานะ</button></li>
+                          <li><button onClick={() => handleTabChange('analytics')} className="hover:text-sky-400 transition flex items-center gap-2"><i className="fa-solid fa-chevron-right text-xs"></i> สรุปผลการดำเนินงาน</button></li>
+                      </ul>
+                  </div>
+
+                  {/* Column 3: Contact */}
+                  <div>
+                      <h4 className="text-lg font-bold mb-6 border-l-4 border-emerald-500 pl-3">ติดต่อสอบถาม</h4>
+                      <ul className="space-y-4 text-sm text-slate-300">
+                          <li className="flex items-start gap-3">
+                              <i className="fa-solid fa-map-location-dot mt-1 text-sky-500"></i>
+                              <span>สำนักงานสาธารณสุขจังหวัดสตูล<br/>เลขที่ 123 ถ.สติล ต.พิมาน อ.เมือง จ.สตูล 91000</span>
+                          </li>
+                          <li className="flex items-center gap-3">
+                              <i className="fa-solid fa-phone text-emerald-500"></i>
+                              <span>074-123-456 ต่อ 110-112</span>
+                          </li>
+                          <li className="flex items-center gap-3">
+                              <i className="fa-solid fa-envelope text-rose-500"></i>
+                              <span>admin@satunhealth.go.th</span>
+                          </li>
+                      </ul>
+                  </div>
+              </div>
+
+              {/* Bottom Copyright */}
+              <div className="border-t border-slate-800 pt-8 flex flex-col md:flex-row justify-between items-center gap-4 text-xs text-slate-500">
+                  <div className="flex items-center gap-2">
+                       <i className="fa-solid fa-code"></i>
+                       <span>พัฒนาโดย กลุ่มงานพัฒนายุทธศาสตร์สาธารณสุข (IT SSJ SATUN)</span>
+                  </div>
+                  <div>
+                      &copy; {BUDGET_YEAR} Satun Provincial Public Health Office. All rights reserved.
+                  </div>
+              </div>
+          </div>
+      </footer>
 
       <Toast toast={toast} onClose={() => setToast(null)} />
     </div>

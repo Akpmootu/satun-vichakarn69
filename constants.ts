@@ -1,7 +1,7 @@
 import { BranchOption, WorkTypeOption } from './types';
 
 export const APP_NAME = "SATUN VICHAKARN";
-export const BUDGET_YEAR = 2568;
+export const BUDGET_YEAR = 2569;
 
 export const WORK_TYPES: WorkTypeOption[] = [
   { id: "oral", label: "วาจา", icon: "fa-microphone-lines" },
@@ -35,16 +35,16 @@ export const BRANCHES: BranchOption[] = [
 export const PR_NEWS = [
   {
     id: 1,
-    title: "ขอเชิญส่งผลงานวิชาการ ประจำปี 2568",
-    date: "15 ก.พ. 2568",
-    desc: "เปิดรับสมัครผลงานวิชาการ 3 ประเภท ได้แก่ วาจา, e-poster และนวัตกรรม ตั้งแต่วันนี้ - 30 มี.ค. 2568",
+    title: "ขอเชิญส่งผลงานวิชาการ ประจำปี 2569",
+    date: "15 ก.พ. 2569",
+    desc: "เปิดรับสมัครผลงานวิชาการ 3 ประเภท ได้แก่ วาจา, e-poster และนวัตกรรม ตั้งแต่วันนี้ - 30 มี.ค. 2569",
     type: "news",
     imageUrl: "https://images.unsplash.com/photo-1544531586-fde5298cdd40?q=80&w=800&auto=format&fit=crop"
   },
   {
     id: 2,
     title: "ประกาศเกณฑ์การตัดสินผลงานวิชาการ",
-    date: "10 ก.พ. 2568",
+    date: "10 ก.พ. 2569",
     desc: "ดาวน์โหลดเอกสารเกณฑ์การตัดสินฉบับล่าสุดได้ที่นี่",
     type: "download",
     fileType: "PDF"
@@ -52,9 +52,17 @@ export const PR_NEWS = [
   {
     id: 3,
     title: "คู่มือการใช้งานระบบลงทะเบียน",
-    date: "01 ก.พ. 2568",
+    date: "01 ก.พ. 2569",
     desc: "ศึกษาขั้นตอนการลงทะเบียนและส่งผลงานผ่านระบบออนไลน์",
     type: "download",
     fileType: "PDF"
   }
+];
+
+export const LOADING_QUOTES = [
+  "นวัตกรรมสร้างสรรค์ สุขภาพมั่นคง",
+  "วิชาการล้ำหน้า พัฒนาคุณภาพชีวิต",
+  "ข้อมูลถูกต้อง ตัดสินใจแม่นยำ",
+  "เทคโนโลยีเปลี่ยนโลก สาธารณสุขไทยก้าวไกล",
+  "เรียนรู้ตลอดชีวิต เพื่อคุณภาพบริการที่ดีกว่า"
 ];

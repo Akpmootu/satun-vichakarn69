@@ -3,7 +3,10 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>SATUN VICHAKARN</title>
+    <title>SATUN VICHAKARN 2569</title>
+    
+    <!-- Dynamic SVG Favicon -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 rx=%2220%22 fill=%22%230f172a%22/><path d=%22M50 20 L80 35 L50 50 L20 35 Z%22 fill=%22%2338bdf8%22/><path d=%22M20 45 L20 60 L50 75 L50 60 Z%22 fill=%22%230ea5e9%22/><path d=%22M80 45 L80 60 L50 75 L50 60 Z%22 fill=%22%230284c7%22/></svg>">
     
     <!-- Google Fonts: Kanit -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -34,6 +37,8 @@
             animation: {
               'fade-in': 'fadeIn 0.5s ease-out',
               'bounce-in': 'bounceIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+              'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+              'spin-slow': 'spin 3s linear infinite',
             },
             keyframes: {
               fadeIn: {
@@ -60,14 +65,21 @@
         height: 8px;
       }
       ::-webkit-scrollbar-track {
-        background: #f1f5f9;
+        background: #1e293b;
       }
       ::-webkit-scrollbar-thumb {
-        background: #cbd5e1;
+        background: #475569;
         border-radius: 4px;
       }
       ::-webkit-scrollbar-thumb:hover {
-        background: #94a3b8;
+        background: #64748b;
+      }
+      .no-scrollbar::-webkit-scrollbar {
+        display: none;
+      }
+      .no-scrollbar {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
       }
     </style>
   <script type="importmap">
