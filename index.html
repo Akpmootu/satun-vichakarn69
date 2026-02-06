@@ -13,7 +13,7 @@
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"/>
     
-    <!-- Tailwind CSS -->
+    <!-- Tailwind CSS (CDN Mode for Quick Prototyping) -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
       tailwind.config = {
@@ -29,6 +29,20 @@
                 500: '#0ea5e9',
                 700: '#0369a1',
                 900: '#0c4a6e',
+              }
+            },
+            animation: {
+              'fade-in': 'fadeIn 0.5s ease-out',
+              'bounce-in': 'bounceIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+            },
+            keyframes: {
+              fadeIn: {
+                '0%': { opacity: '0' },
+                '100%': { opacity: '1' },
+              },
+              bounceIn: {
+                '0%': { opacity: '0', transform: 'scale(0.9)' },
+                '100%': { opacity: '1', transform: 'scale(1)' },
               }
             }
           }
@@ -59,14 +73,18 @@
   <script type="importmap">
 {
   "imports": {
+    "react": "https://esm.sh/react@^19.2.4",
     "react-dom/": "https://esm.sh/react-dom@^19.2.4/",
     "react/": "https://esm.sh/react@^19.2.4/",
-    "react": "https://esm.sh/react@^19.2.4"
+    "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^5.1.3",
+    "vite": "https://esm.sh/vite@^7.3.1"
   }
 }
 </script>
 </head>
   <body>
     <div id="root"></div>
+    <!-- Entry point for Vite -->
+    <script type="module" src="/index.tsx"></script>
   </body>
 </html>
