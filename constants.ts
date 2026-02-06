@@ -38,7 +38,8 @@ export const PR_NEWS = [
     title: "ขอเชิญส่งผลงานวิชาการ ประจำปี 2568",
     date: "15 ก.พ. 2568",
     desc: "เปิดรับสมัครผลงานวิชาการ 3 ประเภท ได้แก่ วาจา, e-poster และนวัตกรรม ตั้งแต่วันนี้ - 30 มี.ค. 2568",
-    type: "news"
+    type: "news",
+    imageUrl: "https://images.unsplash.com/photo-1544531586-fde5298cdd40?q=80&w=800&auto=format&fit=crop"
   },
   {
     id: 2,

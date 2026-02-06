@@ -92,13 +92,21 @@ const Home: React.FC<HomeProps> = ({ onNavigate }) => {
               </div>
               <div className="space-y-4">
                   {PR_NEWS.filter(n => n.type === 'news').map(item => (
-                      <div key={item.id} className="group flex gap-4 p-4 rounded-2xl hover:bg-slate-50 transition border border-transparent hover:border-slate-100">
-                          <div className="shrink-0 pt-1">
-                              <i className="fa-solid fa-newspaper text-slate-400 group-hover:text-slate-600 text-xl"></i>
-                          </div>
-                          <div>
-                              <div className="text-xs font-bold text-rose-600 mb-1">{item.date}</div>
-                              <h4 className="font-bold text-slate-800 mb-1 group-hover:text-sky-700 transition">{item.title}</h4>
+                      <div key={item.id} className="group flex gap-4 p-4 rounded-2xl bg-slate-50 hover:bg-white hover:shadow-md transition border border-transparent hover:border-slate-100 ring-1 ring-slate-100">
+                          {item.imageUrl ? (
+                              <div className="shrink-0 w-24 h-24 rounded-xl overflow-hidden bg-slate-200">
+                                  <img src={item.imageUrl} alt={item.title} className="w-full h-full object-cover group-hover:scale-105 transition duration-500"/>
+                              </div>
+                          ) : (
+                              <div className="shrink-0 w-20 h-20 rounded-xl bg-slate-200 flex items-center justify-center text-slate-400">
+                                  <i className="fa-solid fa-image text-2xl"></i>
+                              </div>
+                          )}
+                          <div className="flex-1 min-w-0">
+                              <div className="text-xs font-bold text-rose-600 mb-1 flex items-center gap-2">
+                                  <i className="fa-regular fa-calendar"></i> {item.date}
+                              </div>
+                              <h4 className="font-bold text-slate-800 mb-1 group-hover:text-sky-700 transition leading-snug">{item.title}</h4>
                               <p className="text-sm text-slate-500 line-clamp-2">{item.desc}</p>
                           </div>
                       </div>
@@ -118,15 +126,17 @@ const Home: React.FC<HomeProps> = ({ onNavigate }) => {
                   {PR_NEWS.filter(n => n.type === 'download').map(item => (
                       <div key={item.id} className="flex items-center justify-between p-4 rounded-2xl border border-slate-100 hover:border-emerald-200 hover:bg-emerald-50/50 transition cursor-pointer group">
                           <div className="flex items-center gap-4">
-                              <div className="h-10 w-10 rounded-lg bg-slate-100 text-slate-500 flex items-center justify-center font-bold text-xs group-hover:bg-white group-hover:text-emerald-600 transition">
+                              <div className="h-12 w-12 rounded-xl bg-slate-100 text-slate-500 flex items-center justify-center font-bold text-xs group-hover:bg-white group-hover:text-emerald-600 transition ring-1 ring-slate-200 group-hover:ring-emerald-200">
                                   {item.fileType}
                               </div>
                               <div>
                                   <h4 className="font-bold text-slate-800 text-sm group-hover:text-emerald-800">{item.title}</h4>
-                                  <p className="text-xs text-slate-500 mt-0.5">{item.desc}</p>
+                                  <p className="text-xs text-slate-500 mt-1 flex items-center gap-2">
+                                     <i className="fa-regular fa-clock"></i> {item.date}
+                                  </p>
                               </div>
                           </div>
-                          <div className="h-8 w-8 rounded-full bg-white border border-slate-200 flex items-center justify-center text-slate-400 group-hover:text-emerald-600 group-hover:border-emerald-200 transition">
+                          <div className="h-10 w-10 rounded-full bg-white border border-slate-200 flex items-center justify-center text-slate-400 group-hover:text-emerald-600 group-hover:border-emerald-200 transition">
                               <i className="fa-solid fa-file-arrow-down"></i>
                           </div>
                       </div>

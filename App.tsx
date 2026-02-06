@@ -15,11 +15,24 @@ export default function App() {
   const [activeTab, setActiveTab] = useState("home");
   const [settings, setSettings] = useState<AppSettings>(loadSettings());
   const [toast, setToast] = useState<ToastMessage | null>(null);
-  const [showNews, setShowNews] = useState(true);
+  const [showNews, setShowNews] = useState(false);
   
   // Shared Data State
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [loading, setLoading] = useState(false);
+
+  // Check Session for News Popup
+  useEffect(() => {
+    const hasSeenNews = sessionStorage.getItem("svk_has_seen_news");
+    if (!hasSeenNews) {
+      setShowNews(true);
+    }
+  }, []);
+
+  const handleCloseNews = () => {
+    setShowNews(false);
+    sessionStorage.setItem("svk_has_seen_news", "true");
+  };
 
   const showToast = (t: ToastMessage) => {
     setToast(t);
@@ -58,7 +71,7 @@ export default function App() {
     <div className="min-h-screen bg-slate-50 text-slate-900 font-sans pb-10">
       
       {/* News Popup Modal */}
-      <NewsModal isOpen={showNews} onClose={() => setShowNews(false)} />
+      <NewsModal isOpen={showNews} onClose={handleCloseNews} />
 
       {/* Top Header */}
       <header className="bg-white border-b border-slate-200 sticky top-0 z-40">
