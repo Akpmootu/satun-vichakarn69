@@ -23,15 +23,20 @@ export default function App() {
 
   // Check Session for News Popup
   useEffect(() => {
-    const hasSeenNews = sessionStorage.getItem("svk_has_seen_news");
-    if (!hasSeenNews) {
+    const dontShowAgain = localStorage.getItem("svk_dont_show_news");
+    const hasSeenSession = sessionStorage.getItem("svk_has_seen_news");
+    
+    if (!dontShowAgain && !hasSeenSession) {
       setShowNews(true);
     }
   }, []);
 
-  const handleCloseNews = () => {
+  const handleCloseNews = (dontShow: boolean) => {
     setShowNews(false);
     sessionStorage.setItem("svk_has_seen_news", "true");
+    if (dontShow) {
+        localStorage.setItem("svk_dont_show_news", "true");
+    }
   };
 
   const showToast = (t: ToastMessage) => {
