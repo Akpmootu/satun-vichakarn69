@@ -327,6 +327,15 @@ const History: React.FC<HistoryProps> = ({ submissions, loading, refreshList, se
                         {s.status === "submitted" ? "ส่งแล้ว" : "ฉบับร่าง"}
                       </Badge>
                       <Badge tone="navy">ปี {s.budgetYear}</Badge>
+                      
+                      {s.status === "submitted" && (
+                        <div className="flex items-center gap-1.5 ml-1 px-2 py-0.5 rounded-full bg-indigo-50 border border-indigo-100">
+                           <div className="h-1.5 w-1.5 rounded-full bg-indigo-500 animate-pulse"></div>
+                           <span className="text-[10px] font-bold text-indigo-700 flex items-center gap-1">
+                               <i className="fa-regular fa-clock"></i> รอการพิจารณา
+                           </span>
+                        </div>
+                      )}
                     </div>
 
                     <div className="mt-2 text-sm text-slate-700 grid grid-cols-1 md:grid-cols-2 gap-x-4">
