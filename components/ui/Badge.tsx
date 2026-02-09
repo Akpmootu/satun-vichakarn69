@@ -1,6 +1,6 @@
 import React from 'react';
 
-type Tone = 'slate' | 'navy' | 'green' | 'amber' | 'red';
+type Tone = 'slate' | 'navy' | 'green' | 'amber' | 'red' | 'indigo';
 
 interface BadgeProps {
   children: React.ReactNode;
@@ -15,6 +15,7 @@ const Badge: React.FC<BadgeProps> = ({ children, tone = 'slate', className = '' 
     green: "bg-emerald-50 text-emerald-700 ring-emerald-200",
     amber: "bg-amber-50 text-amber-700 ring-amber-200",
     red: "bg-rose-50 text-rose-700 ring-rose-200",
+    indigo: "bg-indigo-50 text-indigo-700 ring-indigo-200",
   };
 
   return (

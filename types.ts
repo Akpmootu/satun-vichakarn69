@@ -1,4 +1,4 @@
-export type SubmissionStatus = 'draft' | 'submitted';
+export type SubmissionStatus = 'draft' | 'submitted' | 'reviewed' | 'accepted' | 'rejected';
 
 export interface AuditLog {
   at: string;

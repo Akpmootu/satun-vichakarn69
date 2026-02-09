@@ -1,8 +1,11 @@
 import React, { useMemo, useState } from 'react';
-import { Submission, AppSettings } from '../types';
+import { Submission, AppSettings, SubmissionStatus } from '../types';
 import { BRANCHES, WORK_TYPES } from '../constants';
 import Badge from './ui/Badge';
 import { apiUpdateSubmission } from '../services/apiService';
+
+// Declare Swal globally since it's loaded via CDN
+declare const Swal: any;
 
 interface HistoryProps {
   submissions: Submission[];
@@ -11,6 +14,45 @@ interface HistoryProps {
   settings: AppSettings;
   showToast: (t: any) => void;
 }
+
+// Configuration for all possible statuses
+const STATUS_CONFIG: Record<SubmissionStatus, { label: string; tone: any; icon: string; desc: string; hintColor: string }> = {
+  draft: { 
+      label: 'ฉบับร่าง', 
+      tone: 'amber', 
+      icon: 'fa-pen-ruler', 
+      desc: 'ยังไม่ส่ง',
+      hintColor: 'text-amber-600'
+  },
+  submitted: { 
+      label: 'ส่งแล้ว', 
+      tone: 'navy', 
+      icon: 'fa-paper-plane', 
+      desc: 'รอการพิจารณา',
+      hintColor: 'text-indigo-600'
+  },
+  reviewed: { 
+      label: 'กำลังพิจารณา', 
+      tone: 'indigo', 
+      icon: 'fa-magnifying-glass', 
+      desc: 'อยู่ระหว่างตรวจสอบ',
+      hintColor: 'text-indigo-600'
+  },
+  accepted: { 
+      label: 'ผ่านการคัดเลือก', 
+      tone: 'green', 
+      icon: 'fa-circle-check', 
+      desc: 'ได้รับคัดเลือก',
+      hintColor: 'text-emerald-600'
+  },
+  rejected: { 
+      label: 'ไม่ผ่านการคัดเลือก', 
+      tone: 'red', 
+      icon: 'fa-circle-xmark', 
+      desc: 'ไม่ผ่านเกณฑ์',
+      hintColor: 'text-rose-600'
+  },
+};
 
 const History: React.FC<HistoryProps> = ({ submissions, loading, refreshList, settings, showToast }) => {
   const [filter, setFilter] = useState({
@@ -40,7 +82,6 @@ const History: React.FC<HistoryProps> = ({ submissions, loading, refreshList, se
 
   const filtered = useMemo(() => {
     const q = String(filter.q || "").trim().toLowerCase();
-    // Split keywords by space to allow multi-word search (e.g. "Nurse Satun")
     const keywords = q.split(/\s+/).filter(k => k.length > 0);
 
     return submissions.filter((s) => {
@@ -48,36 +89,27 @@ const History: React.FC<HistoryProps> = ({ submissions, loading, refreshList, se
       const okBranch = filter.branchId === "all" ? true : Number(s.branchId) === Number(filter.branchId);
       const okStatus = filter.status === "all" ? true : s.status === filter.status;
 
-      // Date Range Filtering (Local Time)
       const itemDate = new Date(s.createdAt);
       let okDate = true;
 
       if (filter.startDate) {
           const [y, m, d] = filter.startDate.split('-').map(Number);
-          const start = new Date(y, m - 1, d, 0, 0, 0); // Start of day local
+          const start = new Date(y, m - 1, d, 0, 0, 0); 
           if (itemDate < start) okDate = false;
       }
       
       if (okDate && filter.endDate) {
           const [y, m, d] = filter.endDate.split('-').map(Number);
-          const end = new Date(y, m - 1, d, 23, 59, 59, 999); // End of day local
+          const end = new Date(y, m - 1, d, 23, 59, 59, 999); 
           if (itemDate > end) okDate = false;
       }
 
-      // Construct searchable text from Name, Position, Organization
       const hay = [
-        s.firstName,
-        s.lastName,
-        s.position,
-        s.organization,
-        workTypeLabel(s.workType), // Include work type label for convenience
-        branchLabel(s.branchId),   // Include branch label for convenience
-      ]
-        .filter(Boolean)
-        .join(" ")
-        .toLowerCase();
+        s.firstName, s.lastName, s.position, s.organization,
+        workTypeLabel(s.workType), branchLabel(s.branchId),
+        STATUS_CONFIG[s.status]?.label || ''
+      ].filter(Boolean).join(" ").toLowerCase();
 
-      // Check if ALL keywords are present in the searchable text
       const okQ = keywords.length === 0 ? true : keywords.every(k => hay.includes(k));
 
       return okType && okBranch && okStatus && okQ && okDate;
@@ -95,15 +127,16 @@ const History: React.FC<HistoryProps> = ({ submissions, loading, refreshList, se
       });
   };
 
-  const updateStatus = async (id: string, nextStatus: 'draft' | 'submitted') => {
+  const updateStatus = async (id: string, nextStatus: SubmissionStatus) => {
     try {
         const existing = submissions.find(s => s.id === id);
         if (!existing) return;
 
+        const config = STATUS_CONFIG[nextStatus];
         const newLog = {
             at: new Date().toISOString(),
-            action: nextStatus === 'submitted' ? 'SUBMIT' : 'SAVE_DRAFT',
-            note: nextStatus === 'submitted' ? 'เปลี่ยนสถานะเป็นส่งแล้ว' : 'เปลี่ยนสถานะเป็นฉบับร่าง'
+            action: nextStatus.toUpperCase(),
+            note: `เปลี่ยนสถานะเป็น: ${config.label}`
         };
 
         const updatedAudit = [...(existing.audit || []), newLog];
@@ -129,7 +162,36 @@ const History: React.FC<HistoryProps> = ({ submissions, loading, refreshList, se
     }
   };
 
-  const exportCSV = () => {
+  const exportCSV = async () => {
+    if (filtered.length === 0) {
+        showToast({ type: "info", title: "ไม่พบข้อมูล", message: "ไม่มีรายการที่ตรงกับเงื่อนไขการค้นหา" });
+        return;
+    }
+
+    const result = await Swal.fire({
+        title: 'ยืนยันการส่งออก?',
+        html: `
+            <div class="text-sm text-slate-600">
+               พบข้อมูลจำนวน <b class="text-emerald-600 text-lg">${filtered.length}</b> รายการ<br/>
+               ต้องการดาวน์โหลดเป็นไฟล์ CSV หรือไม่?
+            </div>
+        `,
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#10b981',
+        cancelButtonColor: '#64748b',
+        confirmButtonText: '<i class="fa-solid fa-file-export mr-2"></i>ส่งออกข้อมูล',
+        cancelButtonText: 'ยกเลิก',
+        focusConfirm: false,
+        customClass: {
+            popup: 'rounded-3xl',
+            confirmButton: 'rounded-xl px-4 py-2',
+            cancelButton: 'rounded-xl px-4 py-2'
+        }
+    });
+
+    if (!result.isConfirmed) return;
+
     const header = [
       "รหัสรายการ", "ปีงบประมาณ", "ชื่อ", "นามสกุล", "ตำแหน่ง",
       "สังกัด/หน่วยงาน", "ประเภทผลงาน", "สาขา", "สถานะ", "วันที่สร้าง", "วันที่อัปเดต"
@@ -138,7 +200,7 @@ const History: React.FC<HistoryProps> = ({ submissions, loading, refreshList, se
     const rows = filtered.map((s) => [
       s.id, s.budgetYear, s.firstName, s.lastName, s.position,
       s.organization, workTypeLabel(s.workType), branchLabel(s.branchId),
-      s.status === "submitted" ? "ส่งแล้ว" : "ฉบับร่าง",
+      STATUS_CONFIG[s.status]?.label || s.status,
       formatDateTimeTH(s.createdAt), formatDateTimeTH(s.updatedAt),
     ]);
 
@@ -161,11 +223,7 @@ const History: React.FC<HistoryProps> = ({ submissions, loading, refreshList, se
     a.remove();
     URL.revokeObjectURL(url);
 
-    showToast({
-      type: "success",
-      title: "ส่งออกข้อมูลสำเร็จ",
-      message: `ดาวน์โหลด ${filtered.length} รายการเรียบร้อยแล้ว`,
-    });
+    showToast({ type: "success", title: "ส่งออกข้อมูลสำเร็จ", message: `ดาวน์โหลด ${filtered.length} รายการเรียบร้อยแล้ว` });
   };
 
   return (
@@ -229,6 +287,9 @@ const History: React.FC<HistoryProps> = ({ submissions, loading, refreshList, se
             <option value="all">ทั้งหมด</option>
             <option value="submitted">ส่งแล้ว</option>
             <option value="draft">ฉบับร่าง</option>
+            <option value="reviewed">กำลังพิจารณา</option>
+            <option value="accepted">ผ่านการคัดเลือก</option>
+            <option value="rejected">ไม่ผ่านการคัดเลือก</option>
           </select>
         </div>
         
@@ -315,81 +376,86 @@ const History: React.FC<HistoryProps> = ({ submissions, loading, refreshList, se
               </button>
             </div>
           ) : (
-            filtered.map((s) => (
-              <div key={s.id} className="rounded-3xl bg-white ring-1 ring-slate-200 shadow-sm p-4 md:p-5 hover:shadow-md transition group">
-                <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
-                  <div className="min-w-0">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <div className="text-base font-black text-slate-900 group-hover:text-sky-700 transition">
-                        {s.firstName} {s.lastName}
-                      </div>
-                      <Badge tone={s.status === "submitted" ? "green" : "amber"}>
-                        {s.status === "submitted" ? "ส่งแล้ว" : "ฉบับร่าง"}
-                      </Badge>
-                      <Badge tone="navy">ปี {s.budgetYear}</Badge>
-                      
-                      {s.status === "submitted" && (
-                        <div className="flex items-center gap-1.5 ml-1 px-2 py-0.5 rounded-full bg-indigo-50 border border-indigo-100">
-                           <div className="h-1.5 w-1.5 rounded-full bg-indigo-500 animate-pulse"></div>
-                           <span className="text-[10px] font-bold text-indigo-700 flex items-center gap-1">
-                               <i className="fa-regular fa-clock"></i> รอการพิจารณา
-                           </span>
+            filtered.map((s) => {
+              const status = STATUS_CONFIG[s.status] || STATUS_CONFIG['draft'];
+              return (
+                <div key={s.id} className="rounded-3xl bg-white ring-1 ring-slate-200 shadow-sm p-4 md:p-5 hover:shadow-md transition group">
+                  <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <div className="text-base font-black text-slate-900 group-hover:text-sky-700 transition">
+                          {s.firstName} {s.lastName}
                         </div>
+                        <Badge tone={status.tone}>
+                          {status.label}
+                        </Badge>
+                        <Badge tone="navy">ปี {s.budgetYear}</Badge>
+                        
+                        {/* Dynamic Status Indicator */}
+                        {s.status !== 'draft' && (
+                          <div className={`flex items-center gap-1.5 ml-1 px-2 py-0.5 rounded-full border bg-opacity-50 ${status.hintColor.replace('text-', 'bg-').replace('600', '50')} ${status.hintColor.replace('text-', 'border-').replace('600', '100')}`}>
+                             {s.status === 'submitted' && <div className="h-1.5 w-1.5 rounded-full bg-indigo-500 animate-pulse"></div>}
+                             <span className={`text-[10px] font-bold flex items-center gap-1 ${status.hintColor}`}>
+                                 <i className={`fa-regular ${status.icon}`}></i> {status.desc}
+                             </span>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="mt-2 text-sm text-slate-700 grid grid-cols-1 md:grid-cols-2 gap-x-4">
+                         <span className="flex items-center gap-2"><i className="fa-solid fa-user-tag text-slate-400 text-xs"></i> {s.position || "-"}</span>
+                         <span className="flex items-center gap-2"><i className="fa-solid fa-building text-slate-400 text-xs"></i> {s.organization || "-"}</span>
+                      </div>
+
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        <Badge tone="slate">{workTypeLabel(s.workType)}</Badge>
+                        <Badge tone="slate">{branchLabel(s.branchId)}</Badge>
+                      </div>
+
+                      <div className="mt-3 text-xs text-slate-500 flex items-center gap-3">
+                        <span><i className="fa-regular fa-clock mr-1"></i> สร้าง {formatDateTimeTH(s.createdAt)}</span>
+                        <span><i className="fa-solid fa-pen-to-square mr-1"></i> อัปเดต {formatDateTimeTH(s.updatedAt)}</span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 shrink-0">
+                      {s.status === "draft" ? (
+                        <button
+                          onClick={() => updateStatus(s.id, "submitted")}
+                          className="rounded-xl px-4 py-2 text-sm font-bold bg-slate-900 text-white hover:bg-slate-800 transition flex items-center gap-2 shadow-lg shadow-slate-200"
+                        >
+                          <i className="fa-solid fa-paper-plane" />
+                          <span>ส่ง</span>
+                        </button>
+                      ) : s.status === 'submitted' && (
+                        <button
+                          onClick={() => updateStatus(s.id, "draft")}
+                          className="rounded-xl px-4 py-2 text-sm font-bold ring-1 ring-slate-200 bg-white hover:bg-slate-50 transition flex items-center gap-2"
+                        >
+                          <i className="fa-solid fa-rotate-left" />
+                          <span>แก้</span>
+                        </button>
                       )}
-                    </div>
-
-                    <div className="mt-2 text-sm text-slate-700 grid grid-cols-1 md:grid-cols-2 gap-x-4">
-                       <span className="flex items-center gap-2"><i className="fa-solid fa-user-tag text-slate-400 text-xs"></i> {s.position || "-"}</span>
-                       <span className="flex items-center gap-2"><i className="fa-solid fa-building text-slate-400 text-xs"></i> {s.organization || "-"}</span>
-                    </div>
-
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      <Badge tone="slate">{workTypeLabel(s.workType)}</Badge>
-                      <Badge tone="slate">{branchLabel(s.branchId)}</Badge>
-                    </div>
-
-                    <div className="mt-3 text-xs text-slate-500 flex items-center gap-3">
-                      <span><i className="fa-regular fa-clock mr-1"></i> สร้าง {formatDateTimeTH(s.createdAt)}</span>
-                      <span><i className="fa-solid fa-pen-to-square mr-1"></i> อัปเดต {formatDateTimeTH(s.updatedAt)}</span>
+                      {/* For other statuses, no action button shown for user (read-only) */}
                     </div>
                   </div>
-
-                  <div className="flex items-center gap-2 shrink-0">
-                    {s.status === "draft" ? (
-                      <button
-                        onClick={() => updateStatus(s.id, "submitted")}
-                        className="rounded-xl px-4 py-2 text-sm font-bold bg-slate-900 text-white hover:bg-slate-800 transition flex items-center gap-2 shadow-lg shadow-slate-200"
-                      >
-                        <i className="fa-solid fa-paper-plane" />
-                        <span>ส่ง</span>
-                      </button>
-                    ) : (
-                      <button
-                        onClick={() => updateStatus(s.id, "draft")}
-                        className="rounded-xl px-4 py-2 text-sm font-bold ring-1 ring-slate-200 bg-white hover:bg-slate-50 transition flex items-center gap-2"
-                      >
-                        <i className="fa-solid fa-rotate-left" />
-                        <span>แก้</span>
-                      </button>
-                    )}
-                  </div>
+                  
+                  {/* Minimal Audit Log */}
+                  {s.audit && s.audit.length > 0 && (
+                      <div className="mt-4 pt-3 border-t border-slate-100">
+                           <div className="text-[10px] uppercase font-bold text-slate-400 mb-1 tracking-wider">Activity Log</div>
+                           {s.audit.slice(-2).reverse().map((a, i) => (
+                               <div key={i} className="text-xs text-slate-500 flex items-center gap-2">
+                                   <span className="w-1 h-1 rounded-full bg-slate-300"></span>
+                                   <span className="font-mono text-slate-400">{formatDateTimeTH(a.at)}</span>
+                                   <span>{a.note}</span>
+                               </div>
+                           ))}
+                      </div>
+                  )}
                 </div>
-                
-                {/* Minimal Audit Log */}
-                {s.audit && s.audit.length > 0 && (
-                    <div className="mt-4 pt-3 border-t border-slate-100">
-                         <div className="text-[10px] uppercase font-bold text-slate-400 mb-1 tracking-wider">Activity Log</div>
-                         {s.audit.slice(-2).reverse().map((a, i) => (
-                             <div key={i} className="text-xs text-slate-500 flex items-center gap-2">
-                                 <span className="w-1 h-1 rounded-full bg-slate-300"></span>
-                                 <span className="font-mono text-slate-400">{formatDateTimeTH(a.at)}</span>
-                                 <span>{a.note}</span>
-                             </div>
-                         ))}
-                    </div>
-                )}
-              </div>
-            ))
+              );
+            })
           )}
         </div>
       </div>

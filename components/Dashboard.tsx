@@ -35,7 +35,8 @@ const StatCard: React.FC<StatCardProps> = ({ title, value, icon, hint, tone = 'b
 const Dashboard: React.FC<{ submissions: Submission[] }> = ({ submissions }) => {
   const stats = useMemo(() => {
     const total = submissions.length;
-    const submitted = submissions.filter(s => s.status === 'submitted').length;
+    // Count anything NOT draft as submitted (including reviewed, accepted, rejected)
+    const submitted = submissions.filter(s => s.status !== 'draft').length;
     const draft = submissions.filter(s => s.status === 'draft').length;
     
     // Calculate Success Rate
@@ -82,14 +83,14 @@ const Dashboard: React.FC<{ submissions: Submission[] }> = ({ submissions }) => 
             value={stats.submitted} 
             icon="fa-circle-check" 
             tone="emerald"
-            hint="Ready for review" 
+            hint="รวมทุกสถานะ (ไม่รวมร่าง)" 
           />
           <StatCard 
             title="ฉบับร่าง" 
             value={stats.draft} 
             icon="fa-pen-ruler" 
             tone="amber"
-            hint="In progress" 
+            hint="กำลังดำเนินการ" 
           />
           <StatCard 
             title="อัตราความสำเร็จ" 
