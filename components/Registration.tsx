@@ -144,41 +144,14 @@ const Registration: React.FC<RegistrationProps> = ({ settings, onSuccess, showTo
   };
 
   const confirmAndSubmit = async (mode: 'draft' | 'submit') => {
-    // Logic Split: Draft vs Submit
+    // 1. Validation Logic
     if (mode === 'submit') {
-        // Strict Validation for Submit
         if (!validateForm()) {
             showToast({ type: "error", title: "ข้อมูลไม่ครบถ้วน", message: "กรุณาตรวจสอบช่องที่มีสีแดง" });
             return;
         }
-
-        // Confirmation Dialog
-        const result = await Swal.fire({
-            title: 'ยืนยันการส่งผลงาน?',
-            html: `
-                <div class="text-left text-sm text-slate-600">
-                    <p>ท่านกำลังจะส่งผลงาน: <b>${form.firstName} ${form.lastName}</b></p>
-                    <p class="mt-2">ข้อมูลจะถูกส่งเข้าสู่ระบบการพิจารณา กรุณาตรวจสอบความถูกต้อง</p>
-                </div>
-            `,
-            icon: 'question',
-            showCancelButton: true,
-            confirmButtonColor: '#0f172a', // slate-900
-            cancelButtonColor: '#64748b',  // slate-500
-            confirmButtonText: '<i class="fa-solid fa-paper-plane mr-2"></i>ยืนยันส่งผลงาน',
-            cancelButtonText: 'แก้ไขก่อน',
-            focusCancel: true,
-            customClass: {
-                popup: 'rounded-3xl',
-                confirmButton: 'rounded-xl px-4 py-2',
-                cancelButton: 'rounded-xl px-4 py-2'
-            }
-        });
-
-        if (!result.isConfirmed) return;
-
     } else {
-        // Minimal Validation for Draft (Just Name)
+        // Draft: Minimal Validation
         if (!form.firstName.trim() || !form.lastName.trim()) {
              showToast({ type: "error", title: "ข้อมูลระบุตัวตนไม่ครบ", message: "กรุณากรอกชื่อและนามสกุลเพื่อบันทึกร่าง" });
              setErrors(prev => ({
@@ -189,6 +162,56 @@ const Registration: React.FC<RegistrationProps> = ({ settings, onSuccess, showTo
              return;
         }
     }
+
+    // 2. Prepare Confirmation Dialog Content based on mode
+    let title = '';
+    let html = '';
+    let confirmBtnText = '';
+    let icon = 'question';
+    let confirmColor = '';
+
+    if (mode === 'submit') {
+        title = 'ยืนยันการส่งผลงาน?';
+        html = `
+            <div class="text-left text-sm text-slate-600">
+                <p>ท่านกำลังจะส่งผลงาน: <b>${form.firstName} ${form.lastName}</b></p>
+                <p class="mt-2">ข้อมูลจะถูกส่งเข้าสู่ระบบการพิจารณา กรุณาตรวจสอบความถูกต้อง</p>
+            </div>
+        `;
+        confirmBtnText = '<i class="fa-solid fa-paper-plane mr-2"></i>ยืนยันส่งผลงาน';
+        confirmColor = '#0f172a'; // slate-900
+    } else {
+        title = 'ยืนยันการบันทึกฉบับร่าง?';
+        html = `
+            <div class="text-left text-sm text-slate-600">
+                <p>ระบบจะบันทึกข้อมูลของท่านไว้ เพื่อให้กลับมาแก้ไขภายหลังได้</p>
+                <p class="mt-2 text-xs text-amber-600"><i class="fa-solid fa-circle-exclamation mr-1"></i> ข้อมูลฉบับร่างจะยังไม่ถูกส่งไปยังคณะกรรมการ</p>
+            </div>
+        `;
+        confirmBtnText = '<i class="fa-solid fa-floppy-disk mr-2"></i>บันทึกร่าง';
+        confirmColor = '#334155'; // slate-700
+        icon = 'info';
+    }
+
+    // 3. Show Dialog
+    const result = await Swal.fire({
+        title: title,
+        html: html,
+        icon: icon,
+        showCancelButton: true,
+        confirmButtonColor: confirmColor,
+        cancelButtonColor: '#94a3b8', // slate-400
+        confirmButtonText: confirmBtnText,
+        cancelButtonText: 'ยกเลิก',
+        focusCancel: true,
+        customClass: {
+            popup: 'rounded-3xl',
+            confirmButton: 'rounded-xl px-4 py-2',
+            cancelButton: 'rounded-xl px-4 py-2'
+        }
+    });
+
+    if (!result.isConfirmed) return;
 
     await submit(mode);
   };
