@@ -3,10 +3,10 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>SATUN VICHAKARN 2569</title>
+    <title>SKMS - Satun Knowledge Management Systems</title>
     
     <!-- Dynamic SVG Favicon -->
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 rx=%2220%22 fill=%22%230f172a%22/><path d=%22M50 20 L80 35 L50 50 L20 35 Z%22 fill=%22%2338bdf8%22/><path d=%22M20 45 L20 60 L50 75 L50 60 Z%22 fill=%22%230ea5e9%22/><path d=%22M80 45 L80 60 L50 75 L50 60 Z%22 fill=%22%230284c7%22/></svg>">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 rx=%2220%22 fill=%22%230f172a%22/><text x=%2250%22 y=%2265%22 font-family=%22Arial, sans-serif%22 font-size=%2240%22 font-weight=%22bold%22 fill=%22%2338bdf8%22 text-anchor=%22middle%22>S</text><path d=%22M20 20 L40 20 L30 35 Z%22 fill=%22%2322d3ee%22/></svg>">
     
     <!-- Google Fonts: Kanit -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -16,6 +16,9 @@
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"/>
     
+    <!-- SweetAlert2 -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
     <!-- Tailwind CSS (CDN Mode for Quick Prototyping) -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -39,6 +42,7 @@
               'bounce-in': 'bounceIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
               'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
               'spin-slow': 'spin 3s linear infinite',
+              'flow-up': 'flowUp 2s ease-in-out infinite',
             },
             keyframes: {
               fadeIn: {
@@ -48,6 +52,10 @@
               bounceIn: {
                 '0%': { opacity: '0', transform: 'scale(0.9)' },
                 '100%': { opacity: '1', transform: 'scale(1)' },
+              },
+              flowUp: {
+                '0%, 100%': { transform: 'translateY(0)' },
+                '50%': { transform: 'translateY(-5px)' },
               }
             }
           }

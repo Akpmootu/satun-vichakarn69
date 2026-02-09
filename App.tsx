@@ -196,6 +196,8 @@ export default function App() {
                 currentUser={currentUser}
                 onLoginRequest={() => setShowAuth(true)}
                 userSubmissions={submissions.filter(s => s.userId === currentUser?.id)}
+                showToast={showToast}
+                onOpenNews={() => setShowNews(true)}
               />
            )}
 
@@ -247,13 +249,14 @@ export default function App() {
                                <i className="fa-solid fa-building-columns text-slate-900 text-xl"></i>
                            </div>
                            <div>
-                               <h3 className="text-lg font-bold leading-tight">สำนักงานสาธารณสุข</h3>
-                               <p className="text-sm text-slate-400">จังหวัดสตูล</p>
+                               <h3 className="text-lg font-bold leading-tight">SKMS</h3>
+                               <p className="text-sm text-slate-400">สำนักงานสาธารณสุขจังหวัดสตูล</p>
                            </div>
                       </div>
                       <p className="text-slate-400 text-sm leading-relaxed">
-                          มุ่งมั่นพัฒนาวิชาการ นวัตกรรม และเทคโนโลยีสารสนเทศ 
-                          เพื่อยกระดับบริการสาธารณสุข สู่คุณภาพชีวิตที่ดีของประชาชน
+                          Satun Knowledge Management Systems <br/>
+                          "ต้นน้ำ กลางน้ำ ปลายน้ำ" <br/>
+                          ระบบรวบรวมและบริหารจัดการองค์ความรู้เพื่อความเป็นเลิศทางสุขภาพ
                       </p>
                       <div className="flex gap-4 pt-2">
                           <a href="#" className="h-10 w-10 rounded-full bg-slate-800 flex items-center justify-center hover:bg-sky-600 transition text-white">
@@ -272,10 +275,11 @@ export default function App() {
                   <div>
                       <h4 className="text-lg font-bold mb-6 border-l-4 border-sky-500 pl-3">เมนูระบบ</h4>
                       <ul className="space-y-3 text-sm text-slate-300">
-                          <li><button onClick={() => handleTabChange('home')} className="hover:text-sky-400 transition flex items-center gap-2"><i className="fa-solid fa-chevron-right text-xs"></i> หน้าหลัก</button></li>
-                          <li><button onClick={() => handleTabChange('register')} className="hover:text-sky-400 transition flex items-center gap-2"><i className="fa-solid fa-chevron-right text-xs"></i> ลงทะเบียนส่งผลงาน</button></li>
-                          <li><button onClick={() => handleTabChange('history')} className="hover:text-sky-400 transition flex items-center gap-2"><i className="fa-solid fa-chevron-right text-xs"></i> ตรวจสอบสถานะ</button></li>
-                          <li><button onClick={() => handleTabChange('analytics')} className="hover:text-sky-400 transition flex items-center gap-2"><i className="fa-solid fa-chevron-right text-xs"></i> สรุปผลการดำเนินงาน</button></li>
+                          <li><button onClick={() => handleTabChange('home')} className="hover:text-sky-400 transition flex items-center gap-2"><i className="fa-solid fa-chevron-right text-xs"></i> หน้าหลัก (KM Portal)</button></li>
+                          <li><button onClick={() => handleTabChange('register')} className="hover:text-sky-400 transition flex items-center gap-2"><i className="fa-solid fa-chevron-right text-xs"></i> นำเข้าองค์ความรู้</button></li>
+                          <li><button onClick={() => handleTabChange('history')} className="hover:text-sky-400 transition flex items-center gap-2"><i className="fa-solid fa-chevron-right text-xs"></i> คลังความรู้ (KM Bank)</button></li>
+                          <li><button onClick={() => handleTabChange('analytics')} className="hover:text-sky-400 transition flex items-center gap-2"><i className="fa-solid fa-chevron-right text-xs"></i> สรุปสถานการณ์</button></li>
+                          <li><button onClick={() => handleTabChange('settings')} className="hover:text-sky-400 transition flex items-center gap-2"><i className="fa-solid fa-chevron-right text-xs"></i> ตั้งค่าระบบ</button></li>
                       </ul>
                   </div>
 
@@ -289,11 +293,11 @@ export default function App() {
                           </li>
                           <li className="flex items-center gap-3">
                               <i className="fa-solid fa-phone text-emerald-500"></i>
-                              <span>074-123-456 ต่อ 110-112</span>
+                              <a href="tel:074123456" className="hover:text-emerald-400 transition">074-123-456 ต่อ 110-112</a>
                           </li>
                           <li className="flex items-center gap-3">
                               <i className="fa-solid fa-envelope text-rose-500"></i>
-                              <span>admin@satunhealth.go.th</span>
+                              <a href="mailto:skms@satunhealth.go.th" className="hover:text-rose-400 transition">skms@satunhealth.go.th</a>
                           </li>
                       </ul>
                   </div>

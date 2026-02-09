@@ -119,7 +119,7 @@ const History: React.FC<HistoryProps> = ({ submissions, loading, refreshList, se
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `SATUN_VICHAKARN_export.csv`;
+    a.download = `SATUN_VICHAKARN_export_${new Date().getTime()}.csv`;
     document.body.appendChild(a);
     a.click();
     a.remove();
@@ -128,7 +128,7 @@ const History: React.FC<HistoryProps> = ({ submissions, loading, refreshList, se
     showToast({
       type: "success",
       title: "ส่งออกข้อมูลสำเร็จ",
-      message: "ดาวน์โหลดไฟล์ CSV เรียบร้อยแล้ว",
+      message: `ดาวน์โหลด ${filtered.length} รายการเรียบร้อยแล้ว`,
     });
   };
 
@@ -137,36 +137,40 @@ const History: React.FC<HistoryProps> = ({ submissions, loading, refreshList, se
       <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
         <div className="min-w-0">
           <div className="text-lg md:text-xl font-black text-slate-900">ประวัติการลงทะเบียน/ส่งผลงาน</div>
-          <div className="mt-1 text-sm text-slate-600">ค้นหา กรองข้อมูล และส่งออกเป็น CSV ได้</div>
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={exportCSV}
-            className="rounded-2xl px-4 py-2 text-sm font-bold ring-1 ring-slate-200 bg-white hover:bg-slate-50 transition flex items-center gap-2"
-          >
-            <i className="fa-solid fa-file-export" />
-            <span>ส่งออก CSV</span>
-          </button>
+          <div className="mt-1 text-sm text-slate-600">ค้นหา กรองข้อมูล และจัดการสถานะผลงาน</div>
         </div>
       </div>
 
       {/* Filters */}
       <div className="mt-5 grid grid-cols-1 md:grid-cols-4 gap-3">
         <div className="md:col-span-2">
-          <label className="block text-sm font-bold text-slate-900">ค้นหา</label>
-          <input
-            value={filter.q}
-            onChange={(e) => setFilter((p) => ({ ...p, q: e.target.value }))}
-            placeholder="ค้นหาจากชื่อ/ตำแหน่ง/หน่วยงาน"
-            className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:ring-4 focus:ring-sky-100 transition"
-          />
+          <label className="block text-sm font-bold text-slate-900 mb-2">ค้นหา</label>
+          <div className="relative group">
+              <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                <i className="fa-solid fa-magnifying-glass text-slate-400 group-focus-within:text-sky-500 transition"></i>
+              </div>
+              <input
+                value={filter.q}
+                onChange={(e) => setFilter((p) => ({ ...p, q: e.target.value }))}
+                placeholder="พิมพ์ชื่อ, ตำแหน่ง, หรือหน่วยงาน..."
+                className="w-full rounded-2xl border border-slate-200 pl-11 pr-10 py-3 text-sm outline-none focus:ring-4 focus:ring-sky-100 transition shadow-sm"
+              />
+              {filter.q && (
+                <button
+                  onClick={() => setFilter(p => ({ ...p, q: '' }))}
+                  className="absolute inset-y-0 right-0 pr-4 flex items-center text-slate-300 hover:text-rose-500 transition"
+                >
+                  <i className="fa-solid fa-circle-xmark"></i>
+                </button>
+              )}
+          </div>
         </div>
         <div>
-          <label className="block text-sm font-bold text-slate-900">ประเภท</label>
+          <label className="block text-sm font-bold text-slate-900 mb-2">ประเภท</label>
           <select
             value={filter.workType}
             onChange={(e) => setFilter((p) => ({ ...p, workType: e.target.value }))}
-            className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm bg-white outline-none focus:ring-4 focus:ring-sky-100 transition"
+            className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm bg-white outline-none focus:ring-4 focus:ring-sky-100 transition shadow-sm"
           >
             <option value="all">ทั้งหมด</option>
             {WORK_TYPES.map((t) => (
@@ -177,23 +181,25 @@ const History: React.FC<HistoryProps> = ({ submissions, loading, refreshList, se
           </select>
         </div>
         <div>
-          <label className="block text-sm font-bold text-slate-900">สถานะ</label>
+          <label className="block text-sm font-bold text-slate-900 mb-2">สถานะ</label>
           <select
             value={filter.status}
             onChange={(e) => setFilter((p) => ({ ...p, status: e.target.value }))}
-            className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm bg-white outline-none focus:ring-4 focus:ring-sky-100 transition"
+            className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm bg-white outline-none focus:ring-4 focus:ring-sky-100 transition shadow-sm"
           >
             <option value="all">ทั้งหมด</option>
             <option value="submitted">ส่งแล้ว</option>
             <option value="draft">ฉบับร่าง</option>
           </select>
         </div>
-        <div className="md:col-span-4">
-            <label className="block text-sm font-bold text-slate-900">สาขา</label>
+        
+        {/* Branch Selection */}
+        <div className="md:col-span-3">
+            <label className="block text-sm font-bold text-slate-900 mb-2">สาขา</label>
             <select
                 value={filter.branchId}
                 onChange={(e) => setFilter((p) => ({ ...p, branchId: e.target.value }))}
-                className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm bg-white outline-none focus:ring-4 focus:ring-sky-100 transition"
+                className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm bg-white outline-none focus:ring-4 focus:ring-sky-100 transition shadow-sm"
             >
                 <option value="all">ทั้งหมด</option>
                 {BRANCHES.map((b) => (
@@ -202,6 +208,17 @@ const History: React.FC<HistoryProps> = ({ submissions, loading, refreshList, se
                 </option>
                 ))}
             </select>
+        </div>
+
+        {/* Export Button */}
+        <div className="md:col-span-1 flex items-end">
+            <button
+                onClick={exportCSV}
+                className="w-full rounded-2xl px-4 py-3 text-sm font-bold bg-emerald-500 text-white hover:bg-emerald-600 active:scale-95 transition flex items-center justify-center gap-2 shadow-lg shadow-emerald-200"
+            >
+                <i className="fa-solid fa-file-csv text-lg"></i>
+                <span>Export Filtered Data</span>
+            </button>
         </div>
       </div>
 
@@ -220,17 +237,20 @@ const History: React.FC<HistoryProps> = ({ submissions, loading, refreshList, se
 
         <div className="mt-3 space-y-3">
           {filtered.length === 0 ? (
-            <div className="rounded-2xl bg-slate-50 ring-1 ring-slate-200 p-5 text-center">
-              <div className="text-sm font-black text-slate-900">ไม่พบข้อมูล</div>
-              <div className="mt-1 text-sm text-slate-600">ลองปรับเปลี่ยนเงื่อนไขการค้นหา</div>
+            <div className="rounded-2xl bg-slate-50 ring-1 ring-slate-200 p-10 text-center">
+              <div className="h-16 w-16 bg-slate-100 text-slate-400 rounded-full mx-auto flex items-center justify-center text-3xl mb-4">
+                 <i className="fa-solid fa-magnifying-glass"></i>
+              </div>
+              <div className="text-lg font-black text-slate-900">ไม่พบข้อมูล</div>
+              <div className="mt-1 text-sm text-slate-600">ลองปรับเปลี่ยนคำค้นหาหรือตัวกรอง</div>
             </div>
           ) : (
             filtered.map((s) => (
-              <div key={s.id} className="rounded-3xl bg-white ring-1 ring-slate-200 shadow-sm p-4 md:p-5 hover:shadow-md transition">
+              <div key={s.id} className="rounded-3xl bg-white ring-1 ring-slate-200 shadow-sm p-4 md:p-5 hover:shadow-md transition group">
                 <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
-                      <div className="text-base font-black text-slate-900">
+                      <div className="text-base font-black text-slate-900 group-hover:text-sky-700 transition">
                         {s.firstName} {s.lastName}
                       </div>
                       <Badge tone={s.status === "submitted" ? "green" : "amber"}>
@@ -240,8 +260,8 @@ const History: React.FC<HistoryProps> = ({ submissions, loading, refreshList, se
                     </div>
 
                     <div className="mt-2 text-sm text-slate-700 grid grid-cols-1 md:grid-cols-2 gap-x-4">
-                       <span><span className="font-bold">ตำแหน่ง:</span> {s.position || "-"}</span>
-                       <span><span className="font-bold">สังกัด:</span> {s.organization || "-"}</span>
+                       <span className="flex items-center gap-2"><i className="fa-solid fa-user-tag text-slate-400 text-xs"></i> {s.position || "-"}</span>
+                       <span className="flex items-center gap-2"><i className="fa-solid fa-building text-slate-400 text-xs"></i> {s.organization || "-"}</span>
                     </div>
 
                     <div className="mt-3 flex flex-wrap gap-2">
@@ -249,8 +269,9 @@ const History: React.FC<HistoryProps> = ({ submissions, loading, refreshList, se
                       <Badge tone="slate">{branchLabel(s.branchId)}</Badge>
                     </div>
 
-                    <div className="mt-3 text-xs text-slate-500">
-                      สร้าง {formatDateTimeTH(s.createdAt)} • อัปเดต {formatDateTimeTH(s.updatedAt)}
+                    <div className="mt-3 text-xs text-slate-500 flex items-center gap-3">
+                      <span><i className="fa-regular fa-clock mr-1"></i> สร้าง {formatDateTimeTH(s.createdAt)}</span>
+                      <span><i className="fa-solid fa-pen-to-square mr-1"></i> อัปเดต {formatDateTimeTH(s.updatedAt)}</span>
                     </div>
                   </div>
 
@@ -258,7 +279,7 @@ const History: React.FC<HistoryProps> = ({ submissions, loading, refreshList, se
                     {s.status === "draft" ? (
                       <button
                         onClick={() => updateStatus(s.id, "submitted")}
-                        className="rounded-xl px-4 py-2 text-sm font-bold bg-slate-900 text-white hover:bg-slate-800 transition flex items-center gap-2"
+                        className="rounded-xl px-4 py-2 text-sm font-bold bg-slate-900 text-white hover:bg-slate-800 transition flex items-center gap-2 shadow-lg shadow-slate-200"
                       >
                         <i className="fa-solid fa-paper-plane" />
                         <span>ส่ง</span>
@@ -278,10 +299,12 @@ const History: React.FC<HistoryProps> = ({ submissions, loading, refreshList, se
                 {/* Minimal Audit Log */}
                 {s.audit && s.audit.length > 0 && (
                     <div className="mt-4 pt-3 border-t border-slate-100">
-                         <div className="text-xs text-slate-500 font-bold mb-1">ประวัติล่าสุด</div>
+                         <div className="text-[10px] uppercase font-bold text-slate-400 mb-1 tracking-wider">Activity Log</div>
                          {s.audit.slice(-2).reverse().map((a, i) => (
-                             <div key={i} className="text-xs text-slate-400">
-                                 {formatDateTimeTH(a.at)}: {a.note}
+                             <div key={i} className="text-xs text-slate-500 flex items-center gap-2">
+                                 <span className="w-1 h-1 rounded-full bg-slate-300"></span>
+                                 <span className="font-mono text-slate-400">{formatDateTimeTH(a.at)}</span>
+                                 <span>{a.note}</span>
                              </div>
                          ))}
                     </div>

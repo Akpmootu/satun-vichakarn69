@@ -1,12 +1,13 @@
 import { BranchOption, WorkTypeOption } from './types';
 
-export const APP_NAME = "SATUN VICHAKARN";
+export const APP_NAME = "SKMS";
 export const BUDGET_YEAR = 2569;
 
 export const WORK_TYPES: WorkTypeOption[] = [
-  { id: "oral", label: "วาจา", icon: "fa-microphone-lines" },
-  { id: "eposter", label: "e-poster (นำเสนอโดยไม่มีรางวัล)", icon: "fa-file-powerpoint" },
+  { id: "oral", label: "KM Presentation (นำเสนอผลงาน)", icon: "fa-person-chalkboard" },
+  { id: "eposter", label: "Infographic / e-Poster", icon: "fa-image" },
   { id: "innovation", label: "นวัตกรรมและสิ่งประดิษฐ์", icon: "fa-lightbulb" },
+  { id: "bestpractice", label: "Best Practice (ถอดบทเรียน)", icon: "fa-book-bookmark" },
 ];
 
 export const BRANCHES: BranchOption[] = [
@@ -19,50 +20,51 @@ export const BRANCHES: BranchOption[] = [
   { id: 7, label: "การพยาบาลระดับตติยภูมิและศูนย์ความเป็นเลิศ" },
   { id: 8, label: "การบริหารการพยาบาล" },
   { id: 9, label: "สารสนเทศทางการพยาบาล" },
-  { id: 10, label: "งานวิทยาศาสตร์การแพทย์ (ชันสูตรทางวิทยาศาสตร์ งานรังสีวินิจฉัย)" },
-  { id: 11, label: "สหเวชศาสตร์ (กายภาพ กิจกรรม แก้ไขการพูด เทคนิคการแพทย์ กายอุปกรณ์)" },
+  { id: 10, label: "งานวิทยาศาสตร์การแพทย์" },
+  { id: 11, label: "สหเวชศาสตร์ (กายภาพ, เทคนิคการแพทย์)" },
   { id: 12, label: "การแพทย์แผนไทยและการแพทย์ทางเลือก" },
-  { id: 13, label: "การส่งเสริมสุขภาพ" },
+  { id: 13, label: "การส่งเสริมสุขภาพ (Health Promotion)" },
   { id: 14, label: "อนามัยสิ่งแวดล้อม" },
-  { id: 15, label: "การป้องกันและควบคุมโรค" },
+  { id: 15, label: "การป้องกันและควบคุมโรค (DDC)" },
   { id: 16, label: "สุขภาพจิต ยาเสพติด" },
-  { id: 17, label: "ผู้สูงอายุ ผู้พิการ" },
-  { id: 18, label: "บริหารสาธารณสุข นโยบายสาธารณสุข และสาธารณสุขทั่วไป" },
+  { id: 17, label: "ผู้สูงอายุ ผู้พิการ (LTC)" },
+  { id: 18, label: "บริหารสาธารณสุข และนโยบาย" },
   { id: 19, label: "หลักประกันสุขภาพและเศรษฐกิจสุขภาพ" },
-  { id: 20, label: "ดิจิทัลสุขภาพ" },
+  { id: 20, label: "ดิจิทัลสุขภาพ (Digital Health)" },
 ];
 
 export const PR_NEWS = [
   {
     id: 1,
-    title: "ขอเชิญส่งผลงานวิชาการ ประจำปี 2569",
+    title: "เปิดเวทีแลกเปลี่ยนเรียนรู้ SKMS Forum 2569",
     date: "15 ก.พ. 2569",
-    desc: "เปิดรับสมัครผลงานวิชาการ 3 ประเภท ได้แก่ วาจา, e-poster และนวัตกรรม ตั้งแต่วันนี้ - 30 มี.ค. 2569",
+    desc: "ขอเชิญบุคลากรสาธารณสุขร่วมส่งผลงานถอดบทเรียน (Best Practice) และนวัตกรรม เพื่อยกระดับระบบบริการ",
     type: "news",
-    imageUrl: "https://images.unsplash.com/photo-1544531586-fde5298cdd40?q=80&w=800&auto=format&fit=crop"
+    imageUrl: "https://images.unsplash.com/photo-1552664730-d307ca884978?q=80&w=800&auto=format&fit=crop"
   },
   {
     id: 2,
-    title: "ประกาศเกณฑ์การตัดสินผลงานวิชาการ",
+    title: "แนวทางการเขียนผลงานวิชาการและ KM",
     date: "10 ก.พ. 2569",
-    desc: "ดาวน์โหลดเอกสารเกณฑ์การตัดสินฉบับล่าสุดได้ที่นี่",
+    desc: "ดาวน์โหลดคู่มือการเขียนถอดบทเรียน (Knowledge Capture) ฉบับสมบูรณ์",
     type: "download",
     fileType: "PDF"
   },
   {
     id: 3,
-    title: "คู่มือการใช้งานระบบลงทะเบียน",
+    title: "คู่มือการใช้งานระบบ SKMS",
     date: "01 ก.พ. 2569",
-    desc: "ศึกษาขั้นตอนการลงทะเบียนและส่งผลงานผ่านระบบออนไลน์",
+    desc: "ขั้นตอนการลงทะเบียนและส่งผลงานเข้าสู่คลังความรู้กลาง",
     type: "download",
     fileType: "PDF"
   }
 ];
 
 export const LOADING_QUOTES = [
-  "นวัตกรรมสร้างสรรค์ สุขภาพมั่นคง",
-  "วิชาการล้ำหน้า พัฒนาคุณภาพชีวิต",
-  "ข้อมูลถูกต้อง ตัดสินใจแม่นยำ",
-  "เทคโนโลยีเปลี่ยนโลก สาธารณสุขไทยก้าวไกล",
-  "เรียนรู้ตลอดชีวิต เพื่อคุณภาพบริการที่ดีกว่า"
+  "Knowledge is power. Knowledge shared is power multiplied.",
+  "ต้นน้ำ: รวบรวมองค์ความรู้จากหน้างานจริง",
+  "กลางน้ำ: จัดระเบียบและสังเคราะห์ให้เป็นระบบ",
+  "ปลายน้ำ: เผยแพร่และนำไปใช้ประโยชน์สูงสุด",
+  "SKMS: ขับเคลื่อนสาธารณสุขด้วยปัญญา",
+  "การเรียนรู้ไม่มีที่สิ้นสุด พัฒนางาน พัฒนาคน"
 ];

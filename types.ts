@@ -22,10 +22,13 @@ export interface Submission {
   budgetYear: number;
   firstName: string;
   lastName: string;
+  email: string;
+  phone: string;
   position: string;
   organization: string;
   workType: string;
   branchId: number;
+  fileUrl?: string; // Base64 or URL of the uploaded file
   status: SubmissionStatus;
   createdAt: string;
   updatedAt: string;
