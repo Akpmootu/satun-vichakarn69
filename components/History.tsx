@@ -38,23 +38,30 @@ const History: React.FC<HistoryProps> = ({ submissions, loading, refreshList, se
 
   const filtered = useMemo(() => {
     const q = String(filter.q || "").trim().toLowerCase();
+    // Split keywords by space to allow multi-word search (e.g. "Nurse Satun")
+    const keywords = q.split(/\s+/).filter(k => k.length > 0);
+
     return submissions.filter((s) => {
       const okType = filter.workType === "all" ? true : s.workType === filter.workType;
       const okBranch = filter.branchId === "all" ? true : Number(s.branchId) === Number(filter.branchId);
       const okStatus = filter.status === "all" ? true : s.status === filter.status;
 
+      // Construct searchable text from Name, Position, Organization
       const hay = [
         s.firstName,
         s.lastName,
         s.position,
         s.organization,
-        workTypeLabel(s.workType),
-        branchLabel(s.branchId),
+        workTypeLabel(s.workType), // Include work type label for convenience
+        branchLabel(s.branchId),   // Include branch label for convenience
       ]
+        .filter(Boolean)
         .join(" ")
         .toLowerCase();
 
-      const okQ = !q ? true : hay.includes(q);
+      // Check if ALL keywords are present in the searchable text
+      const okQ = keywords.length === 0 ? true : keywords.every(k => hay.includes(k));
+
       return okType && okBranch && okStatus && okQ;
     });
   }, [submissions, filter]);
@@ -152,7 +159,7 @@ const History: React.FC<HistoryProps> = ({ submissions, loading, refreshList, se
               <input
                 value={filter.q}
                 onChange={(e) => setFilter((p) => ({ ...p, q: e.target.value }))}
-                placeholder="พิมพ์ชื่อ, ตำแหน่ง, หรือหน่วยงาน..."
+                placeholder="ค้นหาจากชื่อ, ตำแหน่ง, หรือหน่วยงาน..."
                 className="w-full rounded-2xl border border-slate-200 pl-11 pr-10 py-3 text-sm outline-none focus:ring-4 focus:ring-sky-100 transition shadow-sm"
               />
               {filter.q && (
@@ -217,7 +224,7 @@ const History: React.FC<HistoryProps> = ({ submissions, loading, refreshList, se
                 className="w-full rounded-2xl px-4 py-3 text-sm font-bold bg-emerald-500 text-white hover:bg-emerald-600 active:scale-95 transition flex items-center justify-center gap-2 shadow-lg shadow-emerald-200"
             >
                 <i className="fa-solid fa-file-csv text-lg"></i>
-                <span>Export Filtered Data</span>
+                <span>Export CSV</span>
             </button>
         </div>
       </div>
