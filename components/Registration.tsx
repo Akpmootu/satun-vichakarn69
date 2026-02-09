@@ -37,8 +37,8 @@ const Registration: React.FC<RegistrationProps> = ({ settings, onSuccess, showTo
             ...prev,
             firstName: currentUser.firstName,
             lastName: currentUser.lastName,
-            position: currentUser.position,
-            organization: currentUser.organization,
+            position: currentUser.position || "",
+            organization: currentUser.organization || "",
             email: currentUser.email || "",
             phone: currentUser.phone || ""
         }));
