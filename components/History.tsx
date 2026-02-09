@@ -18,6 +18,8 @@ const History: React.FC<HistoryProps> = ({ submissions, loading, refreshList, se
     workType: "all",
     branchId: "all",
     status: "all",
+    startDate: "",
+    endDate: "",
   });
 
   const workTypeLabel = (id: string) => WORK_TYPES.find((x) => x.id === id)?.label || "-";
@@ -46,6 +48,22 @@ const History: React.FC<HistoryProps> = ({ submissions, loading, refreshList, se
       const okBranch = filter.branchId === "all" ? true : Number(s.branchId) === Number(filter.branchId);
       const okStatus = filter.status === "all" ? true : s.status === filter.status;
 
+      // Date Range Filtering (Local Time)
+      const itemDate = new Date(s.createdAt);
+      let okDate = true;
+
+      if (filter.startDate) {
+          const [y, m, d] = filter.startDate.split('-').map(Number);
+          const start = new Date(y, m - 1, d, 0, 0, 0); // Start of day local
+          if (itemDate < start) okDate = false;
+      }
+      
+      if (okDate && filter.endDate) {
+          const [y, m, d] = filter.endDate.split('-').map(Number);
+          const end = new Date(y, m - 1, d, 23, 59, 59, 999); // End of day local
+          if (itemDate > end) okDate = false;
+      }
+
       // Construct searchable text from Name, Position, Organization
       const hay = [
         s.firstName,
@@ -62,9 +80,20 @@ const History: React.FC<HistoryProps> = ({ submissions, loading, refreshList, se
       // Check if ALL keywords are present in the searchable text
       const okQ = keywords.length === 0 ? true : keywords.every(k => hay.includes(k));
 
-      return okType && okBranch && okStatus && okQ;
+      return okType && okBranch && okStatus && okQ && okDate;
     });
   }, [submissions, filter]);
+
+  const resetFilters = () => {
+      setFilter({
+        q: "",
+        workType: "all",
+        branchId: "all",
+        status: "all",
+        startDate: "",
+        endDate: "",
+      });
+  };
 
   const updateStatus = async (id: string, nextStatus: 'draft' | 'submitted') => {
     try {
@@ -149,7 +178,8 @@ const History: React.FC<HistoryProps> = ({ submissions, loading, refreshList, se
       </div>
 
       {/* Filters */}
-      <div className="mt-5 grid grid-cols-1 md:grid-cols-4 gap-3">
+      <div className="mt-5 grid grid-cols-1 md:grid-cols-4 gap-4">
+        {/* Row 1 */}
         <div className="md:col-span-2">
           <label className="block text-sm font-bold text-slate-900 mb-2">ค้นหา</label>
           <div className="relative group">
@@ -172,6 +202,7 @@ const History: React.FC<HistoryProps> = ({ submissions, loading, refreshList, se
               )}
           </div>
         </div>
+        
         <div>
           <label className="block text-sm font-bold text-slate-900 mb-2">ประเภท</label>
           <select
@@ -187,6 +218,7 @@ const History: React.FC<HistoryProps> = ({ submissions, loading, refreshList, se
             ))}
           </select>
         </div>
+
         <div>
           <label className="block text-sm font-bold text-slate-900 mb-2">สถานะ</label>
           <select
@@ -200,8 +232,8 @@ const History: React.FC<HistoryProps> = ({ submissions, loading, refreshList, se
           </select>
         </div>
         
-        {/* Branch Selection */}
-        <div className="md:col-span-3">
+        {/* Row 2 */}
+        <div className="md:col-span-2">
             <label className="block text-sm font-bold text-slate-900 mb-2">สาขา</label>
             <select
                 value={filter.branchId}
@@ -217,11 +249,39 @@ const History: React.FC<HistoryProps> = ({ submissions, loading, refreshList, se
             </select>
         </div>
 
-        {/* Export Button */}
-        <div className="md:col-span-1 flex items-end">
+        <div>
+            <label className="block text-sm font-bold text-slate-900 mb-2">ตั้งแต่วันที่</label>
+            <input 
+                type="date"
+                value={filter.startDate}
+                onChange={(e) => setFilter((p) => ({ ...p, startDate: e.target.value }))}
+                className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm bg-white outline-none focus:ring-4 focus:ring-sky-100 transition shadow-sm text-slate-600"
+            />
+        </div>
+
+        <div>
+            <label className="block text-sm font-bold text-slate-900 mb-2">ถึงวันที่</label>
+            <input 
+                type="date"
+                value={filter.endDate}
+                onChange={(e) => setFilter((p) => ({ ...p, endDate: e.target.value }))}
+                className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm bg-white outline-none focus:ring-4 focus:ring-sky-100 transition shadow-sm text-slate-600"
+            />
+        </div>
+
+        {/* Row 3 Actions */}
+        <div className="md:col-span-4 flex flex-col md:flex-row gap-3 pt-2 border-t border-slate-100 mt-2">
+            <button
+                onClick={resetFilters}
+                className="px-6 py-3 rounded-2xl text-sm font-bold text-slate-500 hover:bg-slate-100 hover:text-slate-700 transition flex items-center justify-center gap-2"
+            >
+                <i className="fa-solid fa-rotate-right"></i>
+                <span>ล้างตัวกรอง</span>
+            </button>
+            <div className="flex-1"></div>
             <button
                 onClick={exportCSV}
-                className="w-full rounded-2xl px-4 py-3 text-sm font-bold bg-emerald-500 text-white hover:bg-emerald-600 active:scale-95 transition flex items-center justify-center gap-2 shadow-lg shadow-emerald-200"
+                className="px-6 py-3 rounded-2xl text-sm font-bold bg-emerald-500 text-white hover:bg-emerald-600 active:scale-95 transition flex items-center justify-center gap-2 shadow-lg shadow-emerald-200 w-full md:w-auto"
             >
                 <i className="fa-solid fa-file-csv text-lg"></i>
                 <span>Export CSV</span>
@@ -250,6 +310,9 @@ const History: React.FC<HistoryProps> = ({ submissions, loading, refreshList, se
               </div>
               <div className="text-lg font-black text-slate-900">ไม่พบข้อมูล</div>
               <div className="mt-1 text-sm text-slate-600">ลองปรับเปลี่ยนคำค้นหาหรือตัวกรอง</div>
+              <button onClick={resetFilters} className="mt-4 text-sky-600 font-bold text-sm hover:underline">
+                  ล้างตัวกรองทั้งหมด
+              </button>
             </div>
           ) : (
             filtered.map((s) => (
