@@ -166,3 +166,18 @@ export async function apiUpdateSubmission(settings: AppSettings, id: string, pat
   });
   return await res.json();
 }
+
+export async function apiDeleteSubmission(settings: AppSettings, id: string): Promise<void> {
+  if (settings.mode === "mock") {
+    await new Promise((r) => setTimeout(r, 500));
+    const all = loadSubmissions();
+    const filtered = all.filter((x) => x.id !== id);
+    saveSubmissions(filtered);
+    return;
+  }
+
+  if (!settings.apiBaseUrl) throw new Error("กรุณาตั้งค่า Base URL ของ API ก่อน");
+  await fetchWithBackoff(`${settings.apiBaseUrl}/submissions/${id}`, {
+    method: "DELETE",
+  });
+}

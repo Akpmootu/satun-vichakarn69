@@ -7,7 +7,7 @@ interface StatCardProps {
   value: string | number;
   icon: string;
   hint?: string;
-  tone?: 'blue' | 'emerald' | 'amber' | 'indigo';
+  tone?: 'blue' | 'emerald' | 'amber' | 'indigo' | 'rose';
 }
 
 const StatCard: React.FC<StatCardProps> = ({ title, value, icon, hint, tone = 'blue' }) => {
@@ -16,6 +16,7 @@ const StatCard: React.FC<StatCardProps> = ({ title, value, icon, hint, tone = 'b
     emerald: "bg-emerald-50 text-emerald-600 ring-emerald-100",
     amber: "bg-amber-50 text-amber-600 ring-amber-100",
     indigo: "bg-indigo-50 text-indigo-600 ring-indigo-100",
+    rose: "bg-rose-50 text-rose-600 ring-rose-100",
   };
 
   return (
@@ -39,6 +40,11 @@ const Dashboard: React.FC<{ submissions: Submission[] }> = ({ submissions }) => 
     const submitted = submissions.filter(s => s.status !== 'draft').length;
     const draft = submissions.filter(s => s.status === 'draft').length;
     
+    // Status Breakdowns
+    const accepted = submissions.filter(s => s.status === 'accepted').length;
+    const pending = submissions.filter(s => ['submitted', 'reviewed'].includes(s.status)).length;
+    const rejected = submissions.filter(s => s.status === 'rejected').length;
+
     // Calculate Success Rate
     const successRate = total > 0 ? (submitted / total) * 100 : 0;
 
@@ -53,7 +59,7 @@ const Dashboard: React.FC<{ submissions: Submission[] }> = ({ submissions }) => 
       count: submissions.filter(s => s.branchId === b.id).length
     })).sort((a, b) => b.count - a.count).slice(0, 5);
 
-    return { total, submitted, draft, successRate, byType, byBranch };
+    return { total, submitted, draft, successRate, byType, byBranch, accepted, pending, rejected };
   }, [submissions]);
 
   return (
@@ -81,9 +87,9 @@ const Dashboard: React.FC<{ submissions: Submission[] }> = ({ submissions }) => 
           <StatCard 
             title="ส่งแล้ว" 
             value={stats.submitted} 
-            icon="fa-circle-check" 
+            icon="fa-paper-plane" 
             tone="emerald"
-            hint="รวมทุกสถานะ (ไม่รวมร่าง)" 
+            hint="เข้าสู่กระบวนการแล้ว" 
           />
           <StatCard 
             title="ฉบับร่าง" 
@@ -93,15 +99,66 @@ const Dashboard: React.FC<{ submissions: Submission[] }> = ({ submissions }) => 
             hint="กำลังดำเนินการ" 
           />
           <StatCard 
-            title="อัตราความสำเร็จ" 
-            value={`${stats.successRate.toFixed(1)}%`} 
-            icon="fa-chart-pie" 
+            title="ผ่านการคัดเลือก" 
+            value={stats.accepted} 
+            icon="fa-trophy" 
             tone="indigo"
-            hint="Submitted vs Total" 
+            hint="ผลงานที่ได้รับรางวัล" 
           />
        </div>
 
        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Status Breakdown (New Card) */}
+          <div className="rounded-3xl bg-white ring-1 ring-slate-200 shadow-sm p-6 flex flex-col">
+             <h3 className="font-bold text-slate-800 text-lg mb-6 flex items-center gap-2">
+                <i className="fa-solid fa-chart-pie text-rose-500"></i> สรุปสถานะผลงาน
+             </h3>
+             <div className="flex-1 flex flex-col justify-center items-center relative min-h-[200px]">
+                {/* Donut Chart Simulation with Conic Gradient */}
+                {stats.total > 0 ? (
+                    <div className="relative h-48 w-48 rounded-full" 
+                        style={{ 
+                            background: `conic-gradient(
+                                #f59e0b 0% ${(stats.draft / stats.total) * 100}%, 
+                                #3b82f6 ${(stats.draft / stats.total) * 100}% ${((stats.draft + stats.pending) / stats.total) * 100}%,
+                                #10b981 ${((stats.draft + stats.pending) / stats.total) * 100}% ${((stats.draft + stats.pending + stats.accepted) / stats.total) * 100}%,
+                                #f43f5e ${((stats.draft + stats.pending + stats.accepted) / stats.total) * 100}% 100%
+                            )`
+                        }}
+                    >
+                        <div className="absolute inset-4 bg-white rounded-full flex flex-col items-center justify-center">
+                            <span className="text-3xl font-black text-slate-800">{stats.total}</span>
+                            <span className="text-xs text-slate-400 uppercase font-bold">Total Items</span>
+                        </div>
+                    </div>
+                ) : (
+                    <div className="h-48 w-48 rounded-full border-4 border-slate-100 flex items-center justify-center text-slate-300">
+                        No Data
+                    </div>
+                )}
+             </div>
+             
+             {/* Legend */}
+             <div className="grid grid-cols-2 gap-3 mt-6">
+                <div className="flex items-center gap-2 text-sm">
+                    <span className="w-3 h-3 rounded-full bg-amber-500"></span>
+                    <span className="text-slate-600">ฉบับร่าง ({stats.draft})</span>
+                </div>
+                <div className="flex items-center gap-2 text-sm">
+                    <span className="w-3 h-3 rounded-full bg-blue-500"></span>
+                    <span className="text-slate-600">รอพิจารณา ({stats.pending})</span>
+                </div>
+                <div className="flex items-center gap-2 text-sm">
+                    <span className="w-3 h-3 rounded-full bg-emerald-500"></span>
+                    <span className="text-slate-600">ผ่าน ({stats.accepted})</span>
+                </div>
+                <div className="flex items-center gap-2 text-sm">
+                    <span className="w-3 h-3 rounded-full bg-rose-500"></span>
+                    <span className="text-slate-600">ไม่ผ่าน ({stats.rejected})</span>
+                </div>
+             </div>
+          </div>
+
           {/* Interactive Chart: Work Types */}
           <div className="lg:col-span-2 rounded-3xl bg-white ring-1 ring-slate-200 shadow-sm p-6">
              <div className="flex items-center justify-between mb-6">
@@ -133,27 +190,6 @@ const Dashboard: React.FC<{ submissions: Submission[] }> = ({ submissions }) => 
                            <div className="absolute top-0 left-0 bottom-0 right-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:animate-shimmer"></div>
                        </div>
                     </div>
-
-                    {/* Enhanced Tooltip on Hover */}
-                    <div className="absolute bottom-full right-0 mb-3 w-56 bg-slate-900 text-white text-xs p-4 rounded-2xl opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-y-2 group-hover:translate-y-0 shadow-2xl pointer-events-none z-30 ring-1 ring-white/10">
-                        <div className="font-bold text-sky-300 mb-3 border-b border-slate-700 pb-2 text-sm">{t.label}</div>
-                        
-                        <div className="flex justify-between items-center mb-2">
-                            <span className="text-slate-400">จำนวนผลงาน</span>
-                            <div className="flex items-baseline gap-1">
-                                <span className="font-mono font-bold text-xl text-white">{t.count}</span>
-                                <span className="text-[10px] text-slate-500 uppercase">items</span>
-                            </div>
-                        </div>
-                        
-                        <div className="flex justify-between items-center bg-slate-800/50 rounded-lg p-2">
-                            <span className="text-slate-400">คิดเป็นร้อยละ</span>
-                            <span className="font-mono font-bold text-emerald-400 text-lg">{t.percent.toFixed(1)}%</span>
-                        </div>
-
-                        {/* Triangle */}
-                        <div className="absolute -bottom-1.5 right-8 w-3 h-3 bg-slate-900 rotate-45 border-r border-b border-slate-800/50"></div>
-                    </div>
                   </div>
                 ))}
                 
@@ -166,39 +202,30 @@ const Dashboard: React.FC<{ submissions: Submission[] }> = ({ submissions }) => 
              </div>
           </div>
 
-          {/* Top 5 Branches */}
-          <div className="rounded-3xl bg-white ring-1 ring-slate-200 shadow-sm p-6 flex flex-col">
+          {/* Top 5 Branches (Moved to full width below or keep in grid if prefer 3 cols layout) */}
+          <div className="lg:col-span-3 rounded-3xl bg-white ring-1 ring-slate-200 shadow-sm p-6">
              <h3 className="font-bold text-slate-800 text-lg mb-6 flex items-center gap-2">
                 <i className="fa-solid fa-trophy text-amber-500"></i> 5 อันดับสาขายอดนิยม
              </h3>
-             <div className="space-y-4 flex-1">
+             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
                 {stats.byBranch.map((b, idx) => (
-                  <div key={b.id} className="flex items-center gap-4 group p-2 rounded-xl hover:bg-slate-50 transition">
+                  <div key={b.id} className="flex flex-col p-4 rounded-2xl bg-slate-50 border border-slate-100 hover:bg-white hover:shadow-md transition group text-center items-center">
                      <div className={`
-                        h-8 w-8 rounded-lg flex items-center justify-center text-sm font-bold shadow-sm transition-transform group-hover:scale-110
+                        h-10 w-10 rounded-xl flex items-center justify-center text-lg font-bold shadow-sm mb-3 transition-transform group-hover:scale-110
                         ${idx === 0 ? 'bg-amber-100 text-amber-700 ring-1 ring-amber-200' : 
                           idx === 1 ? 'bg-slate-200 text-slate-700 ring-1 ring-slate-300' : 
                           idx === 2 ? 'bg-orange-100 text-orange-800 ring-1 ring-orange-200' : 
-                          'bg-slate-50 text-slate-500 ring-1 ring-slate-100'}
+                          'bg-white text-slate-500 ring-1 ring-slate-200'}
                      `}>
                        {idx + 1}
                      </div>
-                     <div className="flex-1 min-w-0">
-                        <div className="text-sm font-bold text-slate-700 truncate group-hover:text-sky-700 transition">{b.label}</div>
-                        <div className="text-xs text-slate-400">สาขาที่ {b.id}</div>
-                     </div>
-                     <div className="font-mono font-bold text-sm bg-slate-100 px-2 py-1 rounded-md text-slate-600 group-hover:bg-sky-100 group-hover:text-sky-700 transition">
+                     <div className="text-sm font-bold text-slate-700 line-clamp-2 min-h-[2.5em] group-hover:text-sky-700 transition">{b.label}</div>
+                     <div className="mt-2 font-mono font-bold text-2xl text-slate-800 group-hover:text-sky-600">
                         {b.count}
                      </div>
+                     <div className="text-[10px] text-slate-400">ผลงาน</div>
                   </div>
                 ))}
-                
-                {stats.byBranch.every(b => b.count === 0) && (
-                    <div className="h-full flex flex-col items-center justify-center text-slate-400 space-y-2 min-h-[150px]">
-                         <i className="fa-regular fa-folder-open text-3xl"></i>
-                        <span className="text-sm">ยังไม่มีข้อมูล</span>
-                    </div>
-                )}
              </div>
           </div>
        </div>

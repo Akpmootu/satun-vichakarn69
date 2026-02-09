@@ -11,13 +11,13 @@ const Logo: React.FC<{ className?: string }> = ({ className = "h-12" }) => {
             
             {/* 3 Nodes: Upstream, Midstream, Downstream */}
             {/* Bottom (Upstream) */}
-            <circle cx="30" cy="70" r="8" fill="#22d3ee" className="animate-pulse" />
+            <circle cx="30" cy="70" r="8" fill="#22d3ee" className="animate-scale-subtle" />
             
             {/* Middle (Midstream) */}
-            <circle cx="70" cy="50" r="8" fill="#38bdf8" className="animate-pulse" style={{ animationDelay: '0.5s' }} />
+            <circle cx="70" cy="50" r="8" fill="#38bdf8" className="animate-scale-subtle" style={{ animationDelay: '0.5s' }} />
             
             {/* Top (Downstream) */}
-            <circle cx="50" cy="25" r="8" fill="#0ea5e9" className="animate-pulse" style={{ animationDelay: '1s' }} />
+            <circle cx="50" cy="25" r="8" fill="#0ea5e9" className="animate-scale-subtle" style={{ animationDelay: '1s' }} />
             
             {/* Connections */}
             <line x1="30" y1="70" x2="70" y2="50" stroke="white" strokeWidth="2" strokeDasharray="4" opacity="0.5" />
@@ -31,7 +31,7 @@ const Logo: React.FC<{ className?: string }> = ({ className = "h-12" }) => {
       
       {/* Text Logo */}
       <div className="flex flex-col justify-center">
-         <div className="flex items-baseline gap-1">
+         <div className="flex items-baseline gap-1 animate-scale-subtle" style={{ animationDelay: '1.5s' }}>
             <span className="text-2xl md:text-3xl font-black tracking-tighter text-slate-900 leading-none group-hover:text-sky-700 transition">SKMS</span>
          </div>
          <div className="flex flex-col leading-none mt-0.5">

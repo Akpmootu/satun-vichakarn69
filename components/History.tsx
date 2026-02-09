@@ -2,7 +2,7 @@ import React, { useMemo, useState, useEffect } from 'react';
 import { Submission, AppSettings, SubmissionStatus } from '../types';
 import { BRANCHES, WORK_TYPES } from '../constants';
 import Badge from './ui/Badge';
-import { apiUpdateSubmission } from '../services/apiService';
+import { apiUpdateSubmission, apiDeleteSubmission } from '../services/apiService';
 
 // Declare Swal globally since it's loaded via CDN
 declare const Swal: any;
@@ -64,6 +64,8 @@ const History: React.FC<HistoryProps> = ({ submissions, loading, refreshList, se
     endDate: "",
   });
 
+  const [sortOption, setSortOption] = useState("updated_desc"); // Default sort
+
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
@@ -72,7 +74,7 @@ const History: React.FC<HistoryProps> = ({ submissions, loading, refreshList, se
   // Reset pagination when filter changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [filter, itemsPerPage]);
+  }, [filter, itemsPerPage, sortOption]);
 
   const workTypeLabel = (id: string) => WORK_TYPES.find((x) => x.id === id)?.label || "-";
   const branchLabel = (id: number) => BRANCHES.find((x) => x.id === Number(id))?.label || "-";
@@ -90,11 +92,22 @@ const History: React.FC<HistoryProps> = ({ submissions, loading, refreshList, se
     });
   };
 
+  const getActionColors = (action: string) => {
+    const act = (action || '').toUpperCase();
+    if (act.includes('SUBMIT')) return { dot: 'bg-sky-500', text: 'text-sky-700', bg: 'bg-sky-50' };
+    if (act.includes('DRAFT') || act.includes('SAVE')) return { dot: 'bg-amber-500', text: 'text-amber-700', bg: 'bg-amber-50' };
+    if (act.includes('REVIEW')) return { dot: 'bg-indigo-500', text: 'text-indigo-700', bg: 'bg-indigo-50' };
+    if (act.includes('ACCEPT')) return { dot: 'bg-emerald-500', text: 'text-emerald-700', bg: 'bg-emerald-50' };
+    if (act.includes('REJECT')) return { dot: 'bg-rose-500', text: 'text-rose-700', bg: 'bg-rose-50' };
+    if (act.includes('DELETE')) return { dot: 'bg-red-500', text: 'text-red-700', bg: 'bg-red-50' };
+    return { dot: 'bg-slate-400', text: 'text-slate-600', bg: 'bg-slate-50' };
+  };
+
   const filtered = useMemo(() => {
     const q = String(filter.q || "").trim().toLowerCase();
     const keywords = q.split(/\s+/).filter(k => k.length > 0);
 
-    return submissions.filter((s) => {
+    let result = submissions.filter((s) => {
       const okType = filter.workType === "all" ? true : s.workType === filter.workType;
       const okBranch = filter.branchId === "all" ? true : Number(s.branchId) === Number(filter.branchId);
       const okStatus = filter.status === "all" ? true : s.status === filter.status;
@@ -124,7 +137,19 @@ const History: React.FC<HistoryProps> = ({ submissions, loading, refreshList, se
 
       return okType && okBranch && okStatus && okQ && okDate;
     });
-  }, [submissions, filter]);
+
+    // Sort Logic
+    return result.sort((a, b) => {
+        switch (sortOption) {
+            case "created_desc": return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+            case "created_asc": return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+            case "updated_desc": return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
+            case "updated_asc": return new Date(a.updatedAt).getTime() - new Date(b.updatedAt).getTime();
+            case "status": return a.status.localeCompare(b.status);
+            default: return 0;
+        }
+    });
+  }, [submissions, filter, sortOption]);
 
   // Pagination Logic
   const totalItems = filtered.length;
@@ -163,6 +188,41 @@ const History: React.FC<HistoryProps> = ({ submissions, loading, refreshList, se
         startDate: "",
         endDate: "",
       });
+      setSortOption("updated_desc");
+  };
+
+  const handleDelete = async (s: Submission) => {
+     const result = await Swal.fire({
+        title: 'ยืนยันการลบ?',
+        html: `
+            <div class="text-slate-600 text-sm">
+                คุณต้องการลบผลงานของ <b>"${s.firstName} ${s.lastName}"</b> ใช่หรือไม่?<br/>
+                <span class="text-rose-500 font-bold mt-2 block"><i class="fa-solid fa-triangle-exclamation"></i> การกระทำนี้ไม่สามารถย้อนกลับได้</span>
+            </div>
+        `,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#f43f5e', // rose-500
+        cancelButtonColor: '#64748b',
+        confirmButtonText: '<i class="fa-solid fa-trash-can mr-2"></i>ลบข้อมูล',
+        cancelButtonText: 'ยกเลิก',
+        focusCancel: true,
+        customClass: {
+            popup: 'rounded-3xl',
+            confirmButton: 'rounded-xl px-4 py-2',
+            cancelButton: 'rounded-xl px-4 py-2'
+        }
+    });
+
+    if (result.isConfirmed) {
+        try {
+            await apiDeleteSubmission(settings, s.id);
+            showToast({ type: "success", title: "ลบสำเร็จ", message: "ลบข้อมูลเรียบร้อยแล้ว" });
+            await refreshList();
+        } catch (e: any) {
+            showToast({ type: "error", title: "เกิดข้อผิดพลาด", message: e.message || "ลบไม่สำเร็จ" });
+        }
+    }
   };
 
   const updateStatus = async (id: string, nextStatus: SubmissionStatus) => {
@@ -202,7 +262,7 @@ const History: React.FC<HistoryProps> = ({ submissions, loading, refreshList, se
         html: `
             <div class="text-sm text-slate-600">
                พบข้อมูลจำนวน <b class="text-emerald-600 text-lg">${filtered.length}</b> รายการ<br/>
-               ต้องการดาวน์โหลดเป็นไฟล์ CSV หรือไม่?
+               ข้อมูลจะถูกกรองตามเงื่อนไขที่ท่านเลือกในปัจจุบัน
             </div>
         `,
         icon: 'question',
@@ -261,20 +321,30 @@ const History: React.FC<HistoryProps> = ({ submissions, loading, refreshList, se
           <div className="text-lg md:text-xl font-black text-slate-900">ประวัติการลงทะเบียน/ส่งผลงาน</div>
           <div className="mt-1 text-sm text-slate-600">ค้นหา กรองข้อมูล และจัดการสถานะผลงาน</div>
         </div>
-        <button 
-           onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
-           className={`px-4 py-2 rounded-xl text-sm font-bold transition flex items-center gap-2 border ${showAdvancedFilters ? 'bg-sky-50 text-sky-700 border-sky-200' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}`}
-        >
-            <i className={`fa-solid ${showAdvancedFilters ? 'fa-filter-circle-xmark' : 'fa-filter'}`}></i>
-            {showAdvancedFilters ? 'ซ่อนตัวกรองขั้นสูง' : 'ตัวกรองขั้นสูง'}
-        </button>
+        
+        <div className="flex flex-col md:flex-row gap-2">
+            <button 
+                onClick={exportCSV}
+                className="px-4 py-2 rounded-xl text-sm font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 transition flex items-center justify-center gap-2"
+            >
+                <i className="fa-solid fa-file-csv"></i>
+                Export Filtered Data
+            </button>
+            <button 
+                onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+                className={`px-4 py-2 rounded-xl text-sm font-bold transition flex items-center justify-center gap-2 border ${showAdvancedFilters ? 'bg-sky-50 text-sky-700 border-sky-200' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}`}
+            >
+                <i className={`fa-solid ${showAdvancedFilters ? 'fa-filter-circle-xmark' : 'fa-filter'}`}></i>
+                {showAdvancedFilters ? 'ซ่อนตัวกรอง' : 'ตัวกรองขั้นสูง'}
+            </button>
+        </div>
       </div>
 
       {/* Filters Section */}
       <div className="mt-6 space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
-             {/* Main Search - Always Visible */}
-             <div className="md:col-span-6">
+             {/* Main Search (4 cols) */}
+             <div className="md:col-span-4">
                 <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wide">ค้นหา (Search)</label>
                 <div className="relative group">
                     <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
@@ -297,7 +367,7 @@ const History: React.FC<HistoryProps> = ({ submissions, loading, refreshList, se
                 </div>
              </div>
 
-             <div className="md:col-span-3">
+             <div className="md:col-span-2">
                  <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wide">สถานะ (Status)</label>
                  <select
                     value={filter.status}
@@ -326,6 +396,22 @@ const History: React.FC<HistoryProps> = ({ submissions, loading, refreshList, se
                         {t.label}
                     </option>
                     ))}
+                 </select>
+             </div>
+
+             {/* Sorting (3 cols) */}
+             <div className="md:col-span-3">
+                 <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wide">เรียงลำดับ (Sort)</label>
+                 <select
+                    value={sortOption}
+                    onChange={(e) => setSortOption(e.target.value)}
+                    className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm bg-white outline-none focus:ring-4 focus:ring-sky-100 transition shadow-sm"
+                 >
+                     <option value="updated_desc">อัปเดตล่าสุด</option>
+                     <option value="updated_asc">อัปเดตเก่าสุด</option>
+                     <option value="created_desc">สร้างล่าสุด</option>
+                     <option value="created_asc">สร้างเก่าสุด</option>
+                     <option value="status">สถานะ</option>
                  </select>
              </div>
         </div>
@@ -374,13 +460,6 @@ const History: React.FC<HistoryProps> = ({ submissions, loading, refreshList, se
                     >
                         <i className="fa-solid fa-rotate-right"></i>
                         <span>ล้างตัวกรอง</span>
-                    </button>
-                    <button
-                        onClick={exportCSV}
-                        className="px-4 py-2 rounded-xl text-sm font-bold bg-emerald-500 text-white hover:bg-emerald-600 active:scale-95 transition flex items-center gap-2 shadow-md shadow-emerald-200"
-                    >
-                        <i className="fa-solid fa-file-csv"></i>
-                        <span>Export CSV</span>
                     </button>
                 </div>
             </div>
@@ -473,8 +552,56 @@ const History: React.FC<HistoryProps> = ({ submissions, loading, refreshList, se
                           <span>แก้</span>
                         </button>
                       )}
+                      
+                      {/* Delete Button */}
+                      <button 
+                         onClick={() => handleDelete(s)}
+                         className="h-9 w-9 rounded-xl bg-rose-50 text-rose-600 hover:bg-rose-100 transition flex items-center justify-center border border-rose-100"
+                         title="ลบรายการ"
+                      >
+                         <i className="fa-solid fa-trash-can"></i>
+                      </button>
                     </div>
                   </div>
+
+                  {/* Audit Log Section (Enhanced Timeline) */}
+                  {s.audit && s.audit.length > 0 && (
+                        <div className="mt-6 pt-2 border-t border-slate-100">
+                            <div className="text-[10px] uppercase font-bold text-slate-400 mb-4 flex items-center gap-2 tracking-wider">
+                                <i className="fa-solid fa-clock-rotate-left"></i>
+                                ประวัติการดำเนินการ (Audit Timeline)
+                            </div>
+                            <div className="relative pl-2 ml-1 space-y-6">
+                                {/* Vertical Connector Line */}
+                                <div className="absolute top-2 bottom-2 left-[19px] w-[2px] bg-slate-100"></div>
+
+                                {s.audit.slice().reverse().map((log, idx) => {
+                                    const style = getActionColors(log.action);
+                                    return (
+                                        <div key={idx} className="relative flex items-start gap-4">
+                                            {/* Dot */}
+                                            <div className={`relative z-10 h-3 w-3 mt-1.5 rounded-full ${style.dot} ring-4 ring-white`}></div>
+                                            
+                                            {/* Content */}
+                                            <div className="flex-1 min-w-0">
+                                                <div className="flex flex-wrap items-center gap-2">
+                                                    <span className="text-xs font-bold text-slate-800">
+                                                        {formatDateTimeTH(log.at)}
+                                                    </span>
+                                                    <span className={`px-2 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-wide ${style.bg} ${style.text}`}>
+                                                        {log.action}
+                                                    </span>
+                                                </div>
+                                                <div className="text-sm text-slate-600 mt-0.5 leading-relaxed break-words">
+                                                    {log.note}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                  )}
                 </div>
               );
             })
