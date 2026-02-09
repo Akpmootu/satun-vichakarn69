@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { Submission, AppSettings, SubmissionStatus } from '../types';
 import { BRANCHES, WORK_TYPES } from '../constants';
 import Badge from './ui/Badge';
@@ -64,6 +64,16 @@ const History: React.FC<HistoryProps> = ({ submissions, loading, refreshList, se
     endDate: "",
   });
 
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+
+  // Reset pagination when filter changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filter, itemsPerPage]);
+
   const workTypeLabel = (id: string) => WORK_TYPES.find((x) => x.id === id)?.label || "-";
   const branchLabel = (id: number) => BRANCHES.find((x) => x.id === Number(id))?.label || "-";
   
@@ -116,6 +126,34 @@ const History: React.FC<HistoryProps> = ({ submissions, loading, refreshList, se
     });
   }, [submissions, filter]);
 
+  // Pagination Logic
+  const totalItems = filtered.length;
+  const totalPages = Math.ceil(totalItems / itemsPerPage);
+  const paginatedItems = filtered.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+
+  const getPageNumbers = () => {
+    const pages = [];
+    const maxVisibleButtons = 5;
+    
+    if (totalPages <= maxVisibleButtons) {
+        for (let i = 1; i <= totalPages; i++) pages.push(i);
+    } else {
+        pages.push(1);
+        let start = Math.max(2, currentPage - 1);
+        let end = Math.min(totalPages - 1, currentPage + 1);
+
+        if (currentPage <= 3) end = Math.min(totalPages - 1, 4);
+        if (currentPage >= totalPages - 2) start = Math.max(2, totalPages - 3);
+
+        if (start > 2) pages.push('...');
+        for (let i = start; i <= end; i++) pages.push(i);
+        if (end < totalPages - 1) pages.push('...');
+        
+        pages.push(totalPages);
+    }
+    return pages;
+  };
+
   const resetFilters = () => {
       setFilter({
         q: "",
@@ -146,19 +184,10 @@ const History: React.FC<HistoryProps> = ({ submissions, loading, refreshList, se
         audit: updatedAudit
       });
 
-      showToast({
-        type: "success",
-        title: "อัปเดตสถานะสำเร็จ",
-        message: "ระบบได้ปรับปรุงข้อมูลเรียบร้อยแล้ว",
-      });
-
+      showToast({ type: "success", title: "อัปเดตสถานะสำเร็จ", message: "ระบบได้ปรับปรุงข้อมูลเรียบร้อยแล้ว" });
       await refreshList();
     } catch (e: any) {
-      showToast({
-        type: "error",
-        title: "อัปเดตไม่สำเร็จ",
-        message: e?.message || "เกิดข้อผิดพลาด",
-      });
+      showToast({ type: "error", title: "อัปเดตไม่สำเร็จ", message: e?.message || "เกิดข้อผิดพลาด" });
     }
   };
 
@@ -182,7 +211,6 @@ const History: React.FC<HistoryProps> = ({ submissions, loading, refreshList, se
         cancelButtonColor: '#64748b',
         confirmButtonText: '<i class="fa-solid fa-file-export mr-2"></i>ส่งออกข้อมูล',
         cancelButtonText: 'ยกเลิก',
-        focusConfirm: false,
         customClass: {
             popup: 'rounded-3xl',
             confirmButton: 'rounded-xl px-4 py-2',
@@ -227,145 +255,155 @@ const History: React.FC<HistoryProps> = ({ submissions, loading, refreshList, se
   };
 
   return (
-    <div className="rounded-3xl bg-white ring-1 ring-slate-200 shadow-sm p-5 md:p-6 fade-in">
+    <div className="rounded-3xl bg-white ring-1 ring-slate-200 shadow-sm p-5 md:p-6 fade-in min-h-[500px] flex flex-col">
       <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
         <div className="min-w-0">
           <div className="text-lg md:text-xl font-black text-slate-900">ประวัติการลงทะเบียน/ส่งผลงาน</div>
           <div className="mt-1 text-sm text-slate-600">ค้นหา กรองข้อมูล และจัดการสถานะผลงาน</div>
         </div>
+        <button 
+           onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+           className={`px-4 py-2 rounded-xl text-sm font-bold transition flex items-center gap-2 border ${showAdvancedFilters ? 'bg-sky-50 text-sky-700 border-sky-200' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}`}
+        >
+            <i className={`fa-solid ${showAdvancedFilters ? 'fa-filter-circle-xmark' : 'fa-filter'}`}></i>
+            {showAdvancedFilters ? 'ซ่อนตัวกรองขั้นสูง' : 'ตัวกรองขั้นสูง'}
+        </button>
       </div>
 
-      {/* Filters */}
-      <div className="mt-5 grid grid-cols-1 md:grid-cols-4 gap-4">
-        {/* Row 1 */}
-        <div className="md:col-span-2">
-          <label className="block text-sm font-bold text-slate-900 mb-2">ค้นหา</label>
-          <div className="relative group">
-              <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                <i className="fa-solid fa-magnifying-glass text-slate-400 group-focus-within:text-sky-500 transition"></i>
-              </div>
-              <input
-                value={filter.q}
-                onChange={(e) => setFilter((p) => ({ ...p, q: e.target.value }))}
-                placeholder="ค้นหาจากชื่อ, ตำแหน่ง, หรือหน่วยงาน..."
-                className="w-full rounded-2xl border border-slate-200 pl-11 pr-10 py-3 text-sm outline-none focus:ring-4 focus:ring-sky-100 transition shadow-sm"
-              />
-              {filter.q && (
-                <button
-                  onClick={() => setFilter(p => ({ ...p, q: '' }))}
-                  className="absolute inset-y-0 right-0 pr-4 flex items-center text-slate-300 hover:text-rose-500 transition"
-                >
-                  <i className="fa-solid fa-circle-xmark"></i>
-                </button>
-              )}
-          </div>
+      {/* Filters Section */}
+      <div className="mt-6 space-y-4">
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
+             {/* Main Search - Always Visible */}
+             <div className="md:col-span-6">
+                <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wide">ค้นหา (Search)</label>
+                <div className="relative group">
+                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                        <i className="fa-solid fa-magnifying-glass text-slate-400 group-focus-within:text-sky-500 transition"></i>
+                    </div>
+                    <input
+                        value={filter.q}
+                        onChange={(e) => setFilter((p) => ({ ...p, q: e.target.value }))}
+                        placeholder="ชื่อผู้ส่ง, ชื่อผลงาน, หรือหน่วยงาน..."
+                        className="w-full rounded-xl border border-slate-200 pl-11 pr-10 py-2.5 text-sm outline-none focus:ring-4 focus:ring-sky-100 transition shadow-sm"
+                    />
+                    {filter.q && (
+                        <button
+                        onClick={() => setFilter(p => ({ ...p, q: '' }))}
+                        className="absolute inset-y-0 right-0 pr-4 flex items-center text-slate-300 hover:text-rose-500 transition"
+                        >
+                        <i className="fa-solid fa-circle-xmark"></i>
+                        </button>
+                    )}
+                </div>
+             </div>
+
+             <div className="md:col-span-3">
+                 <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wide">สถานะ (Status)</label>
+                 <select
+                    value={filter.status}
+                    onChange={(e) => setFilter((p) => ({ ...p, status: e.target.value }))}
+                    className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm bg-white outline-none focus:ring-4 focus:ring-sky-100 transition shadow-sm"
+                 >
+                    <option value="all">ทั้งหมด</option>
+                    <option value="submitted">ส่งแล้ว</option>
+                    <option value="draft">ฉบับร่าง</option>
+                    <option value="reviewed">กำลังพิจารณา</option>
+                    <option value="accepted">ผ่านการคัดเลือก</option>
+                    <option value="rejected">ไม่ผ่านการคัดเลือก</option>
+                 </select>
+             </div>
+
+             <div className="md:col-span-3">
+                 <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wide">ประเภท (Type)</label>
+                 <select
+                    value={filter.workType}
+                    onChange={(e) => setFilter((p) => ({ ...p, workType: e.target.value }))}
+                    className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm bg-white outline-none focus:ring-4 focus:ring-sky-100 transition shadow-sm"
+                 >
+                    <option value="all">ทั้งหมด</option>
+                    {WORK_TYPES.map((t) => (
+                    <option key={t.id} value={t.id}>
+                        {t.label}
+                    </option>
+                    ))}
+                 </select>
+             </div>
         </div>
         
-        <div>
-          <label className="block text-sm font-bold text-slate-900 mb-2">ประเภท</label>
-          <select
-            value={filter.workType}
-            onChange={(e) => setFilter((p) => ({ ...p, workType: e.target.value }))}
-            className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm bg-white outline-none focus:ring-4 focus:ring-sky-100 transition shadow-sm"
-          >
-            <option value="all">ทั้งหมด</option>
-            {WORK_TYPES.map((t) => (
-              <option key={t.id} value={t.id}>
-                {t.label}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div>
-          <label className="block text-sm font-bold text-slate-900 mb-2">สถานะ</label>
-          <select
-            value={filter.status}
-            onChange={(e) => setFilter((p) => ({ ...p, status: e.target.value }))}
-            className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm bg-white outline-none focus:ring-4 focus:ring-sky-100 transition shadow-sm"
-          >
-            <option value="all">ทั้งหมด</option>
-            <option value="submitted">ส่งแล้ว</option>
-            <option value="draft">ฉบับร่าง</option>
-            <option value="reviewed">กำลังพิจารณา</option>
-            <option value="accepted">ผ่านการคัดเลือก</option>
-            <option value="rejected">ไม่ผ่านการคัดเลือก</option>
-          </select>
-        </div>
-        
-        {/* Row 2 */}
-        <div className="md:col-span-2">
-            <label className="block text-sm font-bold text-slate-900 mb-2">สาขา</label>
-            <select
-                value={filter.branchId}
-                onChange={(e) => setFilter((p) => ({ ...p, branchId: e.target.value }))}
-                className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm bg-white outline-none focus:ring-4 focus:ring-sky-100 transition shadow-sm"
-            >
-                <option value="all">ทั้งหมด</option>
-                {BRANCHES.map((b) => (
-                <option key={b.id} value={b.id}>
-                    {b.id}. {b.label}
-                </option>
-                ))}
-            </select>
-        </div>
-
-        <div>
-            <label className="block text-sm font-bold text-slate-900 mb-2">ตั้งแต่วันที่</label>
-            <input 
-                type="date"
-                value={filter.startDate}
-                onChange={(e) => setFilter((p) => ({ ...p, startDate: e.target.value }))}
-                className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm bg-white outline-none focus:ring-4 focus:ring-sky-100 transition shadow-sm text-slate-600"
-            />
-        </div>
-
-        <div>
-            <label className="block text-sm font-bold text-slate-900 mb-2">ถึงวันที่</label>
-            <input 
-                type="date"
-                value={filter.endDate}
-                onChange={(e) => setFilter((p) => ({ ...p, endDate: e.target.value }))}
-                className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm bg-white outline-none focus:ring-4 focus:ring-sky-100 transition shadow-sm text-slate-600"
-            />
-        </div>
-
-        {/* Row 3 Actions */}
-        <div className="md:col-span-4 flex flex-col md:flex-row gap-3 pt-2 border-t border-slate-100 mt-2">
-            <button
-                onClick={resetFilters}
-                className="px-6 py-3 rounded-2xl text-sm font-bold text-slate-500 hover:bg-slate-100 hover:text-slate-700 transition flex items-center justify-center gap-2"
-            >
-                <i className="fa-solid fa-rotate-right"></i>
-                <span>ล้างตัวกรอง</span>
-            </button>
-            <div className="flex-1"></div>
-            <button
-                onClick={exportCSV}
-                className="px-6 py-3 rounded-2xl text-sm font-bold bg-emerald-500 text-white hover:bg-emerald-600 active:scale-95 transition flex items-center justify-center gap-2 shadow-lg shadow-emerald-200 w-full md:w-auto"
-            >
-                <i className="fa-solid fa-file-csv text-lg"></i>
-                <span>Export CSV</span>
-            </button>
-        </div>
+        {/* Advanced Filters (Toggleable) */}
+        {showAdvancedFilters && (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-slate-50 rounded-2xl border border-slate-100 animate-fade-in">
+                <div className="md:col-span-3 lg:col-span-1">
+                    <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wide">สาขา (Branch)</label>
+                    <select
+                        value={filter.branchId}
+                        onChange={(e) => setFilter((p) => ({ ...p, branchId: e.target.value }))}
+                        className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm bg-white outline-none focus:ring-4 focus:ring-sky-100 transition shadow-sm"
+                    >
+                        <option value="all">ทุกสาขา</option>
+                        {BRANCHES.map((b) => (
+                        <option key={b.id} value={b.id}>
+                            {b.id}. {b.label}
+                        </option>
+                        ))}
+                    </select>
+                </div>
+                <div>
+                    <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wide">ตั้งแต่วันที่</label>
+                    <input 
+                        type="date"
+                        value={filter.startDate}
+                        onChange={(e) => setFilter((p) => ({ ...p, startDate: e.target.value }))}
+                        className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm bg-white outline-none focus:ring-4 focus:ring-sky-100 transition shadow-sm text-slate-600"
+                    />
+                </div>
+                <div>
+                    <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wide">ถึงวันที่</label>
+                    <input 
+                        type="date"
+                        value={filter.endDate}
+                        onChange={(e) => setFilter((p) => ({ ...p, endDate: e.target.value }))}
+                        className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm bg-white outline-none focus:ring-4 focus:ring-sky-100 transition shadow-sm text-slate-600"
+                    />
+                </div>
+                
+                <div className="md:col-span-3 flex justify-end gap-3 pt-2">
+                    <button
+                        onClick={resetFilters}
+                        className="px-4 py-2 rounded-xl text-sm font-bold text-slate-500 hover:bg-slate-200 hover:text-slate-700 transition flex items-center gap-2"
+                    >
+                        <i className="fa-solid fa-rotate-right"></i>
+                        <span>ล้างตัวกรอง</span>
+                    </button>
+                    <button
+                        onClick={exportCSV}
+                        className="px-4 py-2 rounded-xl text-sm font-bold bg-emerald-500 text-white hover:bg-emerald-600 active:scale-95 transition flex items-center gap-2 shadow-md shadow-emerald-200"
+                    >
+                        <i className="fa-solid fa-file-csv"></i>
+                        <span>Export CSV</span>
+                    </button>
+                </div>
+            </div>
+        )}
       </div>
 
-      <div className="mt-5">
-        <div className="flex items-center justify-between">
-          <div className="text-sm text-slate-600">
-            แสดงผล {filtered.length} รายการ จากทั้งหมด {submissions.length} รายการ
+      {/* Results List */}
+      <div className="mt-6 flex-1">
+        <div className="flex items-center justify-between mb-3 px-1">
+          <div className="text-sm font-bold text-slate-500">
+            พบข้อมูล {filtered.length} รายการ
           </div>
           {loading && (
             <div className="text-sm font-bold text-slate-700 flex items-center gap-2">
               <i className="fa-solid fa-spinner animate-spin" />
-              <span>กำลังโหลดข้อมูล</span>
+              <span>กำลังโหลด...</span>
             </div>
           )}
         </div>
 
-        <div className="mt-3 space-y-3">
-          {filtered.length === 0 ? (
-            <div className="rounded-2xl bg-slate-50 ring-1 ring-slate-200 p-10 text-center">
+        <div className="space-y-3">
+          {paginatedItems.length === 0 ? (
+            <div className="rounded-2xl bg-slate-50 ring-1 ring-slate-200 p-12 text-center">
               <div className="h-16 w-16 bg-slate-100 text-slate-400 rounded-full mx-auto flex items-center justify-center text-3xl mb-4">
                  <i className="fa-solid fa-magnifying-glass"></i>
               </div>
@@ -376,13 +414,13 @@ const History: React.FC<HistoryProps> = ({ submissions, loading, refreshList, se
               </button>
             </div>
           ) : (
-            filtered.map((s) => {
+            paginatedItems.map((s) => {
               const status = STATUS_CONFIG[s.status] || STATUS_CONFIG['draft'];
               return (
                 <div key={s.id} className="rounded-3xl bg-white ring-1 ring-slate-200 shadow-sm p-4 md:p-5 hover:shadow-md transition group">
                   <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
-                    <div className="min-w-0">
-                      <div className="flex flex-wrap items-center gap-2">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2 mb-2">
                         <div className="text-base font-black text-slate-900 group-hover:text-sky-700 transition">
                           {s.firstName} {s.lastName}
                         </div>
@@ -391,7 +429,6 @@ const History: React.FC<HistoryProps> = ({ submissions, loading, refreshList, se
                         </Badge>
                         <Badge tone="navy">ปี {s.budgetYear}</Badge>
                         
-                        {/* Dynamic Status Indicator */}
                         {s.status !== 'draft' && (
                           <div className={`flex items-center gap-1.5 ml-1 px-2 py-0.5 rounded-full border bg-opacity-50 ${status.hintColor.replace('text-', 'bg-').replace('600', '50')} ${status.hintColor.replace('text-', 'border-').replace('600', '100')}`}>
                              {s.status === 'submitted' && <div className="h-1.5 w-1.5 rounded-full bg-indigo-500 animate-pulse"></div>}
@@ -402,9 +439,9 @@ const History: React.FC<HistoryProps> = ({ submissions, loading, refreshList, se
                         )}
                       </div>
 
-                      <div className="mt-2 text-sm text-slate-700 grid grid-cols-1 md:grid-cols-2 gap-x-4">
-                         <span className="flex items-center gap-2"><i className="fa-solid fa-user-tag text-slate-400 text-xs"></i> {s.position || "-"}</span>
-                         <span className="flex items-center gap-2"><i className="fa-solid fa-building text-slate-400 text-xs"></i> {s.organization || "-"}</span>
+                      <div className="text-sm text-slate-700 grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-1">
+                         <span className="flex items-center gap-2"><i className="fa-solid fa-user-tag text-slate-400 text-xs w-4"></i> {s.position || "-"}</span>
+                         <span className="flex items-center gap-2"><i className="fa-solid fa-building text-slate-400 text-xs w-4"></i> {s.organization || "-"}</span>
                       </div>
 
                       <div className="mt-3 flex flex-wrap gap-2">
@@ -412,13 +449,13 @@ const History: React.FC<HistoryProps> = ({ submissions, loading, refreshList, se
                         <Badge tone="slate">{branchLabel(s.branchId)}</Badge>
                       </div>
 
-                      <div className="mt-3 text-xs text-slate-500 flex items-center gap-3">
+                      <div className="mt-3 text-xs text-slate-500 flex items-center gap-4">
                         <span><i className="fa-regular fa-clock mr-1"></i> สร้าง {formatDateTimeTH(s.createdAt)}</span>
                         <span><i className="fa-solid fa-pen-to-square mr-1"></i> อัปเดต {formatDateTimeTH(s.updatedAt)}</span>
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-2 shrink-0">
+                    <div className="flex items-center gap-2 shrink-0 md:self-center">
                       {s.status === "draft" ? (
                         <button
                           onClick={() => updateStatus(s.id, "submitted")}
@@ -436,29 +473,68 @@ const History: React.FC<HistoryProps> = ({ submissions, loading, refreshList, se
                           <span>แก้</span>
                         </button>
                       )}
-                      {/* For other statuses, no action button shown for user (read-only) */}
                     </div>
                   </div>
-                  
-                  {/* Minimal Audit Log */}
-                  {s.audit && s.audit.length > 0 && (
-                      <div className="mt-4 pt-3 border-t border-slate-100">
-                           <div className="text-[10px] uppercase font-bold text-slate-400 mb-1 tracking-wider">Activity Log</div>
-                           {s.audit.slice(-2).reverse().map((a, i) => (
-                               <div key={i} className="text-xs text-slate-500 flex items-center gap-2">
-                                   <span className="w-1 h-1 rounded-full bg-slate-300"></span>
-                                   <span className="font-mono text-slate-400">{formatDateTimeTH(a.at)}</span>
-                                   <span>{a.note}</span>
-                               </div>
-                           ))}
-                      </div>
-                  )}
                 </div>
               );
             })
           )}
         </div>
       </div>
+
+      {/* Pagination Controls */}
+      {filtered.length > 0 && (
+          <div className="flex flex-col md:flex-row items-center justify-between gap-4 mt-6 pt-6 border-t border-slate-100">
+              <div className="text-sm text-slate-500 font-medium">
+                 แสดง {((currentPage - 1) * itemsPerPage) + 1} ถึง {Math.min(currentPage * itemsPerPage, totalItems)} จาก {totalItems} รายการ
+              </div>
+              
+              <div className="flex items-center gap-2">
+                  <button
+                     disabled={currentPage === 1}
+                     onClick={() => setCurrentPage(p => p - 1)}
+                     className="h-9 w-9 rounded-lg border border-slate-200 flex items-center justify-center hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition text-slate-600"
+                  >
+                     <i className="fa-solid fa-chevron-left text-xs"></i>
+                  </button>
+
+                  <div className="flex items-center gap-1">
+                      {getPageNumbers().map((p, i) => (
+                          typeof p === 'number' ? (
+                            <button
+                                key={i}
+                                onClick={() => setCurrentPage(p)}
+                                className={`h-9 w-9 rounded-lg font-bold text-sm transition ${currentPage === p ? 'bg-slate-900 text-white shadow-md' : 'text-slate-500 hover:bg-slate-100'}`}
+                            >
+                                {p}
+                            </button>
+                          ) : (
+                            <span key={i} className="h-9 w-9 flex items-center justify-center text-slate-400">...</span>
+                          )
+                      ))}
+                  </div>
+
+                  <button
+                     disabled={currentPage === totalPages}
+                     onClick={() => setCurrentPage(p => p + 1)}
+                     className="h-9 w-9 rounded-lg border border-slate-200 flex items-center justify-center hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition text-slate-600"
+                  >
+                     <i className="fa-solid fa-chevron-right text-xs"></i>
+                  </button>
+              </div>
+              
+              <select 
+                 value={itemsPerPage}
+                 onChange={(e) => setItemsPerPage(Number(e.target.value))}
+                 className="rounded-xl border border-slate-200 py-2 px-3 text-sm outline-none focus:ring-2 focus:ring-sky-100 bg-white cursor-pointer hover:border-slate-300 transition"
+              >
+                  <option value={10}>10 รายการ / หน้า</option>
+                  <option value={20}>20 รายการ / หน้า</option>
+                  <option value={50}>50 รายการ / หน้า</option>
+                  <option value={100}>100 รายการ / หน้า</option>
+              </select>
+          </div>
+      )}
     </div>
   );
 };
