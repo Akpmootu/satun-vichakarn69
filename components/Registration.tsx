@@ -24,6 +24,7 @@ const Registration: React.FC<RegistrationProps> = ({ settings, onSuccess, showTo
     workType: "",
     branchId: "",
     fileUrl: "",
+    fileName: "" // Track filename locally for UI
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
@@ -47,27 +48,33 @@ const Registration: React.FC<RegistrationProps> = ({ settings, onSuccess, showTo
   // Calculate Progress Real-time
   const progress = useMemo(() => {
       let filled = 0;
-      const total = 9; // Added fileUrl as a step
+      const total = 9;
 
       if (form.firstName.trim()) filled++;
       if (form.lastName.trim()) filled++;
       if (form.position.trim()) filled++;
       if (form.organization.trim()) filled++;
-      // Email must match regex to count
-      if (form.email.trim() && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) filled++;
-      if (form.phone.trim()) filled++;
+      
+      // Strict Email Check
+      if (form.email.trim() && 
+          /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email) && 
+          form.email.endsWith('@satunhealth.go.th')) filled++;
+      
+      // Phone Check (approx length of formatted string)
+      if (form.phone.trim() && form.phone.length >= 10) filled++;
+      
       if (form.workType) filled++;
       if (form.branchId) filled++;
-      if (form.fileUrl) filled++; // Count file upload
+      if (form.fileUrl) filled++;
 
       return Math.round((filled / total) * 100);
   }, [form]);
 
   if (!currentUser) {
       return (
-          <div className="rounded-3xl bg-white p-10 text-center ring-1 ring-slate-200">
+          <div className="rounded-3xl bg-white dark:bg-slate-900 p-10 text-center ring-1 ring-slate-200 dark:ring-slate-700">
               <i className="fa-solid fa-lock text-4xl text-slate-300 mb-4"></i>
-              <h2 className="text-xl font-bold text-slate-700">กรุณาเข้าสู่ระบบก่อนส่งผลงาน</h2>
+              <h2 className="text-xl font-bold text-slate-700 dark:text-slate-300">กรุณาเข้าสู่ระบบก่อนส่งผลงาน</h2>
           </div>
       );
   }
@@ -81,42 +88,63 @@ const Registration: React.FC<RegistrationProps> = ({ settings, onSuccess, showTo
     });
   };
 
-  // Handle File Upload (Convert to Base64)
+  // Phone Input Masking
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      let val = e.target.value.replace(/\D/g, '');
+      if (val.length > 10) val = val.substring(0, 10);
+      
+      let formatted = val;
+      if (val.length > 6) {
+          formatted = `${val.slice(0,3)}-${val.slice(3,6)}-${val.slice(6)}`;
+      } else if (val.length > 3) {
+          formatted = `${val.slice(0,3)}-${val.slice(3)}`;
+      }
+      
+      onChangeField("phone", formatted);
+  };
+
+  // Handle File Upload (Image or PDF)
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
       if (file) {
-          // Validate Size (Max 5MB)
-          if (file.size > 5 * 1024 * 1024) {
-              showToast({ type: "error", title: "ไฟล์มีขนาดใหญ่เกินไป", message: "กรุณาอัปโหลดไฟล์ขนาดไม่เกิน 5MB" });
+          // Validate Size (Max 10MB)
+          if (file.size > 10 * 1024 * 1024) {
+              showToast({ type: "error", title: "ไฟล์มีขนาดใหญ่เกินไป", message: "กรุณาอัปโหลดไฟล์ขนาดไม่เกิน 10MB" });
               return;
           }
 
-          // Validate Type (Images only for this example)
-          if (!file.type.startsWith('image/')) {
-              showToast({ type: "error", title: "ชนิดไฟล์ไม่ถูกต้อง", message: "กรุณาอัปโหลดไฟล์รูปภาพ (jpg, png)" });
+          const isPdf = file.type === 'application/pdf';
+          const isImage = file.type.startsWith('image/');
+
+          if (!isPdf && !isImage) {
+              showToast({ type: "error", title: "ชนิดไฟล์ไม่ถูกต้อง", message: "กรุณาอัปโหลดไฟล์รูปภาพ (jpg, png) หรือ PDF" });
               return;
           }
 
           const reader = new FileReader();
           reader.onloadend = () => {
-              setForm(prev => ({ ...prev, fileUrl: reader.result as string }));
+              setForm(prev => ({ 
+                  ...prev, 
+                  fileUrl: reader.result as string,
+                  fileName: file.name
+              }));
           };
           reader.readAsDataURL(file);
       }
   };
 
   const removeFile = () => {
-      setForm(prev => ({ ...prev, fileUrl: "" }));
+      setForm(prev => ({ ...prev, fileUrl: "", fileName: "" }));
       if (fileInputRef.current) {
           fileInputRef.current.value = "";
       }
   };
 
-  // Real-time validation when focus leaves the field
+  // Real-time validation
   const handleBlur = (key: string) => {
       if (key === 'email') {
-          if (form.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
-              setErrors(prev => ({ ...prev, email: "รูปแบบอีเมลไม่ถูกต้อง (เช่น user@example.com)" }));
+          if (form.email.trim() && !form.email.endsWith('@satunhealth.go.th')) {
+              setErrors(prev => ({ ...prev, email: "กรุณาใช้อีเมลองค์กร (@satunhealth.go.th)" }));
           }
       }
   };
@@ -128,14 +156,21 @@ const Registration: React.FC<RegistrationProps> = ({ settings, onSuccess, showTo
     if (!form.position.trim()) e.position = "กรุณากรอกตำแหน่ง";
     if (!form.organization.trim()) e.organization = "กรุณากรอกสังกัด/หน่วยงาน";
     
-    // Email Validation
+    // Email Validation (Strict Domain)
     if (!form.email.trim()) {
         e.email = "กรุณากรอกอีเมล";
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
-        e.email = "รูปแบบอีเมลไม่ถูกต้อง (เช่น user@example.com)";
+        e.email = "รูปแบบอีเมลไม่ถูกต้อง";
+    } else if (!form.email.endsWith('@satunhealth.go.th')) {
+        e.email = "กรุณาใช้อีเมลองค์กร (@satunhealth.go.th)";
     }
 
-    if (!form.phone.trim()) e.phone = "กรุณากรอกเบอร์โทรศัพท์";
+    if (!form.phone.trim()) {
+        e.phone = "กรุณากรอกเบอร์โทรศัพท์";
+    } else if (form.phone.length < 10) {
+        e.phone = "เบอร์โทรศัพท์ไม่ครบถ้วน";
+    }
+
     if (!form.workType) e.workType = "กรุณาเลือกประเภทผลงาน";
     if (!form.branchId) e.branchId = "กรุณาเลือกสาขา";
     
@@ -154,16 +189,11 @@ const Registration: React.FC<RegistrationProps> = ({ settings, onSuccess, showTo
         // Draft: Minimal Validation
         if (!form.firstName.trim() || !form.lastName.trim()) {
              showToast({ type: "error", title: "ข้อมูลระบุตัวตนไม่ครบ", message: "กรุณากรอกชื่อและนามสกุลเพื่อบันทึกร่าง" });
-             setErrors(prev => ({
-                 ...prev, 
-                 firstName: !form.firstName.trim() ? "กรุณากรอกชื่อ" : "",
-                 lastName: !form.lastName.trim() ? "กรุณากรอกนามสกุล" : ""
-             }));
              return;
         }
     }
 
-    // 2. Prepare Confirmation Dialog Content based on mode
+    // 2. Dialog
     let title = '';
     let html = '';
     let confirmBtnText = '';
@@ -185,7 +215,6 @@ const Registration: React.FC<RegistrationProps> = ({ settings, onSuccess, showTo
         html = `
             <div class="text-left text-sm text-slate-600">
                 <p>ระบบจะบันทึกข้อมูลของท่านไว้ เพื่อให้กลับมาแก้ไขภายหลังได้</p>
-                <p class="mt-2 text-xs text-amber-600"><i class="fa-solid fa-circle-exclamation mr-1"></i> ข้อมูลฉบับร่างจะยังไม่ถูกส่งไปยังคณะกรรมการ</p>
             </div>
         `;
         confirmBtnText = '<i class="fa-solid fa-floppy-disk mr-2"></i>บันทึกร่าง';
@@ -193,14 +222,13 @@ const Registration: React.FC<RegistrationProps> = ({ settings, onSuccess, showTo
         icon = 'info';
     }
 
-    // 3. Show Dialog
     const result = await Swal.fire({
         title: title,
         html: html,
         icon: icon,
         showCancelButton: true,
         confirmButtonColor: confirmColor,
-        cancelButtonColor: '#94a3b8', // slate-400
+        cancelButtonColor: '#94a3b8',
         confirmButtonText: confirmBtnText,
         cancelButtonText: 'ยกเลิก',
         focusCancel: true,
@@ -220,7 +248,6 @@ const Registration: React.FC<RegistrationProps> = ({ settings, onSuccess, showTo
     setSaving(true);
     try {
       const payload: Submission = {
-        // Generate a pseudo-UUID
         id: crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2),
         userId: currentUser.id,
         budgetYear: BUDGET_YEAR,
@@ -232,7 +259,7 @@ const Registration: React.FC<RegistrationProps> = ({ settings, onSuccess, showTo
         phone: form.phone.trim(),
         workType: form.workType,
         branchId: Number(form.branchId),
-        fileUrl: form.fileUrl, // Include File
+        fileUrl: form.fileUrl,
         status: mode === 'submit' ? 'submitted' : 'draft',
         createdAt: nowISO(),
         updatedAt: nowISO(),
@@ -264,14 +291,16 @@ const Registration: React.FC<RegistrationProps> = ({ settings, onSuccess, showTo
         });
       }
 
-      // Reset form (keep name/org as user might send another)
+      // Reset form (Keep persistent user info, clear submission specific info)
       setForm(prev => ({
         ...prev,
         workType: "", 
         branchId: "",
-        fileUrl: ""
+        fileUrl: "",
+        fileName: ""
       }));
       if (fileInputRef.current) fileInputRef.current.value = "";
+      
       onSuccess();
     } catch (e: any) {
       Swal.fire({
@@ -293,24 +322,18 @@ const Registration: React.FC<RegistrationProps> = ({ settings, onSuccess, showTo
       return 'bg-amber-400';
   };
 
-  const getProgressMessage = () => {
-      if (progress === 100) return "ข้อมูลครบถ้วน พร้อมส่งผลงาน! 🎉";
-      if (progress >= 50) return "มาครึ่งทางแล้ว สู้ๆ! 💪";
-      return "เริ่มกรอกข้อมูลกันเลย ✍️";
-  };
-
   return (
-    <div className="rounded-3xl bg-white ring-1 ring-slate-200 shadow-sm p-5 md:p-6 fade-in relative overflow-hidden">
+    <div className="rounded-3xl bg-white dark:bg-slate-900 ring-1 ring-slate-200 dark:ring-slate-700 shadow-sm p-5 md:p-6 fade-in relative overflow-hidden">
       
       {/* Background Decor */}
       <div className="absolute top-0 right-0 p-10 opacity-5 pointer-events-none">
-          <i className="fa-solid fa-pen-nib text-9xl text-slate-800"></i>
+          <i className="fa-solid fa-pen-nib text-9xl text-slate-800 dark:text-white"></i>
       </div>
 
       <div className="flex items-start justify-between gap-4 mb-4 relative z-10">
         <div>
-          <div className="text-lg md:text-xl font-black text-slate-900">แบบฟอร์มลงทะเบียนส่งผลงาน</div>
-          <div className="mt-1 text-sm text-slate-600">
+          <div className="text-lg md:text-xl font-black text-slate-900 dark:text-white">แบบฟอร์มลงทะเบียนส่งผลงาน</div>
+          <div className="mt-1 text-sm text-slate-600 dark:text-slate-400">
             ปีงบประมาณ {BUDGET_YEAR} • ผู้ส่ง: {currentUser.firstName} {currentUser.lastName}
           </div>
         </div>
@@ -319,17 +342,16 @@ const Registration: React.FC<RegistrationProps> = ({ settings, onSuccess, showTo
       {/* Progress Bar Section */}
       <div className="mb-8 relative z-10">
           <div className="flex items-end justify-between mb-2">
-              <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">ความคืบหน้า</span>
-              <span className={`text-xs font-bold transition-colors duration-300 ${progress === 100 ? 'text-emerald-600' : 'text-slate-600'}`}>
-                  {getProgressMessage()} ({progress}%)
+              <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">ความคืบหน้า</span>
+              <span className={`text-xs font-bold transition-colors duration-300 ${progress === 100 ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-600 dark:text-slate-300'}`}>
+                  {progress === 100 ? 'ข้อมูลครบถ้วน พร้อมส่งผลงาน! 🎉' : `${progress}%`}
               </span>
           </div>
-          <div className="h-3 w-full bg-slate-100 rounded-full overflow-hidden ring-1 ring-slate-200/50">
+          <div className="h-3 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden ring-1 ring-slate-200/50 dark:ring-slate-700">
               <div 
                   className={`h-full transition-all duration-700 ease-out rounded-full ${getProgressColor()}`}
                   style={{ width: `${progress}%` }}
               >
-                  {/* Shimmer Effect */}
                   <div className="w-full h-full bg-gradient-to-r from-transparent via-white/30 to-transparent -translate-x-full animate-[shimmer_2s_infinite]"></div>
               </div>
           </div>
@@ -338,44 +360,44 @@ const Registration: React.FC<RegistrationProps> = ({ settings, onSuccess, showTo
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 relative z-10">
         {/* Basic Info */}
         <div>
-          <label className="block text-sm font-bold text-slate-900">ชื่อ <span className="text-rose-600">*</span></label>
+          <label className="block text-sm font-bold text-slate-900 dark:text-slate-200">ชื่อ <span className="text-rose-600">*</span></label>
           <input
             value={form.firstName}
             onChange={(e) => onChangeField("firstName", e.target.value)}
-            className={`mt-2 w-full rounded-2xl border px-4 py-3 text-sm outline-none transition ${errors.firstName ? 'border-rose-300 focus:ring-rose-100' : 'border-slate-200 focus:ring-sky-100 focus:ring-4'}`}
+            className={`mt-2 w-full rounded-2xl border px-4 py-3 text-sm outline-none transition bg-white dark:bg-slate-800 dark:text-white ${errors.firstName ? 'border-rose-300 focus:ring-rose-100' : 'border-slate-200 dark:border-slate-700 focus:ring-sky-100 focus:ring-4 dark:focus:ring-sky-900'}`}
             placeholder="ชื่อจริง (ภาษาไทย)"
           />
           {errors.firstName && <div className="text-xs text-rose-600 mt-1">{errors.firstName}</div>}
         </div>
 
         <div>
-          <label className="block text-sm font-bold text-slate-900">นามสกุล <span className="text-rose-600">*</span></label>
+          <label className="block text-sm font-bold text-slate-900 dark:text-slate-200">นามสกุล <span className="text-rose-600">*</span></label>
           <input
             value={form.lastName}
             onChange={(e) => onChangeField("lastName", e.target.value)}
-            className={`mt-2 w-full rounded-2xl border px-4 py-3 text-sm outline-none transition ${errors.lastName ? 'border-rose-300 focus:ring-rose-100' : 'border-slate-200 focus:ring-sky-100 focus:ring-4'}`}
+            className={`mt-2 w-full rounded-2xl border px-4 py-3 text-sm outline-none transition bg-white dark:bg-slate-800 dark:text-white ${errors.lastName ? 'border-rose-300 focus:ring-rose-100' : 'border-slate-200 dark:border-slate-700 focus:ring-sky-100 focus:ring-4 dark:focus:ring-sky-900'}`}
             placeholder="นามสกุล (ภาษาไทย)"
           />
           {errors.lastName && <div className="text-xs text-rose-600 mt-1">{errors.lastName}</div>}
         </div>
 
         <div>
-            <label className="block text-sm font-bold text-slate-900">ตำแหน่ง <span className="text-rose-600">*</span></label>
+            <label className="block text-sm font-bold text-slate-900 dark:text-slate-200">ตำแหน่ง <span className="text-rose-600">*</span></label>
             <input
                 value={form.position}
                 onChange={(e) => onChangeField("position", e.target.value)}
-                className={`mt-2 w-full rounded-2xl border px-4 py-3 text-sm outline-none transition ${errors.position ? 'border-rose-300 focus:ring-rose-100' : 'border-slate-200 focus:ring-sky-100 focus:ring-4'}`}
-                placeholder="เช่น พยาบาลวิชาชีพ, นักวิชาการสาธารณสุข"
+                className={`mt-2 w-full rounded-2xl border px-4 py-3 text-sm outline-none transition bg-white dark:bg-slate-800 dark:text-white ${errors.position ? 'border-rose-300 focus:ring-rose-100' : 'border-slate-200 dark:border-slate-700 focus:ring-sky-100 focus:ring-4 dark:focus:ring-sky-900'}`}
+                placeholder="เช่น พยาบาลวิชาชีพ"
             />
             {errors.position && <div className="text-xs text-rose-600 mt-1">{errors.position}</div>}
         </div>
         
         <div>
-            <label className="block text-sm font-bold text-slate-900">สังกัด/หน่วยงาน <span className="text-rose-600">*</span></label>
+            <label className="block text-sm font-bold text-slate-900 dark:text-slate-200">สังกัด/หน่วยงาน <span className="text-rose-600">*</span></label>
             <input
                 value={form.organization}
                 onChange={(e) => onChangeField("organization", e.target.value)}
-                className={`mt-2 w-full rounded-2xl border px-4 py-3 text-sm outline-none transition ${errors.organization ? 'border-rose-300 focus:ring-rose-100' : 'border-slate-200 focus:ring-sky-100 focus:ring-4'}`}
+                className={`mt-2 w-full rounded-2xl border px-4 py-3 text-sm outline-none transition bg-white dark:bg-slate-800 dark:text-white ${errors.organization ? 'border-rose-300 focus:ring-rose-100' : 'border-slate-200 dark:border-slate-700 focus:ring-sky-100 focus:ring-4 dark:focus:ring-sky-900'}`}
                 placeholder="เช่น โรงพยาบาล..."
             />
             {errors.organization && <div className="text-xs text-rose-600 mt-1">{errors.organization}</div>}
@@ -383,7 +405,7 @@ const Registration: React.FC<RegistrationProps> = ({ settings, onSuccess, showTo
 
         {/* Contact Info */}
         <div>
-            <label className="block text-sm font-bold text-slate-900">อีเมล (Email) <span className="text-rose-600">*</span></label>
+            <label className="block text-sm font-bold text-slate-900 dark:text-slate-200">อีเมล (@satunhealth.go.th) <span className="text-rose-600">*</span></label>
             <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400">
                     <i className="fa-regular fa-envelope"></i>
@@ -392,8 +414,8 @@ const Registration: React.FC<RegistrationProps> = ({ settings, onSuccess, showTo
                     value={form.email}
                     onChange={(e) => onChangeField("email", e.target.value)}
                     onBlur={() => handleBlur('email')}
-                    className={`mt-2 w-full rounded-2xl border pl-10 pr-4 py-3 text-sm outline-none transition ${errors.email ? 'border-rose-300 focus:ring-rose-100' : 'border-slate-200 focus:ring-sky-100 focus:ring-4'}`}
-                    placeholder="example@mail.com"
+                    className={`mt-2 w-full rounded-2xl border pl-10 pr-4 py-3 text-sm outline-none transition bg-white dark:bg-slate-800 dark:text-white ${errors.email ? 'border-rose-300 focus:ring-rose-100 bg-rose-50 dark:bg-rose-900/10' : 'border-slate-200 dark:border-slate-700 focus:ring-sky-100 focus:ring-4 dark:focus:ring-sky-900'}`}
+                    placeholder="name@satunhealth.go.th"
                     type="email"
                 />
             </div>
@@ -401,17 +423,18 @@ const Registration: React.FC<RegistrationProps> = ({ settings, onSuccess, showTo
         </div>
 
         <div>
-            <label className="block text-sm font-bold text-slate-900">เบอร์โทรศัพท์ <span className="text-rose-600">*</span></label>
+            <label className="block text-sm font-bold text-slate-900 dark:text-slate-200">เบอร์โทรศัพท์ <span className="text-rose-600">*</span></label>
             <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400">
                     <i className="fa-solid fa-phone"></i>
                 </div>
                 <input
                     value={form.phone}
-                    onChange={(e) => onChangeField("phone", e.target.value)}
-                    className={`mt-2 w-full rounded-2xl border pl-10 pr-4 py-3 text-sm outline-none transition ${errors.phone ? 'border-rose-300 focus:ring-rose-100' : 'border-slate-200 focus:ring-sky-100 focus:ring-4'}`}
-                    placeholder="08x-xxx-xxxx"
-                    maxLength={15}
+                    onChange={handlePhoneChange}
+                    className={`mt-2 w-full rounded-2xl border pl-10 pr-4 py-3 text-sm outline-none transition bg-white dark:bg-slate-800 dark:text-white ${errors.phone ? 'border-rose-300 focus:ring-rose-100' : 'border-slate-200 dark:border-slate-700 focus:ring-sky-100 focus:ring-4 dark:focus:ring-sky-900'}`}
+                    placeholder="0xx-xxx-xxxx"
+                    type="tel"
+                    maxLength={12}
                 />
             </div>
             {errors.phone && <div className="text-xs text-rose-600 mt-1">{errors.phone}</div>}
@@ -419,17 +442,17 @@ const Registration: React.FC<RegistrationProps> = ({ settings, onSuccess, showTo
 
         {/* Work Type */}
         <div className="md:col-span-2 mt-2">
-            <label className="block text-sm font-bold text-slate-900 mb-3">ประเภทผลงาน <span className="text-rose-600">*</span></label>
+            <label className="block text-sm font-bold text-slate-900 dark:text-slate-200 mb-3">ประเภทผลงาน <span className="text-rose-600">*</span></label>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                 {WORK_TYPES.map(t => (
                     <button
                         key={t.id}
                         onClick={() => onChangeField("workType", t.id)}
-                        className={`relative overflow-hidden text-left p-4 rounded-2xl transition ring-1 ${form.workType === t.id ? 'bg-slate-900 text-white ring-slate-900 shadow-md transform scale-[1.02]' : 'bg-white text-slate-900 ring-slate-200 hover:bg-slate-50'}`}
+                        className={`relative overflow-hidden text-left p-4 rounded-2xl transition ring-1 ${form.workType === t.id ? 'bg-slate-900 dark:bg-sky-600 text-white ring-slate-900 dark:ring-sky-600 shadow-md transform scale-[1.02]' : 'bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-200 ring-slate-200 dark:ring-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700'}`}
                     >
                         <i className={`fa-solid ${t.icon} absolute -bottom-4 -right-2 text-6xl opacity-10`} />
                         <div className="relative z-10 flex items-center gap-3">
-                             <div className={`h-8 w-8 rounded-lg flex items-center justify-center ${form.workType === t.id ? 'bg-white/20' : 'bg-slate-100 text-slate-600'}`}>
+                             <div className={`h-8 w-8 rounded-lg flex items-center justify-center shrink-0 ${form.workType === t.id ? 'bg-white/20' : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300'}`}>
                                 <i className={`fa-solid ${t.icon} text-sm`} />
                              </div>
                              <span className="font-bold text-sm">{t.label}</span>
@@ -447,11 +470,11 @@ const Registration: React.FC<RegistrationProps> = ({ settings, onSuccess, showTo
 
         {/* Branch */}
         <div className="md:col-span-2 mt-2">
-             <label className="block text-sm font-bold text-slate-900">สาขา (เลือก 1 สาขา) <span className="text-rose-600">*</span></label>
+             <label className="block text-sm font-bold text-slate-900 dark:text-slate-200">สาขา (เลือก 1 สาขา) <span className="text-rose-600">*</span></label>
              <select
                 value={form.branchId}
                 onChange={(e) => onChangeField("branchId", e.target.value)}
-                className={`mt-2 w-full rounded-2xl border px-4 py-3 text-sm bg-white outline-none transition ${errors.branchId ? 'border-rose-300 focus:ring-rose-100' : 'border-slate-200 focus:ring-sky-100 focus:ring-4'}`}
+                className={`mt-2 w-full rounded-2xl border px-4 py-3 text-sm bg-white dark:bg-slate-800 dark:text-white outline-none transition ${errors.branchId ? 'border-rose-300 focus:ring-rose-100' : 'border-slate-200 dark:border-slate-700 focus:ring-sky-100 focus:ring-4 dark:focus:ring-sky-900'}`}
              >
                  <option value="">-- กรุณาเลือกสาขา --</option>
                  {BRANCHES.map(b => (
@@ -463,58 +486,69 @@ const Registration: React.FC<RegistrationProps> = ({ settings, onSuccess, showTo
 
         {/* File Upload Section */}
         <div className="md:col-span-2 mt-4">
-            <label className="block text-sm font-bold text-slate-900 mb-2">
-                อัปโหลดรูปภาพผลงาน / e-Poster <span className="text-xs font-normal text-slate-500">(ถ้ามี)</span>
+            <label className="block text-sm font-bold text-slate-900 dark:text-slate-200 mb-2">
+                อัปโหลดไฟล์ผลงาน (PDF / รูปภาพ) <span className="text-xs font-normal text-slate-500 dark:text-slate-400">(ถ้ามี)</span>
             </label>
             
             {!form.fileUrl ? (
                 <div 
                     onClick={() => fileInputRef.current?.click()}
-                    className="border-2 border-dashed border-slate-300 rounded-2xl p-8 text-center cursor-pointer hover:border-sky-500 hover:bg-sky-50 transition group"
+                    className="border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-2xl p-8 text-center cursor-pointer hover:border-sky-500 dark:hover:border-sky-400 hover:bg-sky-50 dark:hover:bg-slate-800 transition group"
                 >
-                    <div className="h-12 w-12 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-3 text-slate-400 group-hover:bg-white group-hover:text-sky-500 transition">
+                    <div className="h-12 w-12 bg-slate-100 dark:bg-slate-700 rounded-full flex items-center justify-center mx-auto mb-3 text-slate-400 group-hover:bg-white dark:group-hover:bg-slate-600 group-hover:text-sky-500 transition">
                         <i className="fa-solid fa-cloud-arrow-up text-xl"></i>
                     </div>
-                    <div className="text-sm font-bold text-slate-600 group-hover:text-sky-700">คลิกเพื่ออัปโหลดรูปภาพ</div>
-                    <div className="text-xs text-slate-400 mt-1">รองรับไฟล์ JPG, PNG ขนาดไม่เกิน 5MB</div>
+                    <div className="text-sm font-bold text-slate-600 dark:text-slate-300 group-hover:text-sky-700 dark:group-hover:text-sky-400">คลิกเพื่ออัปโหลดไฟล์</div>
+                    <div className="text-xs text-slate-400 mt-1">รองรับไฟล์ PDF, JPG, PNG ขนาดไม่เกิน 10MB</div>
                     <input 
                         type="file" 
                         ref={fileInputRef} 
                         onChange={handleFileChange}
-                        accept="image/*"
+                        accept="image/*,application/pdf"
                         className="hidden" 
                     />
                 </div>
             ) : (
-                <div className="relative rounded-2xl overflow-hidden ring-1 ring-slate-200 group">
-                    <img src={form.fileUrl} alt="Preview" className="w-full h-48 md:h-64 object-cover bg-slate-100" />
-                    <div className="absolute inset-0 bg-slate-900/0 group-hover:bg-slate-900/40 transition flex items-center justify-center opacity-0 group-hover:opacity-100">
-                        <button 
-                            onClick={removeFile}
-                            className="bg-rose-500 text-white px-4 py-2 rounded-xl font-bold text-sm shadow-lg hover:bg-rose-600 transition flex items-center gap-2 transform translate-y-4 group-hover:translate-y-0"
-                        >
-                            <i className="fa-solid fa-trash"></i> ลบรูปภาพ
-                        </button>
+                <div className="relative rounded-2xl overflow-hidden ring-1 ring-slate-200 dark:ring-slate-700 group bg-slate-50 dark:bg-slate-800 p-4 flex items-center gap-4">
+                    {/* Preview Icon/Image */}
+                    <div className="h-16 w-16 rounded-xl overflow-hidden bg-white dark:bg-slate-700 ring-1 ring-slate-100 dark:ring-slate-600 flex items-center justify-center shrink-0">
+                         {form.fileUrl.startsWith('data:image') ? (
+                             <img src={form.fileUrl} alt="Preview" className="w-full h-full object-cover" />
+                         ) : (
+                             <i className="fa-solid fa-file-pdf text-3xl text-rose-500"></i>
+                         )}
                     </div>
-                    <div className="absolute top-2 right-2 bg-emerald-500 text-white text-xs px-2 py-1 rounded-lg shadow-sm">
-                        <i className="fa-solid fa-check mr-1"></i> อัปโหลดแล้ว
+                    
+                    <div className="flex-1 min-w-0">
+                        <div className="text-sm font-bold text-slate-800 dark:text-slate-200 truncate">{form.fileName || 'ไฟล์แนบ'}</div>
+                        <div className="text-xs text-emerald-600 dark:text-emerald-400 flex items-center gap-1 mt-1">
+                            <i className="fa-solid fa-circle-check"></i> อัปโหลดสำเร็จ
+                        </div>
                     </div>
+
+                    <button 
+                        onClick={removeFile}
+                        className="h-10 w-10 rounded-full bg-white dark:bg-slate-700 text-rose-500 ring-1 ring-slate-200 dark:ring-slate-600 flex items-center justify-center hover:bg-rose-50 dark:hover:bg-rose-900/30 hover:ring-rose-200 transition"
+                        title="ลบไฟล์"
+                    >
+                        <i className="fa-solid fa-trash-can"></i>
+                    </button>
                 </div>
             )}
         </div>
       </div>
 
       {/* Actions */}
-      <div className="mt-8 rounded-2xl bg-slate-50 p-4 flex flex-col md:flex-row items-center justify-between gap-4 relative z-10 border border-slate-100">
-         <div className="text-xs text-slate-500">
+      <div className="mt-8 rounded-2xl bg-slate-50 dark:bg-slate-800 p-4 flex flex-col md:flex-row items-center justify-between gap-4 relative z-10 border border-slate-100 dark:border-slate-700">
+         <div className="text-xs text-slate-500 dark:text-slate-400">
             <i className="fa-solid fa-circle-info mr-2" />
             ตรวจสอบข้อมูลให้ถูกต้องก่อนบันทึก
          </div>
-         <div className="flex gap-3 w-full md:w-auto">
+         <div className="flex flex-col md:flex-row gap-3 w-full md:w-auto">
              <button
                 onClick={() => confirmAndSubmit('draft')}
                 disabled={saving}
-                className="flex-1 md:flex-none justify-center px-6 py-3 rounded-2xl bg-white ring-1 ring-slate-200 text-slate-700 font-bold hover:bg-slate-100 transition flex items-center gap-2 disabled:opacity-50"
+                className="w-full md:w-auto justify-center px-6 py-3 rounded-2xl bg-white dark:bg-slate-700 ring-1 ring-slate-200 dark:ring-slate-600 text-slate-700 dark:text-slate-200 font-bold hover:bg-slate-100 dark:hover:bg-slate-600 transition flex items-center gap-2 disabled:opacity-50"
              >
                 {saving ? <i className="fa-solid fa-spinner animate-spin"/> : <i className="fa-solid fa-floppy-disk"/>}
                 <span>บันทึกร่าง</span>
@@ -523,8 +557,8 @@ const Registration: React.FC<RegistrationProps> = ({ settings, onSuccess, showTo
                 onClick={() => confirmAndSubmit('submit')}
                 disabled={saving || progress < 100} 
                 title={progress < 100 ? "กรุณากรอกข้อมูลให้ครบถ้วนก่อนส่ง" : ""}
-                className={`flex-1 md:flex-none justify-center px-6 py-3 rounded-2xl font-bold transition flex items-center gap-2 disabled:opacity-50 shadow-lg shadow-slate-200 
-                    ${progress === 100 ? 'bg-slate-900 text-white hover:bg-slate-800' : 'bg-slate-300 text-slate-500 cursor-not-allowed'}`}
+                className={`w-full md:w-auto justify-center px-6 py-3 rounded-2xl font-bold transition flex items-center gap-2 disabled:opacity-50 shadow-lg shadow-slate-200 dark:shadow-none 
+                    ${progress === 100 ? 'bg-slate-900 dark:bg-sky-600 text-white hover:bg-slate-800 dark:hover:bg-sky-500' : 'bg-slate-300 dark:bg-slate-700 text-slate-500 dark:text-slate-400 cursor-not-allowed'}`}
              >
                 {saving ? <i className="fa-solid fa-spinner animate-spin"/> : <i className="fa-solid fa-paper-plane"/>}
                 <span>ส่งผลงาน</span>

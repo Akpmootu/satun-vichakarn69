@@ -19,15 +19,34 @@ export default function App() {
   const [settings, setSettings] = useState<AppSettings>(loadSettings());
   const [toast, setToast] = useState<ToastMessage | null>(null);
   const [showNews, setShowNews] = useState(false);
+  const [newsStartIndex, setNewsStartIndex] = useState(0);
   const [showAuth, setShowAuth] = useState(false);
   const [isPageLoading, setIsPageLoading] = useState(false);
   
+  // Dark Mode State
+  const [darkMode, setDarkMode] = useState<boolean>(() => {
+    const saved = localStorage.getItem("svk_dark_mode");
+    return saved ? JSON.parse(saved) : false;
+  });
+
   // User State
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(getCurrentUser());
 
   // Shared Data State
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [loading, setLoading] = useState(false);
+
+  // Apply Dark Mode Class
+  useEffect(() => {
+    if (darkMode) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+    localStorage.setItem("svk_dark_mode", JSON.stringify(darkMode));
+  }, [darkMode]);
+
+  const toggleDarkMode = () => setDarkMode(!darkMode);
 
   // Check Session for News Popup
   useEffect(() => {
@@ -38,6 +57,11 @@ export default function App() {
       setTimeout(() => setShowNews(true), 1500); // Small delay to let initial load finish
     }
   }, []);
+
+  const handleOpenNews = (index: number = 0) => {
+      setNewsStartIndex(index);
+      setShowNews(true);
+  };
 
   const handleCloseNews = (dontShow: boolean) => {
     setShowNews(false);
@@ -107,13 +131,13 @@ export default function App() {
   ];
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 font-sans pb-10 flex flex-col">
+    <div className={`min-h-screen font-sans pb-10 flex flex-col transition-colors duration-300 ${darkMode ? 'bg-slate-950 text-slate-100' : 'bg-slate-50 text-slate-900'}`}>
       
       {/* Full Screen Loading Overlay */}
       <LoadingOverlay isLoading={isPageLoading} />
 
       {/* News Popup Modal */}
-      <NewsModal isOpen={showNews} onClose={handleCloseNews} />
+      <NewsModal isOpen={showNews} onClose={handleCloseNews} initialIndex={newsStartIndex} />
       
       {/* Auth Modal */}
       <UserAuthModal 
@@ -127,7 +151,7 @@ export default function App() {
       />
 
       {/* Top Header */}
-      <header className="bg-white/80 backdrop-blur-md border-b border-slate-200 sticky top-0 z-40">
+      <header className={`sticky top-0 z-40 backdrop-blur-md border-b transition-colors duration-300 ${darkMode ? 'bg-slate-900/80 border-slate-800' : 'bg-white/80 border-slate-200'}`}>
         <div className="max-w-7xl mx-auto px-4 h-20 flex items-center justify-between">
           <div 
              className="cursor-pointer hover:opacity-80 transition"
@@ -137,19 +161,29 @@ export default function App() {
           </div>
           
           <div className="flex items-center gap-3">
-             <div className="hidden md:block px-3 py-1 rounded-full bg-slate-100 text-[10px] font-bold text-slate-500 border border-slate-200 tracking-wider">
+             <div className="hidden md:block px-3 py-1 rounded-full text-[10px] font-bold border tracking-wider transition-colors duration-300
+                ${darkMode ? 'bg-slate-800 text-slate-400 border-slate-700' : 'bg-slate-100 text-slate-500 border-slate-200'}">
                 {settings.mode === 'mock' ? 'MOCK SYSTEM' : 'LIVE SYSTEM'}
              </div>
+
+             {/* Dark Mode Toggle */}
+             <button
+                onClick={toggleDarkMode}
+                className={`h-10 w-10 rounded-full flex items-center justify-center transition shadow-lg ${darkMode ? 'bg-slate-800 text-amber-400 hover:bg-slate-700' : 'bg-white text-slate-400 hover:text-slate-600 shadow-slate-200'}`}
+                title="Toggle Dark Mode"
+             >
+                <i className={`fa-solid ${darkMode ? 'fa-moon' : 'fa-sun'}`}></i>
+             </button>
              
              {currentUser ? (
-                 <div className="flex items-center gap-3 pl-3 border-l border-slate-200">
+                 <div className={`flex items-center gap-3 pl-3 border-l transition-colors duration-300 ${darkMode ? 'border-slate-700' : 'border-slate-200'}`}>
                      <div className="hidden md:block text-right">
-                         <div className="text-xs font-bold text-slate-900">{currentUser.firstName}</div>
-                         <div className="text-[10px] text-slate-500">{currentUser.position}</div>
+                         <div className={`text-xs font-bold ${darkMode ? 'text-slate-200' : 'text-slate-900'}`}>{currentUser.firstName}</div>
+                         <div className={`text-[10px] ${darkMode ? 'text-slate-500' : 'text-slate-500'}`}>{currentUser.position}</div>
                      </div>
                      <button 
                         onClick={handleLogout}
-                        className="h-10 w-10 rounded-full bg-slate-900 text-white flex items-center justify-center hover:bg-slate-700 transition shadow-lg shadow-slate-300"
+                        className={`h-10 w-10 rounded-full flex items-center justify-center hover:bg-slate-700 transition shadow-lg ${darkMode ? 'bg-slate-800 text-white shadow-slate-900' : 'bg-slate-900 text-white shadow-slate-300'}`}
                         title="ออกจากระบบ"
                      >
                          <i className="fa-solid fa-power-off"></i>
@@ -158,7 +192,7 @@ export default function App() {
              ) : (
                  <button 
                     onClick={() => setShowAuth(true)}
-                    className="ml-2 px-5 py-2.5 rounded-xl bg-slate-900 text-white text-sm font-bold hover:bg-slate-800 transition shadow-lg shadow-slate-300 flex items-center gap-2"
+                    className="ml-2 px-5 py-2.5 rounded-xl bg-slate-900 text-white text-sm font-bold hover:bg-slate-800 transition shadow-lg shadow-slate-300 flex items-center gap-2 dark:bg-sky-600 dark:hover:bg-sky-500 dark:shadow-sky-900/30"
                  >
                     <i className="fa-solid fa-right-to-bracket"></i>
                     <span>เข้าสู่ระบบ</span>
@@ -176,10 +210,10 @@ export default function App() {
              <button
                 key={tab.id}
                 onClick={() => handleTabChange(tab.id)}
-                className={`whitespace-nowrap flex items-center gap-2 px-6 py-3 rounded-full text-sm font-bold transition-all duration-300 ${
+                className={`whitespace-nowrap flex items-center gap-2 px-6 py-3 rounded-full text-sm font-bold transition-all duration-300 border ${
                     activeTab === tab.id 
-                    ? 'bg-slate-900 text-white shadow-lg shadow-slate-300 transform -translate-y-1' 
-                    : 'bg-white text-slate-500 hover:bg-slate-100 border border-slate-200 hover:border-slate-300 hover:text-slate-700'
+                    ? (darkMode ? 'bg-sky-600 text-white border-sky-600 shadow-lg shadow-sky-900/50 transform -translate-y-1' : 'bg-slate-900 text-white shadow-lg shadow-slate-300 transform -translate-y-1 border-slate-900')
+                    : (darkMode ? 'bg-slate-900 text-slate-400 border-slate-800 hover:bg-slate-800 hover:text-white' : 'bg-white text-slate-500 hover:bg-slate-100 border-slate-200 hover:border-slate-300 hover:text-slate-700')
                 }`}
                 >
                 <i className={`fa-solid ${tab.icon}`} />
@@ -197,7 +231,7 @@ export default function App() {
                 onLoginRequest={() => setShowAuth(true)}
                 userSubmissions={submissions.filter(s => s.userId === currentUser?.id)}
                 showToast={showToast}
-                onOpenNews={() => setShowNews(true)}
+                onOpenNews={handleOpenNews}
               />
            )}
 
@@ -239,7 +273,7 @@ export default function App() {
       </main>
 
       {/* Official Footer */}
-      <footer className="mt-20 bg-slate-900 text-white pt-16 pb-8 border-t-4 border-sky-500">
+      <footer className={`mt-20 pt-16 pb-8 border-t-4 border-sky-500 transition-colors duration-300 ${darkMode ? 'bg-slate-900 text-slate-300 border-t-sky-600' : 'bg-slate-900 text-white'}`}>
           <div className="max-w-7xl mx-auto px-4">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-12 mb-12">
                   {/* Column 1: Organization */}
@@ -249,7 +283,7 @@ export default function App() {
                                <i className="fa-solid fa-building-columns text-slate-900 text-xl"></i>
                            </div>
                            <div>
-                               <h3 className="text-lg font-bold leading-tight">SKMS</h3>
+                               <h3 className="text-lg font-bold leading-tight text-white">SKMS</h3>
                                <p className="text-sm text-slate-400">สำนักงานสาธารณสุขจังหวัดสตูล</p>
                            </div>
                       </div>
@@ -273,7 +307,7 @@ export default function App() {
 
                   {/* Column 2: Quick Links */}
                   <div>
-                      <h4 className="text-lg font-bold mb-6 border-l-4 border-sky-500 pl-3">เมนูระบบ</h4>
+                      <h4 className="text-lg font-bold mb-6 border-l-4 border-sky-500 pl-3 text-white">เมนูระบบ</h4>
                       <ul className="space-y-3 text-sm text-slate-300">
                           <li><button onClick={() => handleTabChange('home')} className="hover:text-sky-400 transition flex items-center gap-2"><i className="fa-solid fa-chevron-right text-xs"></i> หน้าหลัก (KM Portal)</button></li>
                           <li><button onClick={() => handleTabChange('register')} className="hover:text-sky-400 transition flex items-center gap-2"><i className="fa-solid fa-chevron-right text-xs"></i> นำเข้าองค์ความรู้</button></li>
@@ -285,7 +319,7 @@ export default function App() {
 
                   {/* Column 3: Contact */}
                   <div>
-                      <h4 className="text-lg font-bold mb-6 border-l-4 border-emerald-500 pl-3">ติดต่อสอบถาม</h4>
+                      <h4 className="text-lg font-bold mb-6 border-l-4 border-emerald-500 pl-3 text-white">ติดต่อสอบถาม</h4>
                       <ul className="space-y-4 text-sm text-slate-300">
                           <li className="flex items-start gap-3">
                               <i className="fa-solid fa-map-location-dot mt-1 text-sky-500"></i>

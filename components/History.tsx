@@ -94,13 +94,13 @@ const History: React.FC<HistoryProps> = ({ submissions, loading, refreshList, se
 
   const getActionColors = (action: string) => {
     const act = (action || '').toUpperCase();
-    if (act.includes('SUBMIT')) return { dot: 'bg-sky-500', text: 'text-sky-700', bg: 'bg-sky-50' };
-    if (act.includes('DRAFT') || act.includes('SAVE')) return { dot: 'bg-amber-500', text: 'text-amber-700', bg: 'bg-amber-50' };
-    if (act.includes('REVIEW')) return { dot: 'bg-indigo-500', text: 'text-indigo-700', bg: 'bg-indigo-50' };
-    if (act.includes('ACCEPT')) return { dot: 'bg-emerald-500', text: 'text-emerald-700', bg: 'bg-emerald-50' };
-    if (act.includes('REJECT')) return { dot: 'bg-rose-500', text: 'text-rose-700', bg: 'bg-rose-50' };
-    if (act.includes('DELETE')) return { dot: 'bg-red-500', text: 'text-red-700', bg: 'bg-red-50' };
-    return { dot: 'bg-slate-400', text: 'text-slate-600', bg: 'bg-slate-50' };
+    if (act.includes('SUBMIT')) return { dot: 'bg-sky-500', text: 'text-sky-700 dark:text-sky-400', bg: 'bg-sky-50 dark:bg-sky-900/30' };
+    if (act.includes('DRAFT') || act.includes('SAVE')) return { dot: 'bg-amber-500', text: 'text-amber-700 dark:text-amber-400', bg: 'bg-amber-50 dark:bg-amber-900/30' };
+    if (act.includes('REVIEW')) return { dot: 'bg-indigo-500', text: 'text-indigo-700 dark:text-indigo-400', bg: 'bg-indigo-50 dark:bg-indigo-900/30' };
+    if (act.includes('ACCEPT')) return { dot: 'bg-emerald-500', text: 'text-emerald-700 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-900/30' };
+    if (act.includes('REJECT')) return { dot: 'bg-rose-500', text: 'text-rose-700 dark:text-rose-400', bg: 'bg-rose-50 dark:bg-rose-900/30' };
+    if (act.includes('DELETE')) return { dot: 'bg-red-500', text: 'text-red-700 dark:text-red-400', bg: 'bg-red-50 dark:bg-red-900/30' };
+    return { dot: 'bg-slate-400', text: 'text-slate-600 dark:text-slate-400', bg: 'bg-slate-50 dark:bg-slate-800' };
   };
 
   const filtered = useMemo(() => {
@@ -315,24 +315,24 @@ const History: React.FC<HistoryProps> = ({ submissions, loading, refreshList, se
   };
 
   return (
-    <div className="rounded-3xl bg-white ring-1 ring-slate-200 shadow-sm p-5 md:p-6 fade-in min-h-[500px] flex flex-col">
+    <div className="rounded-3xl bg-white dark:bg-slate-900 ring-1 ring-slate-200 dark:ring-slate-700 shadow-sm p-5 md:p-6 fade-in min-h-[500px] flex flex-col">
       <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
         <div className="min-w-0">
-          <div className="text-lg md:text-xl font-black text-slate-900">ประวัติการลงทะเบียน/ส่งผลงาน</div>
-          <div className="mt-1 text-sm text-slate-600">ค้นหา กรองข้อมูล และจัดการสถานะผลงาน</div>
+          <div className="text-lg md:text-xl font-black text-slate-900 dark:text-white">ประวัติการลงทะเบียน/ส่งผลงาน</div>
+          <div className="mt-1 text-sm text-slate-600 dark:text-slate-400">ค้นหา กรองข้อมูล และจัดการสถานะผลงาน</div>
         </div>
         
         <div className="flex flex-col md:flex-row gap-2">
             <button 
                 onClick={exportCSV}
-                className="px-4 py-2 rounded-xl text-sm font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 transition flex items-center justify-center gap-2"
+                className="px-4 py-2 rounded-xl text-sm font-bold bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 transition flex items-center justify-center gap-2"
             >
                 <i className="fa-solid fa-file-csv"></i>
                 Export Filtered Data
             </button>
             <button 
                 onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
-                className={`px-4 py-2 rounded-xl text-sm font-bold transition flex items-center justify-center gap-2 border ${showAdvancedFilters ? 'bg-sky-50 text-sky-700 border-sky-200' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}`}
+                className={`px-4 py-2 rounded-xl text-sm font-bold transition flex items-center justify-center gap-2 border ${showAdvancedFilters ? 'bg-sky-50 dark:bg-sky-900/30 text-sky-700 dark:text-sky-400 border-sky-200 dark:border-sky-800' : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700'}`}
             >
                 <i className={`fa-solid ${showAdvancedFilters ? 'fa-filter-circle-xmark' : 'fa-filter'}`}></i>
                 {showAdvancedFilters ? 'ซ่อนตัวกรอง' : 'ตัวกรองขั้นสูง'}
@@ -345,7 +345,7 @@ const History: React.FC<HistoryProps> = ({ submissions, loading, refreshList, se
         <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
              {/* Main Search (4 cols) */}
              <div className="md:col-span-4">
-                <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wide">ค้นหา (Search)</label>
+                <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 uppercase tracking-wide">ค้นหา (Search)</label>
                 <div className="relative group">
                     <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                         <i className="fa-solid fa-magnifying-glass text-slate-400 group-focus-within:text-sky-500 transition"></i>
@@ -354,7 +354,7 @@ const History: React.FC<HistoryProps> = ({ submissions, loading, refreshList, se
                         value={filter.q}
                         onChange={(e) => setFilter((p) => ({ ...p, q: e.target.value }))}
                         placeholder="ชื่อผู้ส่ง, ชื่อผลงาน, หรือหน่วยงาน..."
-                        className="w-full rounded-xl border border-slate-200 pl-11 pr-10 py-2.5 text-sm outline-none focus:ring-4 focus:ring-sky-100 transition shadow-sm"
+                        className="w-full rounded-xl border border-slate-200 dark:border-slate-700 pl-11 pr-10 py-2.5 text-sm outline-none focus:ring-4 focus:ring-sky-100 dark:focus:ring-sky-900 bg-white dark:bg-slate-800 dark:text-white transition shadow-sm"
                     />
                     {filter.q && (
                         <button
@@ -368,11 +368,11 @@ const History: React.FC<HistoryProps> = ({ submissions, loading, refreshList, se
              </div>
 
              <div className="md:col-span-2">
-                 <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wide">สถานะ (Status)</label>
+                 <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 uppercase tracking-wide">สถานะ (Status)</label>
                  <select
                     value={filter.status}
                     onChange={(e) => setFilter((p) => ({ ...p, status: e.target.value }))}
-                    className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm bg-white outline-none focus:ring-4 focus:ring-sky-100 transition shadow-sm"
+                    className="w-full rounded-xl border border-slate-200 dark:border-slate-700 px-3 py-2.5 text-sm bg-white dark:bg-slate-800 dark:text-white outline-none focus:ring-4 focus:ring-sky-100 dark:focus:ring-sky-900 transition shadow-sm"
                  >
                     <option value="all">ทั้งหมด</option>
                     <option value="submitted">ส่งแล้ว</option>
@@ -384,11 +384,11 @@ const History: React.FC<HistoryProps> = ({ submissions, loading, refreshList, se
              </div>
 
              <div className="md:col-span-3">
-                 <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wide">ประเภท (Type)</label>
+                 <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 uppercase tracking-wide">ประเภท (Type)</label>
                  <select
                     value={filter.workType}
                     onChange={(e) => setFilter((p) => ({ ...p, workType: e.target.value }))}
-                    className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm bg-white outline-none focus:ring-4 focus:ring-sky-100 transition shadow-sm"
+                    className="w-full rounded-xl border border-slate-200 dark:border-slate-700 px-3 py-2.5 text-sm bg-white dark:bg-slate-800 dark:text-white outline-none focus:ring-4 focus:ring-sky-100 dark:focus:ring-sky-900 transition shadow-sm"
                  >
                     <option value="all">ทั้งหมด</option>
                     {WORK_TYPES.map((t) => (
@@ -401,11 +401,11 @@ const History: React.FC<HistoryProps> = ({ submissions, loading, refreshList, se
 
              {/* Sorting (3 cols) */}
              <div className="md:col-span-3">
-                 <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wide">เรียงลำดับ (Sort)</label>
+                 <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 uppercase tracking-wide">เรียงลำดับ (Sort)</label>
                  <select
                     value={sortOption}
                     onChange={(e) => setSortOption(e.target.value)}
-                    className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm bg-white outline-none focus:ring-4 focus:ring-sky-100 transition shadow-sm"
+                    className="w-full rounded-xl border border-slate-200 dark:border-slate-700 px-3 py-2.5 text-sm bg-white dark:bg-slate-800 dark:text-white outline-none focus:ring-4 focus:ring-sky-100 dark:focus:ring-sky-900 transition shadow-sm"
                  >
                      <option value="updated_desc">อัปเดตล่าสุด</option>
                      <option value="updated_asc">อัปเดตเก่าสุด</option>
@@ -418,13 +418,13 @@ const History: React.FC<HistoryProps> = ({ submissions, loading, refreshList, se
         
         {/* Advanced Filters (Toggleable) */}
         {showAdvancedFilters && (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-slate-50 rounded-2xl border border-slate-100 animate-fade-in">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 animate-fade-in">
                 <div className="md:col-span-3 lg:col-span-1">
-                    <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wide">สาขา (Branch)</label>
+                    <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 uppercase tracking-wide">สาขา (Branch)</label>
                     <select
                         value={filter.branchId}
                         onChange={(e) => setFilter((p) => ({ ...p, branchId: e.target.value }))}
-                        className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm bg-white outline-none focus:ring-4 focus:ring-sky-100 transition shadow-sm"
+                        className="w-full rounded-xl border border-slate-200 dark:border-slate-700 px-3 py-2.5 text-sm bg-white dark:bg-slate-800 dark:text-white outline-none focus:ring-4 focus:ring-sky-100 dark:focus:ring-sky-900 transition shadow-sm"
                     >
                         <option value="all">ทุกสาขา</option>
                         {BRANCHES.map((b) => (
@@ -435,28 +435,28 @@ const History: React.FC<HistoryProps> = ({ submissions, loading, refreshList, se
                     </select>
                 </div>
                 <div>
-                    <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wide">ตั้งแต่วันที่</label>
+                    <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 uppercase tracking-wide">ตั้งแต่วันที่</label>
                     <input 
                         type="date"
                         value={filter.startDate}
                         onChange={(e) => setFilter((p) => ({ ...p, startDate: e.target.value }))}
-                        className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm bg-white outline-none focus:ring-4 focus:ring-sky-100 transition shadow-sm text-slate-600"
+                        className="w-full rounded-xl border border-slate-200 dark:border-slate-700 px-3 py-2.5 text-sm bg-white dark:bg-slate-800 outline-none focus:ring-4 focus:ring-sky-100 dark:focus:ring-sky-900 transition shadow-sm text-slate-600 dark:text-white"
                     />
                 </div>
                 <div>
-                    <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wide">ถึงวันที่</label>
+                    <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 uppercase tracking-wide">ถึงวันที่</label>
                     <input 
                         type="date"
                         value={filter.endDate}
                         onChange={(e) => setFilter((p) => ({ ...p, endDate: e.target.value }))}
-                        className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm bg-white outline-none focus:ring-4 focus:ring-sky-100 transition shadow-sm text-slate-600"
+                        className="w-full rounded-xl border border-slate-200 dark:border-slate-700 px-3 py-2.5 text-sm bg-white dark:bg-slate-800 outline-none focus:ring-4 focus:ring-sky-100 dark:focus:ring-sky-900 transition shadow-sm text-slate-600 dark:text-white"
                     />
                 </div>
                 
                 <div className="md:col-span-3 flex justify-end gap-3 pt-2">
                     <button
                         onClick={resetFilters}
-                        className="px-4 py-2 rounded-xl text-sm font-bold text-slate-500 hover:bg-slate-200 hover:text-slate-700 transition flex items-center gap-2"
+                        className="px-4 py-2 rounded-xl text-sm font-bold text-slate-500 hover:bg-slate-200 dark:text-slate-400 dark:hover:bg-slate-700 transition flex items-center gap-2"
                     >
                         <i className="fa-solid fa-rotate-right"></i>
                         <span>ล้างตัวกรอง</span>
@@ -469,11 +469,11 @@ const History: React.FC<HistoryProps> = ({ submissions, loading, refreshList, se
       {/* Results List */}
       <div className="mt-6 flex-1">
         <div className="flex items-center justify-between mb-3 px-1">
-          <div className="text-sm font-bold text-slate-500">
+          <div className="text-sm font-bold text-slate-500 dark:text-slate-400">
             พบข้อมูล {filtered.length} รายการ
           </div>
           {loading && (
-            <div className="text-sm font-bold text-slate-700 flex items-center gap-2">
+            <div className="text-sm font-bold text-slate-700 dark:text-slate-300 flex items-center gap-2">
               <i className="fa-solid fa-spinner animate-spin" />
               <span>กำลังโหลด...</span>
             </div>
@@ -482,13 +482,13 @@ const History: React.FC<HistoryProps> = ({ submissions, loading, refreshList, se
 
         <div className="space-y-3">
           {paginatedItems.length === 0 ? (
-            <div className="rounded-2xl bg-slate-50 ring-1 ring-slate-200 p-12 text-center">
-              <div className="h-16 w-16 bg-slate-100 text-slate-400 rounded-full mx-auto flex items-center justify-center text-3xl mb-4">
+            <div className="rounded-2xl bg-slate-50 dark:bg-slate-800 ring-1 ring-slate-200 dark:ring-slate-700 p-12 text-center">
+              <div className="h-16 w-16 bg-slate-100 dark:bg-slate-700 text-slate-400 rounded-full mx-auto flex items-center justify-center text-3xl mb-4">
                  <i className="fa-solid fa-magnifying-glass"></i>
               </div>
-              <div className="text-lg font-black text-slate-900">ไม่พบข้อมูล</div>
-              <div className="mt-1 text-sm text-slate-600">ลองปรับเปลี่ยนคำค้นหาหรือตัวกรอง</div>
-              <button onClick={resetFilters} className="mt-4 text-sky-600 font-bold text-sm hover:underline">
+              <div className="text-lg font-black text-slate-900 dark:text-white">ไม่พบข้อมูล</div>
+              <div className="mt-1 text-sm text-slate-600 dark:text-slate-400">ลองปรับเปลี่ยนคำค้นหาหรือตัวกรอง</div>
+              <button onClick={resetFilters} className="mt-4 text-sky-600 dark:text-sky-400 font-bold text-sm hover:underline">
                   ล้างตัวกรองทั้งหมด
               </button>
             </div>
@@ -496,29 +496,37 @@ const History: React.FC<HistoryProps> = ({ submissions, loading, refreshList, se
             paginatedItems.map((s) => {
               const status = STATUS_CONFIG[s.status] || STATUS_CONFIG['draft'];
               return (
-                <div key={s.id} className="rounded-3xl bg-white ring-1 ring-slate-200 shadow-sm p-4 md:p-5 hover:shadow-md transition group">
+                <div key={s.id} className="rounded-3xl bg-white dark:bg-slate-800 ring-1 ring-slate-200 dark:ring-slate-700 shadow-sm p-4 md:p-5 hover:shadow-md transition group">
                   <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-2 mb-2">
-                        <div className="text-base font-black text-slate-900 group-hover:text-sky-700 transition">
+                        <div className="text-base font-black text-slate-900 dark:text-white group-hover:text-sky-700 dark:group-hover:text-sky-400 transition">
                           {s.firstName} {s.lastName}
                         </div>
-                        <Badge tone={status.tone}>
-                          {status.label}
-                        </Badge>
-                        <Badge tone="navy">ปี {s.budgetYear}</Badge>
                         
-                        {s.status !== 'draft' && (
-                          <div className={`flex items-center gap-1.5 ml-1 px-2 py-0.5 rounded-full border bg-opacity-50 ${status.hintColor.replace('text-', 'bg-').replace('600', '50')} ${status.hintColor.replace('text-', 'border-').replace('600', '100')}`}>
-                             {s.status === 'submitted' && <div className="h-1.5 w-1.5 rounded-full bg-indigo-500 animate-pulse"></div>}
-                             <span className={`text-[10px] font-bold flex items-center gap-1 ${status.hintColor}`}>
-                                 <i className={`fa-regular ${status.icon}`}></i> {status.desc}
-                             </span>
-                          </div>
-                        )}
+                        {/* Status Badge + Visual Progression Indicator */}
+                        <div className="flex items-center gap-2">
+                          <Badge tone={status.tone}>{status.label}</Badge>
+                          
+                          {/* Progression Arrow */}
+                          {['submitted', 'reviewed'].includes(s.status) && (
+                              <div className="flex items-center text-xs text-slate-400 dark:text-slate-500 animate-pulse">
+                                 <i className="fa-solid fa-arrow-right-long mx-1"></i>
+                                 <span className="font-bold">{s.status === 'submitted' ? 'รอพิจารณา' : 'รอประกาศผล'}</span>
+                              </div>
+                          )}
+                          {['accepted', 'rejected'].includes(s.status) && (
+                              <div className="flex items-center text-xs text-slate-400 dark:text-slate-500">
+                                 <i className={`fa-solid fa-check-double mx-1 ${s.status === 'accepted' ? 'text-emerald-500' : 'text-slate-400'}`}></i>
+                                 <span className={`font-bold ${s.status === 'accepted' ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-500'}`}>ประกาศผลแล้ว</span>
+                              </div>
+                          )}
+                        </div>
+
+                        <Badge tone="navy">ปี {s.budgetYear}</Badge>
                       </div>
 
-                      <div className="text-sm text-slate-700 grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-1">
+                      <div className="text-sm text-slate-700 dark:text-slate-300 grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-1">
                          <span className="flex items-center gap-2"><i className="fa-solid fa-user-tag text-slate-400 text-xs w-4"></i> {s.position || "-"}</span>
                          <span className="flex items-center gap-2"><i className="fa-solid fa-building text-slate-400 text-xs w-4"></i> {s.organization || "-"}</span>
                       </div>
@@ -528,7 +536,7 @@ const History: React.FC<HistoryProps> = ({ submissions, loading, refreshList, se
                         <Badge tone="slate">{branchLabel(s.branchId)}</Badge>
                       </div>
 
-                      <div className="mt-3 text-xs text-slate-500 flex items-center gap-4">
+                      <div className="mt-3 text-xs text-slate-500 dark:text-slate-400 flex items-center gap-4">
                         <span><i className="fa-regular fa-clock mr-1"></i> สร้าง {formatDateTimeTH(s.createdAt)}</span>
                         <span><i className="fa-solid fa-pen-to-square mr-1"></i> อัปเดต {formatDateTimeTH(s.updatedAt)}</span>
                       </div>
@@ -538,7 +546,7 @@ const History: React.FC<HistoryProps> = ({ submissions, loading, refreshList, se
                       {s.status === "draft" ? (
                         <button
                           onClick={() => updateStatus(s.id, "submitted")}
-                          className="rounded-xl px-4 py-2 text-sm font-bold bg-slate-900 text-white hover:bg-slate-800 transition flex items-center gap-2 shadow-lg shadow-slate-200"
+                          className="rounded-xl px-4 py-2 text-sm font-bold bg-slate-900 text-white hover:bg-slate-800 dark:bg-sky-600 dark:hover:bg-sky-500 transition flex items-center gap-2 shadow-lg shadow-slate-200 dark:shadow-none"
                         >
                           <i className="fa-solid fa-paper-plane" />
                           <span>ส่ง</span>
@@ -546,7 +554,7 @@ const History: React.FC<HistoryProps> = ({ submissions, loading, refreshList, se
                       ) : s.status === 'submitted' && (
                         <button
                           onClick={() => updateStatus(s.id, "draft")}
-                          className="rounded-xl px-4 py-2 text-sm font-bold ring-1 ring-slate-200 bg-white hover:bg-slate-50 transition flex items-center gap-2"
+                          className="rounded-xl px-4 py-2 text-sm font-bold ring-1 ring-slate-200 dark:ring-slate-600 bg-white dark:bg-slate-700 hover:bg-slate-50 dark:hover:bg-slate-600 transition flex items-center gap-2 dark:text-slate-200"
                         >
                           <i className="fa-solid fa-rotate-left" />
                           <span>แก้</span>
@@ -556,7 +564,7 @@ const History: React.FC<HistoryProps> = ({ submissions, loading, refreshList, se
                       {/* Delete Button */}
                       <button 
                          onClick={() => handleDelete(s)}
-                         className="h-9 w-9 rounded-xl bg-rose-50 text-rose-600 hover:bg-rose-100 transition flex items-center justify-center border border-rose-100"
+                         className="h-9 w-9 rounded-xl bg-rose-50 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-900/50 transition flex items-center justify-center border border-rose-100 dark:border-rose-900/50"
                          title="ลบรายการ"
                       >
                          <i className="fa-solid fa-trash-can"></i>
@@ -566,33 +574,33 @@ const History: React.FC<HistoryProps> = ({ submissions, loading, refreshList, se
 
                   {/* Audit Log Section (Enhanced Timeline) */}
                   {s.audit && s.audit.length > 0 && (
-                        <div className="mt-6 pt-2 border-t border-slate-100">
+                        <div className="mt-6 pt-2 border-t border-slate-100 dark:border-slate-700">
                             <div className="text-[10px] uppercase font-bold text-slate-400 mb-4 flex items-center gap-2 tracking-wider">
                                 <i className="fa-solid fa-clock-rotate-left"></i>
                                 ประวัติการดำเนินการ (Audit Timeline)
                             </div>
                             <div className="relative pl-2 ml-1 space-y-6">
                                 {/* Vertical Connector Line */}
-                                <div className="absolute top-2 bottom-2 left-[19px] w-[2px] bg-slate-100"></div>
+                                <div className="absolute top-2 bottom-2 left-[19px] w-[2px] bg-slate-100 dark:bg-slate-700"></div>
 
                                 {s.audit.slice().reverse().map((log, idx) => {
                                     const style = getActionColors(log.action);
                                     return (
                                         <div key={idx} className="relative flex items-start gap-4">
                                             {/* Dot */}
-                                            <div className={`relative z-10 h-3 w-3 mt-1.5 rounded-full ${style.dot} ring-4 ring-white`}></div>
+                                            <div className={`relative z-10 h-3 w-3 mt-1.5 rounded-full ${style.dot} ring-4 ring-white dark:ring-slate-800`}></div>
                                             
                                             {/* Content */}
                                             <div className="flex-1 min-w-0">
                                                 <div className="flex flex-wrap items-center gap-2">
-                                                    <span className="text-xs font-bold text-slate-800">
+                                                    <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
                                                         {formatDateTimeTH(log.at)}
                                                     </span>
                                                     <span className={`px-2 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-wide ${style.bg} ${style.text}`}>
                                                         {log.action}
                                                     </span>
                                                 </div>
-                                                <div className="text-sm text-slate-600 mt-0.5 leading-relaxed break-words">
+                                                <div className="text-sm text-slate-600 dark:text-slate-400 mt-0.5 leading-relaxed break-words">
                                                     {log.note}
                                                 </div>
                                             </div>
@@ -611,8 +619,8 @@ const History: React.FC<HistoryProps> = ({ submissions, loading, refreshList, se
 
       {/* Pagination Controls */}
       {filtered.length > 0 && (
-          <div className="flex flex-col md:flex-row items-center justify-between gap-4 mt-6 pt-6 border-t border-slate-100">
-              <div className="text-sm text-slate-500 font-medium">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-4 mt-6 pt-6 border-t border-slate-100 dark:border-slate-700">
+              <div className="text-sm text-slate-500 dark:text-slate-400 font-medium">
                  แสดง {((currentPage - 1) * itemsPerPage) + 1} ถึง {Math.min(currentPage * itemsPerPage, totalItems)} จาก {totalItems} รายการ
               </div>
               
@@ -620,7 +628,7 @@ const History: React.FC<HistoryProps> = ({ submissions, loading, refreshList, se
                   <button
                      disabled={currentPage === 1}
                      onClick={() => setCurrentPage(p => p - 1)}
-                     className="h-9 w-9 rounded-lg border border-slate-200 flex items-center justify-center hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition text-slate-600"
+                     className="h-9 w-9 rounded-lg border border-slate-200 dark:border-slate-700 flex items-center justify-center hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed transition text-slate-600 dark:text-slate-300"
                   >
                      <i className="fa-solid fa-chevron-left text-xs"></i>
                   </button>
@@ -631,7 +639,7 @@ const History: React.FC<HistoryProps> = ({ submissions, loading, refreshList, se
                             <button
                                 key={i}
                                 onClick={() => setCurrentPage(p)}
-                                className={`h-9 w-9 rounded-lg font-bold text-sm transition ${currentPage === p ? 'bg-slate-900 text-white shadow-md' : 'text-slate-500 hover:bg-slate-100'}`}
+                                className={`h-9 w-9 rounded-lg font-bold text-sm transition ${currentPage === p ? 'bg-slate-900 text-white shadow-md dark:bg-sky-600' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700'}`}
                             >
                                 {p}
                             </button>
@@ -644,7 +652,7 @@ const History: React.FC<HistoryProps> = ({ submissions, loading, refreshList, se
                   <button
                      disabled={currentPage === totalPages}
                      onClick={() => setCurrentPage(p => p + 1)}
-                     className="h-9 w-9 rounded-lg border border-slate-200 flex items-center justify-center hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition text-slate-600"
+                     className="h-9 w-9 rounded-lg border border-slate-200 dark:border-slate-700 flex items-center justify-center hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed transition text-slate-600 dark:text-slate-300"
                   >
                      <i className="fa-solid fa-chevron-right text-xs"></i>
                   </button>
@@ -653,7 +661,7 @@ const History: React.FC<HistoryProps> = ({ submissions, loading, refreshList, se
               <select 
                  value={itemsPerPage}
                  onChange={(e) => setItemsPerPage(Number(e.target.value))}
-                 className="rounded-xl border border-slate-200 py-2 px-3 text-sm outline-none focus:ring-2 focus:ring-sky-100 bg-white cursor-pointer hover:border-slate-300 transition"
+                 className="rounded-xl border border-slate-200 dark:border-slate-700 py-2 px-3 text-sm outline-none focus:ring-2 focus:ring-sky-100 dark:focus:ring-sky-900 bg-white dark:bg-slate-800 dark:text-white cursor-pointer hover:border-slate-300 transition"
               >
                   <option value={10}>10 รายการ / หน้า</option>
                   <option value={20}>20 รายการ / หน้า</option>

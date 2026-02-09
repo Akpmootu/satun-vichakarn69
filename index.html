@@ -23,6 +23,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
       tailwind.config = {
+        darkMode: 'class',
         theme: {
           extend: {
             fontFamily: {
@@ -70,7 +71,8 @@
     <style>
       body {
         font-family: 'Kanit', sans-serif;
-        background-color: #f8fafc; /* Slate-50 */
+        /* Default light mode bg handled by App.tsx classes now, but keeping fallback */
+        background-color: #f8fafc; 
       }
       /* Custom scrollbar for better aesthetics */
       ::-webkit-scrollbar {
