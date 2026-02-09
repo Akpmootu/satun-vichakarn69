@@ -8,6 +8,8 @@ import History from "./components/History";
 import Dashboard from "./components/Dashboard";
 import Settings from "./components/Settings";
 import Home from "./components/Home";
+import AdminPanel from "./components/AdminPanel";
+import ReviewerPanel from "./components/ReviewerPanel";
 import NewsModal from "./components/NewsModal";
 import UserAuthModal from "./components/UserAuthModal";
 import Toast from "./components/ui/Toast";
@@ -53,10 +55,11 @@ export default function App() {
     const dontShowAgain = localStorage.getItem("svk_dont_show_news");
     const hasSeenSession = sessionStorage.getItem("svk_has_seen_news");
     
-    if (!dontShowAgain && !hasSeenSession) {
-      setTimeout(() => setShowNews(true), 1500); // Small delay to let initial load finish
+    // Only show news for regular users or guests
+    if (!dontShowAgain && !hasSeenSession && (!currentUser || currentUser.role === 'user')) {
+      setTimeout(() => setShowNews(true), 1500); 
     }
-  }, []);
+  }, [currentUser]);
 
   const handleOpenNews = (index: number = 0) => {
       setNewsStartIndex(index);
@@ -87,7 +90,8 @@ export default function App() {
   const loadData = async () => {
     setLoading(true);
     try {
-      const userId = currentUser?.id; 
+      // Pass null userId if admin or reviewer to fetch all
+      const userId = (currentUser?.role === 'admin' || currentUser?.role === 'reviewer') ? undefined : currentUser?.id; 
       const data = await apiListSubmissions(settings, userId);
       setSubmissions(Array.isArray(data) ? data : []);
     } catch (e: any) {
@@ -115,8 +119,9 @@ export default function App() {
   };
 
   // Reload data when settings change or tab switches to history/analytics
+  // OR if user just logged in as admin/reviewer
   useEffect(() => {
-    if (activeTab === 'history' || activeTab === 'analytics' || (activeTab === 'home' && currentUser)) {
+    if (activeTab === 'history' || activeTab === 'analytics' || currentUser) {
        loadData();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -130,13 +135,17 @@ export default function App() {
     { id: "settings", label: "ตั้งค่า", icon: "fa-gear" },
   ];
 
+  // Helper to check if special view
+  const isAdmin = currentUser?.role === 'admin';
+  const isReviewer = currentUser?.role === 'reviewer';
+
   return (
     <div className={`min-h-screen font-sans pb-10 flex flex-col transition-colors duration-300 ${darkMode ? 'bg-slate-950 text-slate-100' : 'bg-slate-50 text-slate-900'}`}>
       
       {/* Full Screen Loading Overlay */}
       <LoadingOverlay isLoading={isPageLoading} />
 
-      {/* News Popup Modal */}
+      {/* News Popup Modal (Only standard flow) */}
       <NewsModal isOpen={showNews} onClose={handleCloseNews} initialIndex={newsStartIndex} />
       
       {/* Auth Modal */}
@@ -178,7 +187,11 @@ export default function App() {
              {currentUser ? (
                  <div className={`flex items-center gap-3 pl-3 border-l transition-colors duration-300 ${darkMode ? 'border-slate-700' : 'border-slate-200'}`}>
                      <div className="hidden md:block text-right">
-                         <div className={`text-xs font-bold ${darkMode ? 'text-slate-200' : 'text-slate-900'}`}>{currentUser.firstName}</div>
+                         <div className={`text-xs font-bold ${darkMode ? 'text-slate-200' : 'text-slate-900'}`}>
+                             {currentUser.firstName} 
+                             {isAdmin && <span className="ml-2 px-1.5 py-0.5 bg-rose-500 text-white rounded text-[10px] uppercase">Admin</span>}
+                             {isReviewer && <span className="ml-2 px-1.5 py-0.5 bg-indigo-500 text-white rounded text-[10px] uppercase">Reviewer</span>}
+                         </div>
                          <div className={`text-[10px] ${darkMode ? 'text-slate-500' : 'text-slate-500'}`}>{currentUser.position}</div>
                      </div>
                      <button 
@@ -204,71 +217,90 @@ export default function App() {
 
       <main className="flex-grow max-w-7xl w-full mx-auto px-4 mt-8">
         
-        {/* Navigation Tabs */}
-        <nav className="flex overflow-x-auto pb-4 gap-2 no-scrollbar mb-6 justify-center md:justify-start">
-          {tabs.map(tab => (
-             <button
-                key={tab.id}
-                onClick={() => handleTabChange(tab.id)}
-                className={`whitespace-nowrap flex items-center gap-2 px-6 py-3 rounded-full text-sm font-bold transition-all duration-300 border ${
-                    activeTab === tab.id 
-                    ? (darkMode ? 'bg-sky-600 text-white border-sky-600 shadow-lg shadow-sky-900/50 transform -translate-y-1' : 'bg-slate-900 text-white shadow-lg shadow-slate-300 transform -translate-y-1 border-slate-900')
-                    : (darkMode ? 'bg-slate-900 text-slate-400 border-slate-800 hover:bg-slate-800 hover:text-white' : 'bg-white text-slate-500 hover:bg-slate-100 border-slate-200 hover:border-slate-300 hover:text-slate-700')
-                }`}
-                >
-                <i className={`fa-solid ${tab.icon}`} />
-                {tab.label}
-             </button>
-          ))}
-        </nav>
-
-        {/* Content Area */}
-        <div className="min-h-[600px] animate-fade-in">
-           {activeTab === 'home' && (
-              <Home 
-                onNavigate={handleTabChange} 
-                currentUser={currentUser}
-                onLoginRequest={() => setShowAuth(true)}
-                userSubmissions={submissions.filter(s => s.userId === currentUser?.id)}
-                showToast={showToast}
-                onOpenNews={handleOpenNews}
-              />
-           )}
-
-           {activeTab === 'register' && (
-             <Registration 
+        {/* Render Special Panels for Admin/Reviewer OR Standard Tabs for Users */}
+        {isAdmin ? (
+            <AdminPanel 
+                submissions={submissions} 
                 settings={settings} 
-                showToast={showToast}
-                currentUser={currentUser} 
-                onSuccess={() => {
-                  loadData(); 
-                  handleTabChange('history');
-                }} 
-             />
-           )}
-           
-           {activeTab === 'history' && (
-             <History 
-                submissions={submissions}
-                loading={loading} 
-                refreshList={loadData} 
-                settings={settings} 
+                refreshData={loadData} 
                 showToast={showToast} 
-             />
-           )}
-           
-           {activeTab === 'analytics' && (
-             <Dashboard submissions={submissions} />
-           )}
-           
-           {activeTab === 'settings' && (
-             <Settings 
+            />
+        ) : isReviewer ? (
+            <ReviewerPanel 
+                submissions={submissions} 
                 settings={settings} 
-                onUpdate={setSettings} 
+                refreshData={loadData} 
                 showToast={showToast} 
-             />
-           )}
-        </div>
+            />
+        ) : (
+            <>
+                {/* Navigation Tabs (Only for standard users) */}
+                <nav className="flex overflow-x-auto pb-4 gap-2 no-scrollbar mb-6 justify-center md:justify-start">
+                {tabs.map(tab => (
+                    <button
+                        key={tab.id}
+                        onClick={() => handleTabChange(tab.id)}
+                        className={`whitespace-nowrap flex items-center gap-2 px-6 py-3 rounded-full text-sm font-bold transition-all duration-300 border ${
+                            activeTab === tab.id 
+                            ? (darkMode ? 'bg-sky-600 text-white border-sky-600 shadow-lg shadow-sky-900/50 transform -translate-y-1' : 'bg-slate-900 text-white shadow-lg shadow-slate-300 transform -translate-y-1 border-slate-900')
+                            : (darkMode ? 'bg-slate-900 text-slate-400 border-slate-800 hover:bg-slate-800 hover:text-white' : 'bg-white text-slate-500 hover:bg-slate-100 border-slate-200 hover:border-slate-300 hover:text-slate-700')
+                        }`}
+                        >
+                        <i className={`fa-solid ${tab.icon}`} />
+                        {tab.label}
+                    </button>
+                ))}
+                </nav>
+
+                {/* Content Area */}
+                <div className="min-h-[600px] animate-fade-in">
+                {activeTab === 'home' && (
+                    <Home 
+                        onNavigate={handleTabChange} 
+                        currentUser={currentUser}
+                        onLoginRequest={() => setShowAuth(true)}
+                        userSubmissions={submissions.filter(s => s.userId === currentUser?.id)}
+                        showToast={showToast}
+                        onOpenNews={handleOpenNews}
+                    />
+                )}
+
+                {activeTab === 'register' && (
+                    <Registration 
+                        settings={settings} 
+                        showToast={showToast}
+                        currentUser={currentUser} 
+                        onSuccess={() => {
+                        loadData(); 
+                        handleTabChange('history');
+                        }} 
+                    />
+                )}
+                
+                {activeTab === 'history' && (
+                    <History 
+                        submissions={submissions}
+                        loading={loading} 
+                        refreshList={loadData} 
+                        settings={settings} 
+                        showToast={showToast} 
+                    />
+                )}
+                
+                {activeTab === 'analytics' && (
+                    <Dashboard submissions={submissions} />
+                )}
+                
+                {activeTab === 'settings' && (
+                    <Settings 
+                        settings={settings} 
+                        onUpdate={setSettings} 
+                        showToast={showToast} 
+                    />
+                )}
+                </div>
+            </>
+        )}
 
       </main>
 

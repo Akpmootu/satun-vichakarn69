@@ -1,4 +1,4 @@
-import { BranchOption, WorkTypeOption } from './types';
+import { BranchOption, WorkTypeOption, NewsItem } from './types';
 
 export const APP_NAME = "SKMS";
 export const BUDGET_YEAR = 2569;
@@ -33,7 +33,7 @@ export const BRANCHES: BranchOption[] = [
   { id: 20, label: "ดิจิทัลสุขภาพ (Digital Health)" },
 ];
 
-export const PR_NEWS = [
+export const PR_NEWS: NewsItem[] = [
   {
     id: 1,
     title: "เปิดเวทีแลกเปลี่ยนเรียนรู้ SKMS Forum 2569",

@@ -1,4 +1,5 @@
 export type SubmissionStatus = 'draft' | 'submitted' | 'reviewed' | 'accepted' | 'rejected';
+export type UserRole = 'user' | 'admin' | 'reviewer';
 
 export interface AuditLog {
   at: string;
@@ -11,9 +12,10 @@ export interface UserProfile {
   firstName: string;
   lastName: string;
   email: string;
-  phone: string;
-  organization: string;
-  position: string;
+  phone?: string;
+  organization?: string;
+  position?: string;
+  role: UserRole;
 }
 
 export interface Submission {
@@ -29,10 +31,21 @@ export interface Submission {
   workType: string;
   branchId: number;
   fileUrl?: string; // Base64 or URL of the uploaded file
+  fileName?: string;
   status: SubmissionStatus;
   createdAt: string;
   updatedAt: string;
   audit: AuditLog[];
+}
+
+export interface NewsItem {
+  id: number;
+  title: string;
+  date: string;
+  desc: string;
+  type: 'news' | 'download';
+  imageUrl?: string;
+  fileType?: string;
 }
 
 export interface AppSettings {

@@ -1,10 +1,12 @@
-import { AppSettings, Submission, UserProfile } from '../types';
+import { AppSettings, Submission, UserProfile, NewsItem } from '../types';
+import { PR_NEWS } from '../constants';
 
 const LS_KEYS = {
   submissions: "svk_submissions_v1",
   settings: "svk_settings_v1",
   users: "svk_users_v1",
-  currentUser: "svk_current_user_v1"
+  currentUser: "svk_current_user_v1",
+  news: "svk_news_v1"
 };
 
 export function nowISO(): string {
@@ -39,15 +41,50 @@ export async function apiRegisterUser(user: UserProfile): Promise<UserProfile> {
         throw new Error("อีเมลนี้ถูกลงทะเบียนแล้ว");
     }
 
-    users.push(user);
+    // Default role is user
+    const newUser = { ...user, role: 'user' as const };
+
+    users.push(newUser);
     localStorage.setItem(LS_KEYS.users, JSON.stringify(users));
-    localStorage.setItem(LS_KEYS.currentUser, JSON.stringify(user)); // Auto login
-    return user;
+    localStorage.setItem(LS_KEYS.currentUser, JSON.stringify(newUser)); // Auto login
+    return newUser;
 }
 
-export async function apiLoginUser(email: string): Promise<UserProfile> {
-    // Mock Login (Check email only for prototype)
+export async function apiLoginUser(email: string, password?: string): Promise<UserProfile> {
+    // Mock Login
     await new Promise((r) => setTimeout(r, 800));
+
+    // 1. Check Hardcoded Admin
+    if (email === 'admin' && password === 'admin123') {
+        const admin: UserProfile = {
+            id: 'admin_001',
+            firstName: 'System',
+            lastName: 'Administrator',
+            email: 'admin@skms.go.th',
+            role: 'admin',
+            position: 'IT Admin',
+            organization: 'SSJ Satun'
+        };
+        localStorage.setItem(LS_KEYS.currentUser, JSON.stringify(admin));
+        return admin;
+    }
+
+    // 2. Check Hardcoded Reviewer
+    if (email === 'reviewer' && password === 'review123') {
+        const reviewer: UserProfile = {
+            id: 'reviewer_001',
+            firstName: 'กรรมการ',
+            lastName: 'ผู้ทรงคุณวุฒิ',
+            email: 'committee@skms.go.th',
+            role: 'reviewer',
+            position: 'Senior Expert',
+            organization: 'Ministry of Public Health'
+        };
+        localStorage.setItem(LS_KEYS.currentUser, JSON.stringify(reviewer));
+        return reviewer;
+    }
+
+    // 3. Check Registered Users
     const users: UserProfile[] = safeJsonParse(localStorage.getItem(LS_KEYS.users), []);
     const found = users.find(u => u.email === email);
     
@@ -55,6 +92,33 @@ export async function apiLoginUser(email: string): Promise<UserProfile> {
     
     localStorage.setItem(LS_KEYS.currentUser, JSON.stringify(found));
     return found;
+}
+
+// --- News Management (Mock) ---
+export function apiGetNews(): NewsItem[] {
+    const stored = localStorage.getItem(LS_KEYS.news);
+    if (stored) {
+        return JSON.parse(stored);
+    }
+    // Initialize with default constant if empty
+    localStorage.setItem(LS_KEYS.news, JSON.stringify(PR_NEWS));
+    return PR_NEWS;
+}
+
+export async function apiAddNews(item: Omit<NewsItem, 'id'>): Promise<NewsItem> {
+    await new Promise((r) => setTimeout(r, 500));
+    const news = apiGetNews();
+    const newItem = { ...item, id: Date.now() };
+    const updated = [newItem, ...news];
+    localStorage.setItem(LS_KEYS.news, JSON.stringify(updated));
+    return newItem;
+}
+
+export async function apiDeleteNews(id: number): Promise<void> {
+    await new Promise((r) => setTimeout(r, 300));
+    const news = apiGetNews();
+    const updated = news.filter(n => n.id !== id);
+    localStorage.setItem(LS_KEYS.news, JSON.stringify(updated));
 }
 
 // --- LocalStorage Mock Helpers ---
@@ -114,6 +178,9 @@ export async function apiListSubmissions(settings: AppSettings, userId?: string)
   if (settings.mode === "mock") {
     await new Promise((r) => setTimeout(r, 400)); // Simulate latency
     const all = loadSubmissions();
+    // If no userId provided, it might be admin viewing all, 
+    // BUT usually we filter by user in the UI for normal users.
+    // The Service simply returns filtered if requested.
     if (userId) {
         return all.filter(s => s.userId === userId);
     }
@@ -121,7 +188,6 @@ export async function apiListSubmissions(settings: AppSettings, userId?: string)
   }
 
   if (!settings.apiBaseUrl) throw new Error("กรุณาตั้งค่า Base URL ของ API ก่อน");
-  // In real API, we would pass userId or token
   const res = await fetchWithBackoff(`${settings.apiBaseUrl}/submissions`);
   return await res.json();
 }

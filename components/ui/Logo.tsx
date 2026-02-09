@@ -32,11 +32,11 @@ const Logo: React.FC<{ className?: string }> = ({ className = "h-12" }) => {
       {/* Text Logo */}
       <div className="flex flex-col justify-center">
          <div className="flex items-baseline gap-1 animate-scale-subtle" style={{ animationDelay: '1.5s' }}>
-            <span className="text-2xl md:text-3xl font-black tracking-tighter text-slate-900 leading-none group-hover:text-sky-700 transition">SKMS</span>
+            <span className="text-3xl md:text-4xl font-black tracking-tighter text-slate-900 dark:text-white leading-none group-hover:text-sky-600 transition" style={{ textShadow: '2px 2px 0px rgba(14,165,233,0.1)' }}>SKMS</span>
          </div>
          <div className="flex flex-col leading-none mt-0.5">
-            <span className="text-[9px] md:text-[10px] font-bold text-slate-500 tracking-wide uppercase">Satun Knowledge</span>
-            <span className="text-[9px] md:text-[10px] font-bold text-sky-600 tracking-wide uppercase">Management Systems</span>
+            <span className="text-[9px] md:text-[10px] font-bold text-slate-500 dark:text-slate-400 tracking-wide uppercase">Satun Knowledge</span>
+            <span className="text-[9px] md:text-[10px] font-bold text-sky-600 dark:text-sky-400 tracking-wide uppercase">Management Systems</span>
          </div>
       </div>
     </div>
