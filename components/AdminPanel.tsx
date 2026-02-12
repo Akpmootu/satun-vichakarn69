@@ -20,6 +20,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ submissions, settings, refreshD
   const [userList, setUserList] = useState<UserProfile[]>([]);
   const [reviewerList, setReviewerList] = useState<UserProfile[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(false);
+  const [updatingUser, setUpdatingUser] = useState<string | null>(null); // Track specific user update
 
   // Submissions Filter State
   const [filter, setFilter] = useState({ q: '', branch: 'all', status: 'all' });
@@ -134,6 +135,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ submissions, settings, refreshD
   };
 
   const handleUpdateUserRole = async (user: UserProfile, newRole: UserRole) => {
+      // If same role, do nothing
       if (user.role === newRole) return;
 
       const result = await Swal.fire({
@@ -148,17 +150,58 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ submissions, settings, refreshD
       });
 
       if (result.isConfirmed) {
+          setUpdatingUser(user.id);
           try {
               await apiUpdateUserRole(user.id, newRole);
-              // Optimistic update
+              
+              // Success
+              showToast({ type: 'success', title: 'สำเร็จ', message: `ปรับสิทธิ์เป็น ${newRole} เรียบร้อยแล้ว` });
+              
+              // Update local state to reflect change immediately
               setUserList(prev => prev.map(u => u.id === user.id ? { ...u, role: newRole } : u));
-              fetchReviewers(); // Refresh reviewer list
-              showToast({ type: 'success', title: 'สำเร็จ', message: `ปรับสิทธิ์ผู้ใช้งานเรียบร้อยแล้ว` });
+              
+              // Trigger background refresh to sync everything
+              fetchReviewers();
           } catch (e: any) {
-              showToast({ type: 'error', title: 'ผิดพลาด', message: e.message });
-              fetchUsers(); // Revert on error
+              console.error(e);
+              
+              if (e.message === 'RLS_BLOCK') {
+                  // Show Help Dialog for Developers/Admins
+                  await Swal.fire({
+                      title: 'ไม่สามารถบันทึกได้',
+                      html: `
+                        <div class="text-left text-sm text-slate-600 space-y-2">
+                            <p class="font-bold text-rose-600"><i class="fa-solid fa-triangle-exclamation"></i> ติดสิทธิ์ของระบบฐานข้อมูล (RLS Policy)</p>
+                            <p>เนื่องจาก Supabase เปิดใช้งาน Row Level Security โดยค่าเริ่มต้น ทำให้ Admin ไม่สามารถแก้ไขข้อมูลคนอื่นได้หากไม่มี Policy รองรับ</p>
+                            <div class="bg-slate-900 text-slate-200 p-3 rounded-lg font-mono text-xs overflow-x-auto mt-2 select-all">
+                                <span class="text-slate-400">-- รันคำสั่งนี้ใน Supabase SQL Editor</span><br/>
+                                CREATE POLICY "Admins can update user roles"<br/>
+                                ON profiles<br/>
+                                FOR UPDATE<br/>
+                                USING (<br/>
+                                &nbsp;&nbsp;(SELECT role FROM profiles WHERE id = auth.uid()) = 'admin'<br/>
+                                );
+                            </div>
+                        </div>
+                      `,
+                      icon: 'error',
+                      confirmButtonText: 'เข้าใจแล้ว',
+                      customClass: { popup: 'rounded-3xl' }
+                  });
+              } else {
+                  showToast({ type: 'error', title: 'เปลี่ยนสิทธิ์ไม่สำเร็จ', message: e.message });
+              }
+              
+              // Revert by fetching list again
+              fetchUsers();
+          } finally {
+              setUpdatingUser(null);
           }
-      } 
+      } else {
+          // If cancelled, the select box might visually show the new value.
+          // Force a re-render of the list to snap it back to original value.
+          setUserList(prev => [...prev]); 
+      }
   };
 
   const handleDeleteSubmission = async (id: string) => {
@@ -448,22 +491,30 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ submissions, settings, refreshD
                                     </td>
                                     <td className="p-4">
                                         <div className="relative inline-block w-40">
-                                            <select 
-                                                value={u.role} 
-                                                onChange={(e) => handleUpdateUserRole(u, e.target.value as UserRole)}
-                                                className={`w-full appearance-none pl-3 pr-8 py-1.5 rounded-lg text-xs font-bold border outline-none cursor-pointer transition
-                                                    ${u.role === 'admin' ? 'bg-rose-50 border-rose-200 text-rose-700 focus:ring-rose-200' : 
-                                                      u.role === 'reviewer' ? 'bg-indigo-50 border-indigo-200 text-indigo-700 focus:ring-indigo-200' : 
-                                                      'bg-slate-50 border-slate-200 text-slate-600 focus:ring-slate-200'}
-                                                `}
-                                            >
-                                                <option value="user">User</option>
-                                                <option value="reviewer">Reviewer</option>
-                                                <option value="admin">Admin</option>
-                                            </select>
-                                            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-slate-500">
-                                                <i className="fa-solid fa-chevron-down text-[10px]"></i>
-                                            </div>
+                                            {updatingUser === u.id ? (
+                                                <div className="flex items-center gap-2 text-sky-600 text-xs font-bold px-3 py-2 bg-sky-50 rounded-lg animate-pulse">
+                                                    <i className="fa-solid fa-circle-notch animate-spin"></i> กำลังบันทึก...
+                                                </div>
+                                            ) : (
+                                                <>
+                                                    <select 
+                                                        value={u.role} 
+                                                        onChange={(e) => handleUpdateUserRole(u, e.target.value as UserRole)}
+                                                        className={`w-full appearance-none pl-3 pr-8 py-1.5 rounded-lg text-xs font-bold border outline-none cursor-pointer transition
+                                                            ${u.role === 'admin' ? 'bg-rose-50 border-rose-200 text-rose-700 focus:ring-rose-200' : 
+                                                            u.role === 'reviewer' ? 'bg-indigo-50 border-indigo-200 text-indigo-700 focus:ring-indigo-200' : 
+                                                            'bg-slate-50 border-slate-200 text-slate-600 focus:ring-slate-200'}
+                                                        `}
+                                                    >
+                                                        <option value="user">User</option>
+                                                        <option value="reviewer">Reviewer</option>
+                                                        <option value="admin">Admin</option>
+                                                    </select>
+                                                    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-slate-500">
+                                                        <i className="fa-solid fa-chevron-down text-[10px]"></i>
+                                                    </div>
+                                                </>
+                                            )}
                                         </div>
                                     </td>
                                     <td className="p-4 text-right text-xs text-slate-400">

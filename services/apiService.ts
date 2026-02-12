@@ -34,7 +34,7 @@ const mapProfileFromDB = (data: any): UserProfile => ({
     organization: data.organization,
     position: data.position,
     level: data.level, // Map level
-    role: data.role // 'user' | 'admin' | 'reviewer' handled by DB value
+    role: data.role || 'user' // Default to 'user' if null for safety
 });
 
 // --- Auth Methods (Supabase Auth) ---
@@ -200,12 +200,20 @@ export async function apiGetUsersByRole(role: UserRole): Promise<UserProfile[]> 
 }
 
 export async function apiUpdateUserRole(userId: string, newRole: UserRole): Promise<void> {
-    const { error } = await supabase
+    // IMPORTANT: Check for successful update by selecting the returned row
+    const { data, error } = await supabase
         .from('profiles')
         .update({ role: newRole })
-        .eq('id', userId);
+        .eq('id', userId)
+        .select();
 
     if (error) throw new Error(error.message);
+    
+    // If no data returned, it means RLS blocked the update or row not found
+    if (!data || data.length === 0) {
+        // We throw a specific error code to be caught by the UI
+        throw new Error("RLS_BLOCK");
+    }
 }
 
 // --- News Management ---

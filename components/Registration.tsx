@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { BRANCHES, BUDGET_YEAR, WORK_TYPES } from '../constants';
 import { AppSettings, Submission, UserProfile, SubmissionStatus } from '../types';
@@ -377,6 +378,10 @@ const Registration: React.FC<RegistrationProps> = ({ settings, onSuccess, showTo
       // Serialize attachments to JSON string
       const filePayload = attachments.length > 0 ? JSON.stringify(attachments) : "";
 
+      // 🟢 Logic: If it was 'reviewed' and we submit edit, it MUST go back to 'submitted'
+      // If it was draft, it goes to 'submitted' (if submitting) or stays 'draft'
+      let nextStatus: SubmissionStatus = mode === 'submit' ? 'submitted' : 'draft';
+      
       // Common fields
       const basePayload = {
         userId: currentUser.id,
@@ -390,18 +395,28 @@ const Registration: React.FC<RegistrationProps> = ({ settings, onSuccess, showTo
         workType: form.workType,
         branchId: Number(form.branchId),
         fileUrl: filePayload, 
-        status: (mode === 'submit' ? 'submitted' : 'draft') as SubmissionStatus,
+        status: nextStatus,
       };
 
       if (editingSubmission) {
            // --- UPDATE MODE ---
+           let action = mode === 'submit' ? 'UPDATE_SUBMIT' : 'UPDATE_DRAFT';
+           let note = mode === 'submit' ? 'แก้ไขและส่งผลงาน' : 'แก้ไขฉบับร่าง';
+
+           // Special case: User correcting a review
+           if (editingSubmission.status === 'reviewed' && mode === 'submit') {
+                action = 'USER_FIXED';
+                note = 'แก้ไขงานตามข้อเสนอแนะเรียบร้อยแล้ว';
+                basePayload.status = 'submitted'; // Force back to submitted to lock it
+           }
+
            // Preserve existing audit log and add new entry
            const newAudit = [
                ...(editingSubmission.audit || []),
                {
                    at: nowISO(),
-                   action: mode === 'submit' ? 'UPDATE_SUBMIT' : 'UPDATE_DRAFT',
-                   note: mode === 'submit' ? 'แก้ไขและส่งผลงาน' : 'แก้ไขฉบับร่าง'
+                   action: action,
+                   note: note
                }
            ];
            
@@ -413,7 +428,7 @@ const Registration: React.FC<RegistrationProps> = ({ settings, onSuccess, showTo
            if (mode === 'submit') {
                 await Swal.fire({
                     title: 'แก้ไขข้อมูลสำเร็จ!',
-                    text: 'ข้อมูลของท่านได้รับการปรับปรุงเรียบร้อยแล้ว',
+                    text: 'ข้อมูลของท่านได้รับการปรับปรุงและส่งให้คณะกรรมการแล้ว',
                     icon: 'success',
                     confirmButtonColor: '#0ea5e9',
                     confirmButtonText: 'ตกลง',

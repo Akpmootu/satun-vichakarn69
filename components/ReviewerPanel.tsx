@@ -1,3 +1,4 @@
+
 import React, { useMemo } from 'react';
 import { Submission, AppSettings, SubmissionStatus } from '../types';
 import { apiUpdateSubmission } from '../services/apiService';
@@ -34,6 +35,11 @@ const ReviewerPanel: React.FC<ReviewerPanelProps> = ({ submissions, settings, re
     } catch (e) {
         return [];
     }
+  };
+
+  const hasUserUpdate = (s: Submission) => {
+      const lastAudit = s.audit && s.audit.length > 0 ? s.audit[s.audit.length - 1] : null;
+      return lastAudit && lastAudit.action === 'USER_FIXED';
   };
 
   const handleGrade = async (s: Submission) => {
@@ -121,11 +127,20 @@ const ReviewerPanel: React.FC<ReviewerPanelProps> = ({ submissions, settings, re
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {pendingReviews.map(s => {
                         const attachments = parseAttachments(s.fileUrl);
+                        const isUpdated = hasUserUpdate(s);
+                        
                         return (
-                        <div key={s.id} className="bg-white dark:bg-slate-800 rounded-2xl p-5 shadow-sm ring-1 ring-slate-200 dark:ring-slate-700 hover:shadow-md transition group">
+                        <div key={s.id} className={`bg-white dark:bg-slate-800 rounded-2xl p-5 shadow-sm ring-1 transition group ${isUpdated ? 'ring-sky-400 shadow-sky-100' : 'ring-slate-200 dark:ring-slate-700 hover:shadow-md'}`}>
                             <div className="flex justify-between items-start mb-3">
                                 <div>
-                                    <div className="font-bold text-lg text-slate-900 dark:text-white">{s.firstName} {s.lastName}</div>
+                                    <div className="font-bold text-lg text-slate-900 dark:text-white flex items-center gap-2">
+                                        {s.firstName} {s.lastName}
+                                        {isUpdated && (
+                                            <span className="bg-sky-500 text-white text-[10px] px-2 py-0.5 rounded-full animate-pulse">
+                                                แก้ไขแล้ว
+                                            </span>
+                                        )}
+                                    </div>
                                     <div className="text-sm text-slate-500">{s.organization}</div>
                                 </div>
                                 <Badge tone="navy">{s.status}</Badge>
