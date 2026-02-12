@@ -1,7 +1,8 @@
-import React, { useEffect, useState } from "react";
+
+import React, { useEffect, useState, useRef, useCallback } from "react";
 import { BUDGET_YEAR } from "./constants";
 import { AppSettings, Submission, ToastMessage, UserProfile } from "./types";
-import { apiListSubmissions, loadSettings, getCurrentUser, logoutUser } from "./services/apiService";
+import { apiListSubmissions, loadSettings, getCurrentUser, logoutUser, apiGetUserProfile } from "./services/apiService";
 
 import Registration from "./components/Registration";
 import History from "./components/History";
@@ -15,6 +16,9 @@ import UserAuthModal from "./components/UserAuthModal";
 import Toast from "./components/ui/Toast";
 import Logo from "./components/ui/Logo";
 import LoadingOverlay from "./components/ui/LoadingOverlay";
+
+// Declare Swal globally
+declare const Swal: any;
 
 export default function App() {
   const [activeTab, setActiveTab] = useState("home");
@@ -41,6 +45,10 @@ export default function App() {
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [loading, setLoading] = useState(false);
 
+  // Auto Logout Timer Ref
+  const inactivityTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const INACTIVITY_LIMIT = 30 * 60 * 1000; // 30 Minutes
+
   // Apply Dark Mode Class
   useEffect(() => {
     if (darkMode) {
@@ -53,6 +61,25 @@ export default function App() {
 
   const toggleDarkMode = () => setDarkMode(!darkMode);
 
+  // --- Profile Sync Logic ---
+  useEffect(() => {
+      // If user is logged in, try to fetch the latest profile from DB to check for Role updates
+      if (currentUser) {
+          apiGetUserProfile(currentUser.id)
+            .then(freshProfile => {
+                // If role or details changed in DB, update local state
+                if (JSON.stringify(freshProfile) !== JSON.stringify(currentUser)) {
+                    setCurrentUser(freshProfile);
+                    localStorage.setItem("svk_supabase_user", JSON.stringify(freshProfile));
+                    if (freshProfile.role !== currentUser.role) {
+                        showToast({type: 'info', title: 'อัปเดตสิทธิ์', message: `สิทธิ์ของคุณเปลี่ยนเป็น: ${freshProfile.role.toUpperCase()}`});
+                    }
+                }
+            })
+            .catch(err => console.error("Sync profile failed:", err));
+      }
+  }, []); // Run once on mount
+
   // Check Session for News Popup
   useEffect(() => {
     const dontShowAgain = localStorage.getItem("svk_dont_show_news");
@@ -63,6 +90,62 @@ export default function App() {
       setTimeout(() => setShowNews(true), 1500); 
     }
   }, [currentUser]);
+
+  // --- Auto Logout Logic ---
+  const performLogoutAction = useCallback((isAuto: boolean = false) => {
+    logoutUser();
+    setCurrentUser(null);
+    setSubmissions([]); 
+    setEditingSubmission(null);
+    handleTabChange('home');
+
+    if (isAuto) {
+        Swal.fire({
+            title: 'หมดเวลาการใช้งาน',
+            text: 'ระบบออกจากระบบอัตโนมัติเนื่องจากไม่มีการใช้งานเกิน 30 นาที',
+            icon: 'info',
+            confirmButtonText: 'ตกลง',
+            confirmButtonColor: '#0ea5e9',
+            customClass: { popup: 'rounded-3xl' }
+        });
+    } else {
+        showToast({ type: 'info', title: 'ออกจากระบบ', message: 'ไว้พบกันใหม่ครับ' });
+    }
+  }, []);
+
+  const resetInactivityTimer = useCallback(() => {
+    if (inactivityTimer.current) clearTimeout(inactivityTimer.current);
+    
+    if (currentUser) {
+        inactivityTimer.current = setTimeout(() => {
+            performLogoutAction(true);
+        }, INACTIVITY_LIMIT);
+    }
+  }, [currentUser, performLogoutAction]);
+
+  useEffect(() => {
+    if (currentUser) {
+        // Add event listeners to detect activity
+        window.addEventListener('mousemove', resetInactivityTimer);
+        window.addEventListener('keydown', resetInactivityTimer);
+        window.addEventListener('click', resetInactivityTimer);
+        window.addEventListener('scroll', resetInactivityTimer);
+        
+        // Initial start
+        resetInactivityTimer();
+    } else {
+        if (inactivityTimer.current) clearTimeout(inactivityTimer.current);
+    }
+
+    return () => {
+        if (inactivityTimer.current) clearTimeout(inactivityTimer.current);
+        window.removeEventListener('mousemove', resetInactivityTimer);
+        window.removeEventListener('keydown', resetInactivityTimer);
+        window.removeEventListener('click', resetInactivityTimer);
+        window.removeEventListener('scroll', resetInactivityTimer);
+    };
+  }, [currentUser, resetInactivityTimer]);
+  // -------------------------
 
   const handleOpenNews = (index: number = 0) => {
       setNewsStartIndex(index);
@@ -82,13 +165,27 @@ export default function App() {
     setTimeout(() => setToast(null), 4000);
   };
 
-  const handleLogout = () => {
-      logoutUser();
-      setCurrentUser(null);
-      setSubmissions([]); 
-      setEditingSubmission(null);
-      handleTabChange('home');
-      showToast({ type: 'info', title: 'ออกจากระบบ', message: 'ไว้พบกันใหม่ครับ' });
+  const handleLogout = async () => {
+      const result = await Swal.fire({
+          title: 'ยืนยันการออกจากระบบ?',
+          text: 'คุณต้องการออกจากระบบใช่หรือไม่',
+          icon: 'question',
+          showCancelButton: true,
+          confirmButtonColor: '#f43f5e', // rose-500
+          cancelButtonColor: '#64748b',
+          confirmButtonText: '<i class="fa-solid fa-right-from-bracket mr-2"></i>ออกจากระบบ',
+          cancelButtonText: 'ยกเลิก',
+          focusCancel: true,
+          customClass: {
+              popup: 'rounded-3xl',
+              confirmButton: 'rounded-xl px-4 py-2',
+              cancelButton: 'rounded-xl px-4 py-2'
+          }
+      });
+
+      if (result.isConfirmed) {
+          performLogoutAction(false);
+      }
   };
 
   const loadData = async () => {
@@ -107,7 +204,8 @@ export default function App() {
 
   // Simulate Page Loading when switching tabs
   const handleTabChange = (tabId: string) => {
-      if (tabId === activeTab) return;
+      // Allow re-clicking home to reset view or just return if same tab
+      if (tabId === activeTab && tabId !== 'home') return;
 
       if ((tabId === 'register' || tabId === 'history') && !currentUser) {
           showToast({ type: 'info', title: 'ต้องเข้าสู่ระบบ', message: 'กรุณาเข้าสู่ระบบก่อนใช้งานเมนูนี้' });
@@ -124,7 +222,7 @@ export default function App() {
       setTimeout(() => {
           setActiveTab(tabId);
           setIsPageLoading(false);
-      }, 2500); // Increased delay to 2.5s for better reading experience
+      }, 800); // Reduced delay slightly for snappier feel
   };
 
   const handleEditSubmission = (submission: Submission) => {
@@ -133,7 +231,7 @@ export default function App() {
       setTimeout(() => {
           setActiveTab('register');
           setIsPageLoading(false);
-      }, 1000);
+      }, 800);
   };
 
   // Reload data when settings change or tab switches to history/analytics
@@ -203,18 +301,36 @@ export default function App() {
              </button>
              
              {currentUser ? (
-                 <div className={`flex items-center gap-3 pl-3 border-l transition-colors duration-300 ${darkMode ? 'border-slate-700' : 'border-slate-200'}`}>
-                     <div className="hidden md:block text-right">
-                         <div className={`text-xs font-bold ${darkMode ? 'text-slate-200' : 'text-slate-900'}`}>
-                             {currentUser.firstName} 
-                             {isAdmin && <span className="ml-2 px-1.5 py-0.5 bg-rose-500 text-white rounded text-[10px] uppercase">Admin</span>}
-                             {isReviewer && <span className="ml-2 px-1.5 py-0.5 bg-indigo-500 text-white rounded text-[10px] uppercase">Reviewer</span>}
+                 <div className="flex items-center gap-3 pl-3">
+                     <div className={`hidden md:flex items-center gap-3 px-3 py-1.5 rounded-2xl border transition-all duration-300 shadow-sm
+                        ${darkMode ? 'bg-slate-800/50 border-slate-700' : 'bg-white border-slate-200 hover:shadow-md'}`}>
+                         
+                         {/* Avatar Circle */}
+                         <div className={`h-9 w-9 rounded-full flex items-center justify-center text-sm font-bold border-2
+                            ${isAdmin ? 'bg-rose-100 text-rose-600 border-rose-200' : 
+                              isReviewer ? 'bg-indigo-100 text-indigo-600 border-indigo-200' : 
+                              'bg-sky-100 text-sky-600 border-sky-200'}
+                         `}>
+                             {currentUser.firstName.charAt(0)}
                          </div>
-                         <div className={`text-[10px] ${darkMode ? 'text-slate-500' : 'text-slate-500'}`}>{currentUser.position}</div>
+
+                         <div className="text-right leading-tight">
+                             <div className={`text-sm font-bold ${darkMode ? 'text-slate-200' : 'text-slate-800'}`}>
+                                 {currentUser.firstName} {currentUser.lastName}
+                             </div>
+                             <div className="flex items-center justify-end gap-2">
+                                 <span className="text-[10px] text-slate-500 font-medium">{currentUser.position || 'สมาชิกทั่วไป'}</span>
+                                 {isAdmin && <span className="px-1.5 py-0.5 rounded bg-rose-500 text-white text-[9px] font-bold uppercase tracking-wider">Admin</span>}
+                                 {isReviewer && <span className="px-1.5 py-0.5 rounded bg-indigo-500 text-white text-[9px] font-bold uppercase tracking-wider">Reviewer</span>}
+                             </div>
+                         </div>
                      </div>
+
+                     <div className={`h-8 w-px ${darkMode ? 'bg-slate-700' : 'bg-slate-200'} mx-1 hidden md:block`}></div>
+
                      <button 
                         onClick={handleLogout}
-                        className={`h-10 w-10 rounded-full flex items-center justify-center hover:bg-slate-700 transition shadow-lg ${darkMode ? 'bg-slate-800 text-white shadow-slate-900' : 'bg-slate-900 text-white shadow-slate-300'}`}
+                        className={`h-10 w-10 rounded-full flex items-center justify-center hover:bg-slate-700 hover:scale-105 active:scale-95 transition shadow-lg border-2 ${darkMode ? 'bg-slate-800 text-rose-400 border-slate-700 shadow-slate-900' : 'bg-white text-rose-500 border-slate-100 shadow-slate-200'}`}
                         title="ออกจากระบบ"
                      >
                          <i className="fa-solid fa-power-off"></i>

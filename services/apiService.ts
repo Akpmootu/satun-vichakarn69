@@ -1,4 +1,5 @@
-import { AppSettings, Submission, UserProfile, NewsItem } from '../types';
+
+import { AppSettings, Submission, UserProfile, NewsItem, UserRole } from '../types';
 import { supabase } from '../lib/supabaseClient';
 import { PR_NEWS } from '../constants';
 
@@ -6,6 +7,7 @@ import { PR_NEWS } from '../constants';
 const mapSubmissionFromDB = (data: any): Submission => ({
     id: data.id,
     userId: data.user_id,
+    reviewerId: data.reviewer_id, // Map from DB
     budgetYear: data.budget_year,
     firstName: data.first_name,
     lastName: data.last_name,
@@ -31,7 +33,8 @@ const mapProfileFromDB = (data: any): UserProfile => ({
     phone: data.phone,
     organization: data.organization,
     position: data.position,
-    role: data.role
+    level: data.level, // Map level
+    role: data.role // 'user' | 'admin' | 'reviewer' handled by DB value
 });
 
 // --- Auth Methods (Supabase Auth) ---
@@ -46,9 +49,21 @@ export function logoutUser() {
     localStorage.removeItem("svk_supabase_user");
 }
 
+export async function apiGetUserProfile(userId: string): Promise<UserProfile> {
+    const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single();
+
+    if (error) throw new Error(error.message);
+    return mapProfileFromDB(data);
+}
+
 export async function apiRegisterUser(user: UserProfile, password?: string): Promise<UserProfile> {
     const finalPassword = password || 'password123';
     
+    // 1. Sign up with Supabase Auth
     const { data: authData, error: authError } = await supabase.auth.signUp({
         email: user.email,
         password: finalPassword,
@@ -80,15 +95,17 @@ export async function apiRegisterUser(user: UserProfile, password?: string): Pro
     
     if (!authData.user) throw new Error("ไม่สามารถสร้างผู้ใช้งานได้");
 
+    // 2. Insert extra details into 'profiles' table
     const profilePayload = {
-        id: authData.user.id,
+        id: authData.user.id, // Link to auth.users.id
         first_name: user.firstName,
         last_name: user.lastName,
         email: user.email,
         phone: user.phone,
         organization: user.organization,
         position: user.position,
-        role: 'user'
+        level: user.level || null, // Insert level
+        role: 'user' // Default role is always user
     };
 
     const { error: dbError } = await supabase
@@ -98,6 +115,7 @@ export async function apiRegisterUser(user: UserProfile, password?: string): Pro
         .single();
 
     if (dbError) {
+        // Handle case where profile might already exist (rare race condition or cleanup issue)
         if (dbError.code === '23505') { // Unique violation
              const { data: existingProfile } = await supabase
                 .from('profiles')
@@ -121,20 +139,9 @@ export async function apiRegisterUser(user: UserProfile, password?: string): Pro
 }
 
 export async function apiLoginUser(email: string, password?: string): Promise<UserProfile> {
-    // Admin/Reviewer Mock Logic
-    if (email === 'admin' && password === 'admin123') {
-        const admin: UserProfile = { id: 'admin_mock', firstName: 'System', lastName: 'Administrator', email: 'admin@skms.go.th', role: 'admin', position: 'IT Admin', organization: 'SSJ Satun' };
-        localStorage.setItem("svk_supabase_user", JSON.stringify(admin));
-        return admin;
-    }
-    if (email === 'reviewer' && password === 'review123') {
-        const reviewer: UserProfile = { id: 'reviewer_mock', firstName: 'กรรมการ', lastName: 'ผู้ทรงคุณวุฒิ', email: 'committee@skms.go.th', role: 'reviewer', position: 'Senior Expert', organization: 'Ministry of Public Health' };
-        localStorage.setItem("svk_supabase_user", JSON.stringify(reviewer));
-        return reviewer;
-    }
-
     const finalPassword = password || 'password123';
 
+    // 1. Authenticate with Supabase Auth
     const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password: finalPassword,
@@ -148,31 +155,85 @@ export async function apiLoginUser(email: string, password?: string): Promise<Us
     
     if (!data.user) throw new Error("ไม่พบผู้ใช้งาน");
 
+    // 2. Fetch Profile details (Role, Organization, Name) from 'profiles' table
     const { data: profileData, error: profileError } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', data.user.id)
         .single();
 
-    if (profileError || !profileData) throw new Error("ไม่พบข้อมูลโปรไฟล์ (Profile Missing)");
+    if (profileError || !profileData) {
+        // Fallback if profile missing (Should not happen if registered correctly)
+        console.error("Profile missing for user:", data.user.id);
+        throw new Error("ไม่พบข้อมูลโปรไฟล์ (Profile Missing) - กรุณาติดต่อผู้ดูแลระบบ");
+    }
 
     const userProfile = mapProfileFromDB(profileData);
+    
+    // Save session
     localStorage.setItem("svk_supabase_user", JSON.stringify(userProfile));
     
     return userProfile;
 }
 
+// --- User Management API (Admin Only) ---
+export async function apiGetAllUsers(): Promise<UserProfile[]> {
+    // FIX: Changed order from 'created_at' to 'first_name' to avoid "column does not exist" error
+    const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .order('first_name', { ascending: true });
+        
+    if (error) throw new Error(error.message);
+    return data.map(mapProfileFromDB);
+}
+
+export async function apiGetUsersByRole(role: UserRole): Promise<UserProfile[]> {
+    const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('role', role)
+        .order('first_name', { ascending: true });
+        
+    if (error) throw new Error(error.message);
+    return data.map(mapProfileFromDB);
+}
+
+export async function apiUpdateUserRole(userId: string, newRole: UserRole): Promise<void> {
+    const { error } = await supabase
+        .from('profiles')
+        .update({ role: newRole })
+        .eq('id', userId);
+
+    if (error) throw new Error(error.message);
+}
+
 // --- News Management ---
-export function apiGetNews(): NewsItem[] { return PR_NEWS; }
+// Changed from hardcoded PR_NEWS to DB query
+export function apiGetNews(): NewsItem[] { return PR_NEWS; } // Fallback sync
 export async function apiFetchNewsAsync(): Promise<NewsItem[]> {
     const { data, error } = await supabase.from('news').select('*').order('id', { ascending: false });
     if (error) { console.error(error); return PR_NEWS; }
+    
     return data.map((d: any) => ({
-        id: d.id, title: d.title, date: d.date, desc: d.desc, type: d.type as 'news'|'download', imageUrl: d.image_url, fileType: d.file_type
+        id: d.id, 
+        title: d.title, 
+        date: d.date, 
+        desc: d.desc, 
+        type: d.type as 'news'|'download', 
+        imageUrl: d.image_url, 
+        fileType: d.file_type
     }));
 }
 export async function apiAddNews(item: Omit<NewsItem, 'id'>): Promise<NewsItem> {
-    const payload = { title: item.title, date: item.date, desc: item.desc, type: item.type, image_url: item.imageUrl || null, file_type: item.fileType || null };
+    const payload = { 
+        title: item.title, 
+        date: item.date, 
+        desc: item.desc, 
+        type: item.type, 
+        image_url: item.imageUrl || null, 
+        file_type: item.fileType || null 
+    };
     const { data, error } = await supabase.from('news').insert([payload]).select().single();
     if (error) throw new Error(error.message);
     return { ...item, id: data.id };
@@ -190,7 +251,14 @@ export function nowISO(): string { return new Date().toISOString(); }
 // --- API Methods (Submissions) ---
 export async function apiListSubmissions(settings: AppSettings, userId?: string): Promise<Submission[]> {
     let query = supabase.from('submissions').select('*').order('created_at', { ascending: false });
-    if (userId && !userId.startsWith('admin_') && !userId.startsWith('reviewer_')) { query = query.eq('user_id', userId); }
+    
+    // If userId provided, filter by it. EXCEPT if the requesting user is 'admin' or 'reviewer' (handled in logic layer, but here we expect 'userId' param to be the filter target)
+    // NOTE: In App.tsx logic: const userId = (currentUser?.role === 'admin' || currentUser?.role === 'reviewer') ? undefined : currentUser?.id;
+    // So if userId is undefined, it fetches ALL. If defined, fetches specific user.
+    if (userId) { 
+        query = query.eq('user_id', userId); 
+    }
+    
     const { data, error } = await query;
     if (error) throw new Error(error.message);
     return data.map(mapSubmissionFromDB);
@@ -198,10 +266,21 @@ export async function apiListSubmissions(settings: AppSettings, userId?: string)
 
 export async function apiCreateSubmission(settings: AppSettings, payload: Submission): Promise<Submission> {
     const dbPayload = {
-        user_id: payload.userId, budget_year: payload.budgetYear, first_name: payload.firstName, last_name: payload.lastName,
-        email: payload.email, phone: payload.phone, position: payload.position, organization: payload.organization,
-        work_type: payload.workType, branch_id: payload.branchId, file_url: payload.fileUrl, file_name: payload.fileName,
-        status: payload.status, audit: payload.audit
+        user_id: payload.userId, 
+        reviewer_id: payload.reviewerId || null,
+        budget_year: payload.budgetYear, 
+        first_name: payload.firstName, 
+        last_name: payload.lastName,
+        email: payload.email, 
+        phone: payload.phone, 
+        position: payload.position, 
+        organization: payload.organization,
+        work_type: payload.workType, 
+        branch_id: payload.branchId, 
+        file_url: payload.fileUrl, 
+        file_name: payload.fileName,
+        status: payload.status, 
+        audit: payload.audit
     };
     const { data, error } = await supabase.from('submissions').insert([dbPayload]).select().single();
     if (error) throw new Error(error.message);
@@ -211,9 +290,10 @@ export async function apiCreateSubmission(settings: AppSettings, payload: Submis
 export async function apiUpdateSubmission(settings: AppSettings, id: string, patch: Partial<Submission>): Promise<Submission> {
     const dbPatch: any = { updated_at: new Date().toISOString() };
     
-    // Status & Audit
+    // Status & Audit & Reviewer
     if (patch.status) dbPatch.status = patch.status;
     if (patch.audit) dbPatch.audit = patch.audit;
+    if (patch.reviewerId !== undefined) dbPatch.reviewer_id = patch.reviewerId;
 
     // Personal Info
     if (patch.firstName) dbPatch.first_name = patch.firstName;

@@ -1,3 +1,4 @@
+
 export type SubmissionStatus = 'draft' | 'submitted' | 'reviewed' | 'accepted' | 'rejected';
 export type UserRole = 'user' | 'admin' | 'reviewer';
 
@@ -15,12 +16,14 @@ export interface UserProfile {
   phone?: string;
   organization?: string;
   position?: string;
+  level?: string; // Added level
   role: UserRole;
 }
 
 export interface Submission {
   id: string;
   userId?: string; // Link to user
+  reviewerId?: string; // Link to assigned reviewer
   budgetYear: number;
   firstName: string;
   lastName: string;
