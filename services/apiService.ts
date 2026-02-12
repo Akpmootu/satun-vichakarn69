@@ -1,249 +1,240 @@
 import { AppSettings, Submission, UserProfile, NewsItem } from '../types';
+import { supabase } from '../lib/supabaseClient';
 import { PR_NEWS } from '../constants';
 
-const LS_KEYS = {
-  submissions: "svk_submissions_v1",
-  settings: "svk_settings_v1",
-  users: "svk_users_v1",
-  currentUser: "svk_current_user_v1",
-  news: "svk_news_v1"
-};
+// --- Helper Types for DB Mapping ---
+const mapSubmissionFromDB = (data: any): Submission => ({
+    id: data.id,
+    userId: data.user_id,
+    budgetYear: data.budget_year,
+    firstName: data.first_name,
+    lastName: data.last_name,
+    email: data.email,
+    phone: data.phone,
+    position: data.position,
+    organization: data.organization,
+    workType: data.work_type,
+    branchId: data.branch_id,
+    fileUrl: data.file_url,
+    fileName: data.file_name,
+    status: data.status,
+    createdAt: data.created_at,
+    updatedAt: data.updated_at,
+    audit: data.audit || []
+});
 
-export function nowISO(): string {
-  return new Date().toISOString();
-}
+const mapProfileFromDB = (data: any): UserProfile => ({
+    id: data.id,
+    firstName: data.first_name,
+    lastName: data.last_name,
+    email: data.email,
+    phone: data.phone,
+    organization: data.organization,
+    position: data.position,
+    role: data.role
+});
 
-function safeJsonParse<T>(v: string | null, fallback: T): T {
-  if (!v) return fallback;
-  try {
-    return JSON.parse(v);
-  } catch {
-    return fallback;
-  }
-}
+// --- Auth Methods (Supabase Auth) ---
 
-// --- Auth Helpers ---
 export function getCurrentUser(): UserProfile | null {
-    return safeJsonParse(localStorage.getItem(LS_KEYS.currentUser), null);
+    const stored = localStorage.getItem("svk_supabase_user");
+    return stored ? JSON.parse(stored) : null;
 }
 
 export function logoutUser() {
-    localStorage.removeItem(LS_KEYS.currentUser);
+    supabase.auth.signOut();
+    localStorage.removeItem("svk_supabase_user");
 }
 
-export async function apiRegisterUser(user: UserProfile): Promise<UserProfile> {
-    // Mock Registration
-    await new Promise((r) => setTimeout(r, 800));
-    const users: UserProfile[] = safeJsonParse(localStorage.getItem(LS_KEYS.users), []);
+export async function apiRegisterUser(user: UserProfile, password?: string): Promise<UserProfile> {
+    const finalPassword = password || 'password123';
     
-    // Check duplicate (simple check)
-    if (users.find(u => u.email === user.email)) {
-        throw new Error("อีเมลนี้ถูกลงทะเบียนแล้ว");
+    const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: user.email,
+        password: finalPassword,
+        options: {
+            data: {
+                first_name: user.firstName,
+                last_name: user.lastName
+            }
+        }
+    });
+
+    if (authError) {
+        console.error("Supabase Auth Error:", authError);
+        // Translate common Supabase errors to Thai
+        if (authError.message.includes('already registered')) {
+            throw new Error("อีเมลนี้ถูกลงทะเบียนไว้แล้ว กรุณาเข้าสู่ระบบ");
+        }
+        if (authError.message.includes('security purposes')) {
+            throw new Error("กรุณารอสักครู่แล้วลองใหม่ (ติด Rate Limit ของ Supabase)");
+        }
+        if (authError.message.includes('Email signups are disabled')) {
+            throw new Error("ระบบปิดรับสมัครผ่านอีเมล (กรุณาเปิด Enable Email Provider ใน Supabase)");
+        }
+        if (authError.message.includes('Password should be')) {
+            throw new Error("รหัสผ่านต้องมีความยาวอย่างน้อย 6 ตัวอักษร");
+        }
+        throw new Error(authError.message);
+    }
+    
+    if (!authData.user) throw new Error("ไม่สามารถสร้างผู้ใช้งานได้");
+
+    const profilePayload = {
+        id: authData.user.id,
+        first_name: user.firstName,
+        last_name: user.lastName,
+        email: user.email,
+        phone: user.phone,
+        organization: user.organization,
+        position: user.position,
+        role: 'user'
+    };
+
+    const { error: dbError } = await supabase
+        .from('profiles')
+        .insert([profilePayload])
+        .select()
+        .single();
+
+    if (dbError) {
+        if (dbError.code === '23505') { // Unique violation
+             const { data: existingProfile } = await supabase
+                .from('profiles')
+                .select('*')
+                .eq('id', authData.user.id)
+                .single();
+             
+             if (existingProfile) {
+                 const mapped = mapProfileFromDB(existingProfile);
+                 localStorage.setItem("svk_supabase_user", JSON.stringify(mapped));
+                 return mapped;
+             }
+        }
+        throw new Error("บันทึกข้อมูลส่วนตัวไม่สำเร็จ: " + dbError.message);
     }
 
-    // Default role is user
-    const newUser = { ...user, role: 'user' as const };
-
-    users.push(newUser);
-    localStorage.setItem(LS_KEYS.users, JSON.stringify(users));
-    localStorage.setItem(LS_KEYS.currentUser, JSON.stringify(newUser)); // Auto login
+    const newUser = { ...user, id: authData.user.id, role: 'user' as const };
+    localStorage.setItem("svk_supabase_user", JSON.stringify(newUser));
+    
     return newUser;
 }
 
 export async function apiLoginUser(email: string, password?: string): Promise<UserProfile> {
-    // Mock Login
-    await new Promise((r) => setTimeout(r, 800));
-
-    // 1. Check Hardcoded Admin
+    // Admin/Reviewer Mock Logic
     if (email === 'admin' && password === 'admin123') {
-        const admin: UserProfile = {
-            id: 'admin_001',
-            firstName: 'System',
-            lastName: 'Administrator',
-            email: 'admin@skms.go.th',
-            role: 'admin',
-            position: 'IT Admin',
-            organization: 'SSJ Satun'
-        };
-        localStorage.setItem(LS_KEYS.currentUser, JSON.stringify(admin));
+        const admin: UserProfile = { id: 'admin_mock', firstName: 'System', lastName: 'Administrator', email: 'admin@skms.go.th', role: 'admin', position: 'IT Admin', organization: 'SSJ Satun' };
+        localStorage.setItem("svk_supabase_user", JSON.stringify(admin));
         return admin;
     }
-
-    // 2. Check Hardcoded Reviewer
     if (email === 'reviewer' && password === 'review123') {
-        const reviewer: UserProfile = {
-            id: 'reviewer_001',
-            firstName: 'กรรมการ',
-            lastName: 'ผู้ทรงคุณวุฒิ',
-            email: 'committee@skms.go.th',
-            role: 'reviewer',
-            position: 'Senior Expert',
-            organization: 'Ministry of Public Health'
-        };
-        localStorage.setItem(LS_KEYS.currentUser, JSON.stringify(reviewer));
+        const reviewer: UserProfile = { id: 'reviewer_mock', firstName: 'กรรมการ', lastName: 'ผู้ทรงคุณวุฒิ', email: 'committee@skms.go.th', role: 'reviewer', position: 'Senior Expert', organization: 'Ministry of Public Health' };
+        localStorage.setItem("svk_supabase_user", JSON.stringify(reviewer));
         return reviewer;
     }
 
-    // 3. Check Registered Users
-    const users: UserProfile[] = safeJsonParse(localStorage.getItem(LS_KEYS.users), []);
-    const found = users.find(u => u.email === email);
-    
-    if (!found) throw new Error("ไม่พบข้อมูลผู้ใช้งานนี้");
-    
-    localStorage.setItem(LS_KEYS.currentUser, JSON.stringify(found));
-    return found;
-}
+    const finalPassword = password || 'password123';
 
-// --- News Management (Mock) ---
-export function apiGetNews(): NewsItem[] {
-    const stored = localStorage.getItem(LS_KEYS.news);
-    if (stored) {
-        return JSON.parse(stored);
+    const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password: finalPassword,
+    });
+
+    if (error) {
+         if (error.message.includes('Invalid login')) throw new Error("อีเมลหรือรหัสผ่านไม่ถูกต้อง");
+         if (error.message.includes('Email not confirmed')) throw new Error("กรุณายืนยันอีเมลก่อนเข้าสู่ระบบ (หรือปิด Confirm Email ใน Supabase)");
+         throw new Error(error.message);
     }
-    // Initialize with default constant if empty
-    localStorage.setItem(LS_KEYS.news, JSON.stringify(PR_NEWS));
-    return PR_NEWS;
+    
+    if (!data.user) throw new Error("ไม่พบผู้ใช้งาน");
+
+    const { data: profileData, error: profileError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', data.user.id)
+        .single();
+
+    if (profileError || !profileData) throw new Error("ไม่พบข้อมูลโปรไฟล์ (Profile Missing)");
+
+    const userProfile = mapProfileFromDB(profileData);
+    localStorage.setItem("svk_supabase_user", JSON.stringify(userProfile));
+    
+    return userProfile;
 }
 
+// --- News Management ---
+export function apiGetNews(): NewsItem[] { return PR_NEWS; }
+export async function apiFetchNewsAsync(): Promise<NewsItem[]> {
+    const { data, error } = await supabase.from('news').select('*').order('id', { ascending: false });
+    if (error) { console.error(error); return PR_NEWS; }
+    return data.map((d: any) => ({
+        id: d.id, title: d.title, date: d.date, desc: d.desc, type: d.type as 'news'|'download', imageUrl: d.image_url, fileType: d.file_type
+    }));
+}
 export async function apiAddNews(item: Omit<NewsItem, 'id'>): Promise<NewsItem> {
-    await new Promise((r) => setTimeout(r, 500));
-    const news = apiGetNews();
-    const newItem = { ...item, id: Date.now() };
-    const updated = [newItem, ...news];
-    localStorage.setItem(LS_KEYS.news, JSON.stringify(updated));
-    return newItem;
+    const payload = { title: item.title, date: item.date, desc: item.desc, type: item.type, image_url: item.imageUrl || null, file_type: item.fileType || null };
+    const { data, error } = await supabase.from('news').insert([payload]).select().single();
+    if (error) throw new Error(error.message);
+    return { ...item, id: data.id };
 }
-
 export async function apiDeleteNews(id: number): Promise<void> {
-    await new Promise((r) => setTimeout(r, 300));
-    const news = apiGetNews();
-    const updated = news.filter(n => n.id !== id);
-    localStorage.setItem(LS_KEYS.news, JSON.stringify(updated));
+    const { error } = await supabase.from('news').delete().eq('id', id);
+    if (error) throw new Error(error.message);
 }
 
-// --- LocalStorage Mock Helpers ---
-function loadSubmissions(): Submission[] {
-  return safeJsonParse(localStorage.getItem(LS_KEYS.submissions), []);
-}
+// --- Settings Helpers ---
+export function loadSettings(): AppSettings { return { mode: "real", apiBaseUrl: "SUPABASE" }; }
+export function saveSettings(s: AppSettings) { /* No-op */ }
+export function nowISO(): string { return new Date().toISOString(); }
 
-function saveSubmissions(items: Submission[]) {
-  localStorage.setItem(LS_KEYS.submissions, JSON.stringify(items));
-}
-
-export function loadSettings(): AppSettings {
-  return safeJsonParse(localStorage.getItem(LS_KEYS.settings), { 
-    mode: "mock", 
-    apiBaseUrl: "" 
-  });
-}
-
-export function saveSettings(s: AppSettings) {
-  localStorage.setItem(LS_KEYS.settings, JSON.stringify(s));
-}
-
-// --- Exponential Backoff Fetcher ---
-async function fetchWithBackoff(url: string, options: RequestInit = {}, config = { maxRetries: 3 }) {
-  const { maxRetries } = config;
-  const baseDelayMs = 500;
-  
-  const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
-
-  for (let attempt = 0; attempt <= maxRetries; attempt++) {
-    try {
-      const res = await fetch(url, options);
-      if (!res.ok) {
-         // Retry on 429 or 5xx
-        if ((res.status === 429 || res.status >= 500) && attempt < maxRetries) {
-          throw new Error(`Server Error ${res.status}`);
-        }
-        const text = await res.text().catch(() => "");
-        throw new Error(`API Error (${res.status}): ${text}`);
-      }
-      return res;
-    } catch (err: any) {
-      if (attempt < maxRetries) {
-        const delay = baseDelayMs * Math.pow(2, attempt); // Exponential
-        await sleep(delay);
-        continue;
-      }
-      throw err;
-    }
-  }
-  throw new Error("Max retries reached");
-}
-
-// --- API Methods ---
-
+// --- API Methods (Submissions) ---
 export async function apiListSubmissions(settings: AppSettings, userId?: string): Promise<Submission[]> {
-  if (settings.mode === "mock") {
-    await new Promise((r) => setTimeout(r, 400)); // Simulate latency
-    const all = loadSubmissions();
-    // If no userId provided, it might be admin viewing all, 
-    // BUT usually we filter by user in the UI for normal users.
-    // The Service simply returns filtered if requested.
-    if (userId) {
-        return all.filter(s => s.userId === userId);
-    }
-    return all;
-  }
-
-  if (!settings.apiBaseUrl) throw new Error("กรุณาตั้งค่า Base URL ของ API ก่อน");
-  const res = await fetchWithBackoff(`${settings.apiBaseUrl}/submissions`);
-  return await res.json();
+    let query = supabase.from('submissions').select('*').order('created_at', { ascending: false });
+    if (userId && !userId.startsWith('admin_') && !userId.startsWith('reviewer_')) { query = query.eq('user_id', userId); }
+    const { data, error } = await query;
+    if (error) throw new Error(error.message);
+    return data.map(mapSubmissionFromDB);
 }
 
 export async function apiCreateSubmission(settings: AppSettings, payload: Submission): Promise<Submission> {
-  if (settings.mode === "mock") {
-    await new Promise((r) => setTimeout(r, 600));
-    const all = loadSubmissions();
-    const item = { ...payload };
-    all.unshift(item);
-    saveSubmissions(all);
-    return item;
-  }
-
-  if (!settings.apiBaseUrl) throw new Error("กรุณาตั้งค่า Base URL ของ API ก่อน");
-  const res = await fetchWithBackoff(`${settings.apiBaseUrl}/submissions`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
-  return await res.json();
+    const dbPayload = {
+        user_id: payload.userId, budget_year: payload.budgetYear, first_name: payload.firstName, last_name: payload.lastName,
+        email: payload.email, phone: payload.phone, position: payload.position, organization: payload.organization,
+        work_type: payload.workType, branch_id: payload.branchId, file_url: payload.fileUrl, file_name: payload.fileName,
+        status: payload.status, audit: payload.audit
+    };
+    const { data, error } = await supabase.from('submissions').insert([dbPayload]).select().single();
+    if (error) throw new Error(error.message);
+    return mapSubmissionFromDB(data);
 }
 
 export async function apiUpdateSubmission(settings: AppSettings, id: string, patch: Partial<Submission>): Promise<Submission> {
-  if (settings.mode === "mock") {
-    await new Promise((r) => setTimeout(r, 300));
-    const all = loadSubmissions();
-    const idx = all.findIndex((x) => x.id === id);
-    if (idx === -1) throw new Error("ไม่พบรายการ");
+    const dbPatch: any = { updated_at: new Date().toISOString() };
     
-    const updated = { ...all[idx], ...patch, updatedAt: nowISO() };
-    all[idx] = updated;
-    saveSubmissions(all);
-    return updated;
-  }
+    // Status & Audit
+    if (patch.status) dbPatch.status = patch.status;
+    if (patch.audit) dbPatch.audit = patch.audit;
 
-  if (!settings.apiBaseUrl) throw new Error("กรุณาตั้งค่า Base URL ของ API ก่อน");
-  const res = await fetchWithBackoff(`${settings.apiBaseUrl}/submissions/${id}`, {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(patch),
-  });
-  return await res.json();
+    // Personal Info
+    if (patch.firstName) dbPatch.first_name = patch.firstName;
+    if (patch.lastName) dbPatch.last_name = patch.lastName;
+    if (patch.position) dbPatch.position = patch.position;
+    if (patch.organization) dbPatch.organization = patch.organization;
+    if (patch.email) dbPatch.email = patch.email;
+    if (patch.phone) dbPatch.phone = patch.phone;
+
+    // Work Info
+    if (patch.workType) dbPatch.work_type = patch.workType;
+    if (patch.branchId) dbPatch.branch_id = patch.branchId;
+    if (patch.fileUrl) dbPatch.file_url = patch.fileUrl;
+    if (patch.fileName) dbPatch.file_name = patch.fileName;
+
+    const { data, error } = await supabase.from('submissions').update(dbPatch).eq('id', id).select().single();
+    if (error) throw new Error(error.message);
+    return mapSubmissionFromDB(data);
 }
 
 export async function apiDeleteSubmission(settings: AppSettings, id: string): Promise<void> {
-  if (settings.mode === "mock") {
-    await new Promise((r) => setTimeout(r, 500));
-    const all = loadSubmissions();
-    const filtered = all.filter((x) => x.id !== id);
-    saveSubmissions(filtered);
-    return;
-  }
-
-  if (!settings.apiBaseUrl) throw new Error("กรุณาตั้งค่า Base URL ของ API ก่อน");
-  await fetchWithBackoff(`${settings.apiBaseUrl}/submissions/${id}`, {
-    method: "DELETE",
-  });
+    const { error } = await supabase.from('submissions').delete().eq('id', id);
+    if (error) throw new Error(error.message);
 }

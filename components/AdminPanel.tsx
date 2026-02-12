@@ -120,6 +120,18 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ submissions, settings, refreshD
           showToast({ type: 'success', title: 'ลบสำเร็จ', message: 'ลบข่าวเรียบร้อยแล้ว' });
       }
   };
+  
+  const parseAttachments = (fileUrl?: string) => {
+    if (!fileUrl) return [];
+    try {
+        if (fileUrl.startsWith('[')) {
+            return JSON.parse(fileUrl);
+        }
+        return [{ type: 'file', value: fileUrl, name: 'ไฟล์แนบ' }];
+    } catch (e) {
+        return [];
+    }
+  };
 
   return (
     <div className="space-y-6 animate-fade-in pb-12">
@@ -191,7 +203,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ submissions, settings, refreshD
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
-                            {filteredSubmissions.map(s => (
+                            {filteredSubmissions.map(s => {
+                                const attachments = parseAttachments(s.fileUrl);
+                                return (
                                 <tr key={s.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/50 transition">
                                     <td className="p-4">
                                         <div className="font-bold text-slate-900 dark:text-white">{s.firstName} {s.lastName}</div>
@@ -203,10 +217,16 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ submissions, settings, refreshD
                                             <Badge tone="slate">{WORK_TYPES.find(w => w.id === s.workType)?.label}</Badge>
                                         </div>
                                         <div className="text-xs text-slate-600 dark:text-slate-300">{BRANCHES.find(b => b.id === s.branchId)?.label}</div>
-                                        {s.fileUrl && (
-                                            <a href={s.fileUrl} target="_blank" className="text-sky-600 text-xs font-bold hover:underline mt-1 inline-block">
-                                                <i className="fa-solid fa-paperclip mr-1"></i> ดูไฟล์แนบ
-                                            </a>
+                                        
+                                        {attachments.length > 0 && (
+                                            <div className="mt-1 flex flex-col gap-1">
+                                                {attachments.map((f: any, i: number) => (
+                                                    <a key={i} href={f.value} target="_blank" className="text-sky-600 text-xs font-bold hover:underline truncate block">
+                                                        <i className={`fa-solid ${f.type === 'link' ? 'fa-link' : 'fa-paperclip'} mr-1`}></i> 
+                                                        {f.name || 'Attachment'}
+                                                    </a>
+                                                ))}
+                                            </div>
                                         )}
                                     </td>
                                     <td className="p-4">
@@ -224,7 +244,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ submissions, settings, refreshD
                                         </div>
                                     </td>
                                 </tr>
-                            ))}
+                            )})}
                         </tbody>
                     </table>
                     {filteredSubmissions.length === 0 && <div className="text-center p-8 text-slate-400">ไม่พบข้อมูล</div>}

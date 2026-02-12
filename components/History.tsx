@@ -13,6 +13,7 @@ interface HistoryProps {
   refreshList: () => Promise<void>;
   settings: AppSettings;
   showToast: (t: any) => void;
+  onEdit: (submission: Submission) => void;
 }
 
 // Configuration for all possible statuses
@@ -54,7 +55,7 @@ const STATUS_CONFIG: Record<SubmissionStatus, { label: string; tone: any; icon: 
   },
 };
 
-const History: React.FC<HistoryProps> = ({ submissions, loading, refreshList, settings, showToast }) => {
+const History: React.FC<HistoryProps> = ({ submissions, loading, refreshList, settings, showToast, onEdit }) => {
   const [filter, setFilter] = useState({
     q: "",
     workType: "all",
@@ -90,6 +91,19 @@ const History: React.FC<HistoryProps> = ({ submissions, loading, refreshList, se
       hour: "2-digit",
       minute: "2-digit",
     });
+  };
+
+  const parseAttachments = (fileUrl?: string) => {
+    if (!fileUrl) return [];
+    try {
+        if (fileUrl.startsWith('[')) {
+            return JSON.parse(fileUrl);
+        }
+        // Legacy single file support
+        return [{ type: 'file', value: fileUrl, name: 'ไฟล์แนบ' }];
+    } catch (e) {
+        return [];
+    }
   };
 
   const getActionColors = (action: string) => {
@@ -251,69 +265,6 @@ const History: React.FC<HistoryProps> = ({ submissions, loading, refreshList, se
     }
   };
 
-  const exportCSV = async () => {
-    if (filtered.length === 0) {
-        showToast({ type: "info", title: "ไม่พบข้อมูล", message: "ไม่มีรายการที่ตรงกับเงื่อนไขการค้นหา" });
-        return;
-    }
-
-    const result = await Swal.fire({
-        title: 'ยืนยันการส่งออก?',
-        html: `
-            <div class="text-sm text-slate-600">
-               พบข้อมูลจำนวน <b class="text-emerald-600 text-lg">${filtered.length}</b> รายการ<br/>
-               ข้อมูลจะถูกกรองตามเงื่อนไขที่ท่านเลือกในปัจจุบัน
-            </div>
-        `,
-        icon: 'question',
-        showCancelButton: true,
-        confirmButtonColor: '#10b981',
-        cancelButtonColor: '#64748b',
-        confirmButtonText: '<i class="fa-solid fa-file-export mr-2"></i>ส่งออกข้อมูล',
-        cancelButtonText: 'ยกเลิก',
-        customClass: {
-            popup: 'rounded-3xl',
-            confirmButton: 'rounded-xl px-4 py-2',
-            cancelButton: 'rounded-xl px-4 py-2'
-        }
-    });
-
-    if (!result.isConfirmed) return;
-
-    const header = [
-      "รหัสรายการ", "ปีงบประมาณ", "ชื่อ", "นามสกุล", "ตำแหน่ง",
-      "สังกัด/หน่วยงาน", "ประเภทผลงาน", "สาขา", "สถานะ", "วันที่สร้าง", "วันที่อัปเดต"
-    ];
-
-    const rows = filtered.map((s) => [
-      s.id, s.budgetYear, s.firstName, s.lastName, s.position,
-      s.organization, workTypeLabel(s.workType), branchLabel(s.branchId),
-      STATUS_CONFIG[s.status]?.label || s.status,
-      formatDateTimeTH(s.createdAt), formatDateTimeTH(s.updatedAt),
-    ]);
-
-    const escape = (v: any) => {
-      const str = String(v ?? "");
-      if (str.includes(",") || str.includes('"') || str.includes("\n")) {
-        return `"${str.replace(/"/g, '""')}"`;
-      }
-      return str;
-    };
-
-    const csv = [header.map(escape).join(","), ...rows.map((r) => r.map(escape).join(","))].join("\n");
-    const blob = new Blob([csv], { type: "text/plain;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `SATUN_VICHAKARN_export_${new Date().getTime()}.csv`;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(url);
-
-    showToast({ type: "success", title: "ส่งออกข้อมูลสำเร็จ", message: `ดาวน์โหลด ${filtered.length} รายการเรียบร้อยแล้ว` });
-  };
-
   return (
     <div className="rounded-3xl bg-white dark:bg-slate-900 ring-1 ring-slate-200 dark:ring-slate-700 shadow-sm p-5 md:p-6 fade-in min-h-[500px] flex flex-col">
       <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
@@ -323,13 +274,6 @@ const History: React.FC<HistoryProps> = ({ submissions, loading, refreshList, se
         </div>
         
         <div className="flex flex-col md:flex-row gap-2">
-            <button 
-                onClick={exportCSV}
-                className="px-4 py-2 rounded-xl text-sm font-bold bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 transition flex items-center justify-center gap-2"
-            >
-                <i className="fa-solid fa-file-csv"></i>
-                Export Filtered Data
-            </button>
             <button 
                 onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
                 className={`px-4 py-2 rounded-xl text-sm font-bold transition flex items-center justify-center gap-2 border ${showAdvancedFilters ? 'bg-sky-50 dark:bg-sky-900/30 text-sky-700 dark:text-sky-400 border-sky-200 dark:border-sky-800' : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700'}`}
@@ -495,6 +439,11 @@ const History: React.FC<HistoryProps> = ({ submissions, loading, refreshList, se
           ) : (
             paginatedItems.map((s) => {
               const status = STATUS_CONFIG[s.status] || STATUS_CONFIG['draft'];
+              const attachments = parseAttachments(s.fileUrl);
+
+              // Logic to lock editing: only draft and submitted can be edited
+              const canEdit = s.status === 'draft' || s.status === 'submitted';
+
               return (
                 <div key={s.id} className="rounded-3xl bg-white dark:bg-slate-800 ring-1 ring-slate-200 dark:ring-slate-700 shadow-sm p-4 md:p-5 hover:shadow-md transition group">
                   <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
@@ -504,23 +453,8 @@ const History: React.FC<HistoryProps> = ({ submissions, loading, refreshList, se
                           {s.firstName} {s.lastName}
                         </div>
                         
-                        {/* Status Badge + Visual Progression Indicator */}
                         <div className="flex items-center gap-2">
                           <Badge tone={status.tone}>{status.label}</Badge>
-                          
-                          {/* Progression Arrow */}
-                          {['submitted', 'reviewed'].includes(s.status) && (
-                              <div className="flex items-center text-xs text-slate-400 dark:text-slate-500 animate-pulse">
-                                 <i className="fa-solid fa-arrow-right-long mx-1"></i>
-                                 <span className="font-bold">{s.status === 'submitted' ? 'รอพิจารณา' : 'รอประกาศผล'}</span>
-                              </div>
-                          )}
-                          {['accepted', 'rejected'].includes(s.status) && (
-                              <div className="flex items-center text-xs text-slate-400 dark:text-slate-500">
-                                 <i className={`fa-solid fa-check-double mx-1 ${s.status === 'accepted' ? 'text-emerald-500' : 'text-slate-400'}`}></i>
-                                 <span className={`font-bold ${s.status === 'accepted' ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-500'}`}>ประกาศผลแล้ว</span>
-                              </div>
-                          )}
                         </div>
 
                         <Badge tone="navy">ปี {s.budgetYear}</Badge>
@@ -536,6 +470,17 @@ const History: React.FC<HistoryProps> = ({ submissions, loading, refreshList, se
                         <Badge tone="slate">{branchLabel(s.branchId)}</Badge>
                       </div>
 
+                      {attachments.length > 0 && (
+                          <div className="mt-3 flex flex-wrap gap-2">
+                              {attachments.map((file: any, idx: number) => (
+                                  <a key={idx} href={file.value} target="_blank" className="inline-flex items-center gap-1 px-2 py-1 rounded bg-slate-50 dark:bg-slate-700 text-xs text-sky-600 dark:text-sky-400 hover:underline border border-slate-100 dark:border-slate-600">
+                                      <i className={`fa-solid ${file.type === 'link' ? 'fa-link' : 'fa-paperclip'}`}></i>
+                                      {file.name || 'ไฟล์แนบ'}
+                                  </a>
+                              ))}
+                          </div>
+                      )}
+
                       <div className="mt-3 text-xs text-slate-500 dark:text-slate-400 flex items-center gap-4">
                         <span><i className="fa-regular fa-clock mr-1"></i> สร้าง {formatDateTimeTH(s.createdAt)}</span>
                         <span><i className="fa-solid fa-pen-to-square mr-1"></i> อัปเดต {formatDateTimeTH(s.updatedAt)}</span>
@@ -543,7 +488,8 @@ const History: React.FC<HistoryProps> = ({ submissions, loading, refreshList, se
                     </div>
 
                     <div className="flex items-center gap-2 shrink-0 md:self-center">
-                      {s.status === "draft" ? (
+                      {/* Send Button: Only for drafts */}
+                      {s.status === "draft" && (
                         <button
                           onClick={() => updateStatus(s.id, "submitted")}
                           className="rounded-xl px-4 py-2 text-sm font-bold bg-slate-900 text-white hover:bg-slate-800 dark:bg-sky-600 dark:hover:bg-sky-500 transition flex items-center gap-2 shadow-lg shadow-slate-200 dark:shadow-none"
@@ -551,14 +497,22 @@ const History: React.FC<HistoryProps> = ({ submissions, loading, refreshList, se
                           <i className="fa-solid fa-paper-plane" />
                           <span>ส่ง</span>
                         </button>
-                      ) : s.status === 'submitted' && (
+                      )}
+                      
+                      {/* Edit Button: Enabled for Draft/Submitted, Locked for Accepted/Rejected/Reviewed */}
+                      {canEdit ? (
                         <button
-                          onClick={() => updateStatus(s.id, "draft")}
+                          onClick={() => onEdit(s)}
                           className="rounded-xl px-4 py-2 text-sm font-bold ring-1 ring-slate-200 dark:ring-slate-600 bg-white dark:bg-slate-700 hover:bg-slate-50 dark:hover:bg-slate-600 transition flex items-center gap-2 dark:text-slate-200"
                         >
-                          <i className="fa-solid fa-rotate-left" />
-                          <span>แก้</span>
+                          <i className="fa-solid fa-pen" />
+                          <span>แก้ไข</span>
                         </button>
+                      ) : (
+                        <div className="px-3 py-2 text-xs font-bold text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-slate-800 rounded-xl flex items-center gap-2 cursor-not-allowed border border-slate-200 dark:border-slate-700" title="ไม่สามารถแก้ไขได้ในสถานะนี้">
+                           <i className="fa-solid fa-lock"></i>
+                           <span>ถูกล็อค</span>
+                        </div>
                       )}
                       
                       {/* Delete Button */}
@@ -572,7 +526,7 @@ const History: React.FC<HistoryProps> = ({ submissions, loading, refreshList, se
                     </div>
                   </div>
 
-                  {/* Audit Log Section (Enhanced Timeline) */}
+                  {/* Audit Log Section */}
                   {s.audit && s.audit.length > 0 && (
                         <div className="mt-6 pt-2 border-t border-slate-100 dark:border-slate-700">
                             <div className="text-[10px] uppercase font-bold text-slate-400 mb-4 flex items-center gap-2 tracking-wider">
@@ -616,8 +570,8 @@ const History: React.FC<HistoryProps> = ({ submissions, loading, refreshList, se
           )}
         </div>
       </div>
-
-      {/* Pagination Controls */}
+      
+      {/* Pagination Controls ... (Same as before) */}
       {filtered.length > 0 && (
           <div className="flex flex-col md:flex-row items-center justify-between gap-4 mt-6 pt-6 border-t border-slate-100 dark:border-slate-700">
               <div className="text-sm text-slate-500 dark:text-slate-400 font-medium">

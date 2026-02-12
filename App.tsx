@@ -25,6 +25,9 @@ export default function App() {
   const [showAuth, setShowAuth] = useState(false);
   const [isPageLoading, setIsPageLoading] = useState(false);
   
+  // Editing State
+  const [editingSubmission, setEditingSubmission] = useState<Submission | null>(null);
+
   // Dark Mode State
   const [darkMode, setDarkMode] = useState<boolean>(() => {
     const saved = localStorage.getItem("svk_dark_mode");
@@ -83,6 +86,7 @@ export default function App() {
       logoutUser();
       setCurrentUser(null);
       setSubmissions([]); 
+      setEditingSubmission(null);
       handleTabChange('home');
       showToast({ type: 'info', title: 'ออกจากระบบ', message: 'ไว้พบกันใหม่ครับ' });
   };
@@ -111,11 +115,25 @@ export default function App() {
           return;
       }
 
+      // If user clicks register tab manually, clear any pending edit session
+      if (tabId === 'register') {
+          setEditingSubmission(null);
+      }
+
       setIsPageLoading(true);
       setTimeout(() => {
           setActiveTab(tabId);
           setIsPageLoading(false);
       }, 2500); // Increased delay to 2.5s for better reading experience
+  };
+
+  const handleEditSubmission = (submission: Submission) => {
+      setEditingSubmission(submission);
+      setIsPageLoading(true);
+      setTimeout(() => {
+          setActiveTab('register');
+          setIsPageLoading(false);
+      }, 1000);
   };
 
   // Reload data when settings change or tab switches to history/analytics
@@ -271,9 +289,11 @@ export default function App() {
                         showToast={showToast}
                         currentUser={currentUser} 
                         onSuccess={() => {
-                        loadData(); 
-                        handleTabChange('history');
+                            loadData(); 
+                            handleTabChange('history');
                         }} 
+                        editingSubmission={editingSubmission}
+                        onCancelEdit={() => setEditingSubmission(null)}
                     />
                 )}
                 
@@ -284,6 +304,7 @@ export default function App() {
                         refreshList={loadData} 
                         settings={settings} 
                         showToast={showToast} 
+                        onEdit={handleEditSubmission}
                     />
                 )}
                 

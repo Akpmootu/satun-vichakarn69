@@ -4,10 +4,30 @@ export const APP_NAME = "SKMS";
 export const BUDGET_YEAR = 2569;
 
 export const WORK_TYPES: WorkTypeOption[] = [
-  { id: "oral", label: "KM Presentation (นำเสนอผลงาน)", icon: "fa-person-chalkboard" },
-  { id: "eposter", label: "Infographic / e-Poster", icon: "fa-image" },
-  { id: "innovation", label: "นวัตกรรมและสิ่งประดิษฐ์", icon: "fa-lightbulb" },
-  { id: "bestpractice", label: "Best Practice (ถอดบทเรียน)", icon: "fa-book-bookmark" },
+  { 
+    id: "oral", 
+    label: "KM Presentation (นำเสนอผลงาน)", 
+    // Heroicon: PresentationChartBar
+    icon: "M3.75 3v11.25A2.25 2.25 0 0 0 6 16.5h2.25M3.75 3h-1.5m1.5 0h16.5m0 0h1.5m-1.5 0v11.25A2.25 2.25 0 0 1 18 16.5h-2.25m-7.5 0h7.5m-7.5 0l-1 3m8.5-3l1 3m0 0l.5 1.5m-.5-1.5h-9.5m0 0l-.5 1.5M9 11.25v1.5M12 9v3.75m3-6v6" 
+  },
+  { 
+    id: "eposter", 
+    label: "Infographic / e-Poster", 
+    // Heroicon: Photo
+    icon: "M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" 
+  },
+  { 
+    id: "innovation", 
+    label: "นวัตกรรมและสิ่งประดิษฐ์", 
+    // Heroicon: LightBulb
+    icon: "M12 18v-5.25m0 0a6.01 6.01 0 001.5-4.5 6.01 6.01 0 00-1.5-4.5 6.01 6.01 0 00-1.5 4.5 6.01 6.01 0 001.5 4.5ZM13.5 22.5h-3c-.621 0-1.125-.504-1.125-1.125v-1.5c0-.621.504-1.125 1.125-1.125h3c.621 0 1.125.504 1.125 1.125v1.5c0 .621-.504 1.125-1.125 1.125Z" 
+  },
+  { 
+    id: "bestpractice", 
+    label: "Best Practice (ถอดบทเรียน)", 
+    // Heroicon: BookOpen
+    icon: "M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" 
+  },
 ];
 
 export const BRANCHES: BranchOption[] = [

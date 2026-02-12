@@ -182,7 +182,9 @@ const Dashboard: React.FC<{ submissions: Submission[] }> = ({ submissions }) => 
                   <div key={t.id} className="group relative">
                     <div className="flex justify-between text-sm mb-2 relative z-10">
                       <span className="font-bold text-slate-700 dark:text-slate-300 flex items-center gap-2">
-                          <i className={`fa-solid ${t.icon} text-slate-400 w-5`}></i>
+                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 text-slate-400">
+                              <path strokeLinecap="round" strokeLinejoin="round" d={t.icon} />
+                          </svg>
                           {t.label}
                       </span>
                       <span className="font-mono text-slate-500 dark:text-slate-400 group-hover:text-sky-600 dark:group-hover:text-sky-400 transition font-bold">

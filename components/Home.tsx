@@ -54,28 +54,28 @@ const Home: React.FC<HomeProps> = ({ onNavigate, currentUser, onLoginRequest, us
                  <>
                     <div className="inline-block px-4 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-xs font-bold mb-4">
                         <i className="fa-solid fa-circle-check mr-2"></i>
-                        ยืนยันตัวตนแล้ว
+                        ระบบพร้อมใช้งาน
                     </div>
                     <h1 className="text-3xl md:text-5xl font-black mb-4 tracking-tight">
-                        ยินดีต้อนรับสู่ <span className="text-sky-400">SKMS</span>
+                        สวัสดีคุณ <span className="text-sky-400">{currentUser.firstName} {currentUser.lastName}</span>
                     </h1>
                     <p className="text-lg text-slate-300 max-w-2xl mx-auto mb-6">
-                        ติดตามสถานะผลงานวิชาการและการจัดการความรู้ของคุณได้ที่นี่
+                        ยินดีต้อนรับสู่ระบบ SKMS ติดตามความคืบหน้าและจัดการองค์ความรู้ของคุณได้ทันที
                     </p>
                     <div className="flex flex-wrap justify-center gap-4 mt-8">
                          <button 
-                            onClick={() => handleDownload(3)}
-                            className="px-5 py-2.5 rounded-xl bg-white/10 text-white font-bold text-sm hover:bg-white/20 transition backdrop-blur-sm border border-white/10 flex items-center gap-2"
+                            onClick={() => handleActionClick('register')}
+                            className="px-6 py-3 rounded-2xl bg-white text-slate-900 font-bold text-sm hover:bg-slate-100 transition shadow-lg flex items-center gap-2"
                         >
-                            <i className="fa-solid fa-book-open"></i>
-                            คู่มือการใช้งานระบบ
+                            <i className="fa-solid fa-plus"></i>
+                            ส่งผลงานใหม่
                         </button>
                          <button 
-                            onClick={() => handleDownload(2)}
-                            className="px-5 py-2.5 rounded-xl bg-white/10 text-white font-bold text-sm hover:bg-white/20 transition backdrop-blur-sm border border-white/10 flex items-center gap-2"
+                            onClick={() => handleActionClick('history')}
+                            className="px-6 py-3 rounded-2xl bg-slate-800 text-white font-bold text-sm hover:bg-slate-700 transition border border-slate-700 flex items-center gap-2"
                         >
-                            <i className="fa-solid fa-file-pen"></i>
-                            แนวทางการเขียน KM
+                            <i className="fa-solid fa-clock-rotate-left"></i>
+                            ประวัติของฉัน
                         </button>
                     </div>
                  </>
@@ -126,6 +126,20 @@ const Home: React.FC<HomeProps> = ({ onNavigate, currentUser, onLoginRequest, us
          </div>
       </div>
 
+      {/* Timeline Section (Only if logged in) */}
+      {currentUser && (
+          <div className="animate-bounce-in">
+              <div className="mb-4 px-2 flex items-center justify-between">
+                  <h2 className="text-lg font-bold text-slate-800 dark:text-white flex items-center gap-2">
+                      <i className="fa-solid fa-bars-progress text-sky-500"></i>
+                      ความคืบหน้าการส่งผลงาน (Timeline)
+                  </h2>
+                  <span className="text-xs text-slate-500 dark:text-slate-400">ข้อมูลล่าสุด</span>
+              </div>
+              <Timeline user={currentUser} submissions={userSubmissions} />
+          </div>
+      )}
+
       {/* KM Concept: Upstream, Midstream, Downstream */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="rounded-2xl bg-white dark:bg-slate-900 p-6 shadow-sm border-t-4 border-sky-300 hover:shadow-md transition group">
@@ -156,13 +170,6 @@ const Home: React.FC<HomeProps> = ({ onNavigate, currentUser, onLoginRequest, us
               </p>
           </div>
       </div>
-
-      {/* Timeline Section (Only if logged in) */}
-      {currentUser && (
-          <div className="animate-bounce-in">
-              <Timeline user={currentUser} submissions={userSubmissions} />
-          </div>
-      )}
 
       {/* Main Menu Grid */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

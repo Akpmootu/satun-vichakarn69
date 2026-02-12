@@ -25,9 +25,10 @@ const Toast: React.FC<ToastProps> = ({ toast, onClose }) => {
 
   const c = colors[tone];
 
+  // Changed z-index from z-50 to z-[9999] to ensure it sits on top of all modals (which are usually z-[100]+)
   return (
-    <div className="fixed bottom-4 right-4 z-50 w-[92vw] max-w-md animate-bounce-in">
-      <div className={`rounded-2xl bg-white shadow-xl ring-1 p-4 ${c.ring}`}>
+    <div className="fixed bottom-4 right-4 z-[9999] w-[92vw] max-w-md animate-bounce-in">
+      <div className={`rounded-2xl bg-white shadow-2xl ring-1 p-4 ${c.ring}`}>
         <div className="flex items-start gap-3">
           <div className={`mt-0.5 h-9 w-9 rounded-xl flex items-center justify-center ${c.bgIcon} ${c.textIcon}`}>
             <i className={`fa-solid ${icons[toast.type]}`} />

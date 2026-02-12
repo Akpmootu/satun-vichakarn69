@@ -15,12 +15,13 @@ const UserAuthModal: React.FC<UserAuthModalProps> = ({ isOpen, onClose, onSucces
   
   // Login State
   const [loginEmail, setLoginEmail] = useState("");
-  const [loginPassword, setLoginPassword] = useState(""); // Added for Admin/Reviewer
+  const [loginPassword, setLoginPassword] = useState("");
 
   // Register State
   const [regForm, setRegForm] = useState({
     firstName: "", lastName: "", email: "", phone: "", organization: "", position: ""
   });
+  const [regPassword, setRegPassword] = useState("");
 
   if (!isOpen) return null;
 
@@ -48,19 +49,25 @@ const UserAuthModal: React.FC<UserAuthModalProps> = ({ isOpen, onClose, onSucces
 
   const handleRegister = async () => {
       // Validate simple
-      if (!regForm.firstName || !regForm.email) {
-          showToast({ type: 'error', title: 'ข้อมูลไม่ครบ', message: 'กรุณากรอกข้อมูลสำคัญให้ครบถ้วน' });
+      if (!regForm.firstName || !regForm.email || !regPassword) {
+          showToast({ type: 'error', title: 'ข้อมูลไม่ครบ', message: 'กรุณากรอกข้อมูลสำคัญและรหัสผ่าน' });
+          return;
+      }
+      
+      if (regPassword.length < 6) {
+          showToast({ type: 'error', title: 'รหัสผ่านสั้นเกินไป', message: 'รหัสผ่านต้องมีความยาวอย่างน้อย 6 ตัวอักษร' });
           return;
       }
 
       setLoading(true);
       try {
           const newUser: UserProfile = {
-              id: Date.now().toString(),
+              id: Date.now().toString(), // Temp ID, will be replaced by Supabase Auth ID
               role: 'user',
               ...regForm
           };
-          const user = await apiRegisterUser(newUser);
+          // Pass password to API
+          const user = await apiRegisterUser(newUser, regPassword);
           showToast({ type: 'success', title: 'ลงทะเบียนสำเร็จ', message: 'ยินดีต้อนรับสมาชิกใหม่' });
           onSuccess(user);
       } catch (e: any) {
@@ -92,7 +99,7 @@ const UserAuthModal: React.FC<UserAuthModalProps> = ({ isOpen, onClose, onSucces
             </button>
         </div>
 
-        <div className="p-6 md:p-8 overflow-y-auto">
+        <div className="p-6 md:p-8 overflow-y-auto custom-scrollbar">
             {mode === 'login' ? (
                 <div className="space-y-4">
                     <div className="text-center mb-6">
@@ -104,29 +111,29 @@ const UserAuthModal: React.FC<UserAuthModalProps> = ({ isOpen, onClose, onSucces
                     </div>
                     
                     <div>
-                        <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-1">อีเมล / ชื่อผู้ใช้ (Admin)</label>
+                        <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-1">อีเมล / ชื่อผู้ใช้</label>
                         <div className="relative">
                             <i className="fa-solid fa-user absolute left-4 top-3.5 text-slate-400"></i>
                             <input 
                                 type="text"
                                 value={loginEmail}
                                 onChange={(e) => setLoginEmail(e.target.value)}
-                                className="w-full rounded-xl border border-slate-200 dark:border-slate-700 px-4 pl-10 py-3 outline-none focus:ring-2 focus:ring-sky-200 dark:bg-slate-800 dark:text-white"
+                                className="w-full rounded-xl border border-slate-200 dark:border-slate-700 px-4 pl-10 py-3 outline-none focus:ring-2 focus:ring-sky-200 dark:bg-slate-800 dark:text-white transition"
                                 placeholder="user@example.com"
                             />
                         </div>
                     </div>
 
                     <div>
-                        <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-1">รหัสผ่าน (ถ้ามี)</label>
+                        <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-1">รหัสผ่าน</label>
                         <div className="relative">
                             <i className="fa-solid fa-key absolute left-4 top-3.5 text-slate-400"></i>
                             <input 
                                 type="password"
                                 value={loginPassword}
                                 onChange={(e) => setLoginPassword(e.target.value)}
-                                className="w-full rounded-xl border border-slate-200 dark:border-slate-700 px-4 pl-10 py-3 outline-none focus:ring-2 focus:ring-sky-200 dark:bg-slate-800 dark:text-white"
-                                placeholder="เฉพาะ Admin/Reviewer"
+                                className="w-full rounded-xl border border-slate-200 dark:border-slate-700 px-4 pl-10 py-3 outline-none focus:ring-2 focus:ring-sky-200 dark:bg-slate-800 dark:text-white transition"
+                                placeholder="••••••••"
                             />
                         </div>
                     </div>
@@ -172,6 +179,17 @@ const UserAuthModal: React.FC<UserAuthModalProps> = ({ isOpen, onClose, onSucces
                             onChange={(e) => setRegForm({...regForm, email: e.target.value})}
                             className="w-full rounded-xl border border-slate-200 dark:border-slate-700 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-sky-200 dark:bg-slate-800 dark:text-white"
                             placeholder="example@mail.com"
+                        />
+                    </div>
+
+                    <div>
+                        <label className="text-xs font-bold text-slate-700 dark:text-slate-300">กำหนดรหัสผ่าน</label>
+                        <input 
+                            type="password"
+                            value={regPassword}
+                            onChange={(e) => setRegPassword(e.target.value)}
+                            className="w-full rounded-xl border border-slate-200 dark:border-slate-700 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-sky-200 dark:bg-slate-800 dark:text-white"
+                            placeholder="อย่างน้อย 6 ตัวอักษร"
                         />
                     </div>
 

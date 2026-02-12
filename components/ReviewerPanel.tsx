@@ -24,6 +24,18 @@ const ReviewerPanel: React.FC<ReviewerPanelProps> = ({ submissions, settings, re
       return submissions.filter(s => ['accepted', 'rejected'].includes(s.status));
   }, [submissions]);
 
+  const parseAttachments = (fileUrl?: string) => {
+    if (!fileUrl) return [];
+    try {
+        if (fileUrl.startsWith('[')) {
+            return JSON.parse(fileUrl);
+        }
+        return [{ type: 'file', value: fileUrl, name: 'ไฟล์แนบ' }];
+    } catch (e) {
+        return [];
+    }
+  };
+
   const handleGrade = async (s: Submission) => {
       const { value: formValues } = await Swal.fire({
           title: 'ประเมินผลงาน',
@@ -107,7 +119,9 @@ const ReviewerPanel: React.FC<ReviewerPanelProps> = ({ submissions, settings, re
                 </div>
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {pendingReviews.map(s => (
+                    {pendingReviews.map(s => {
+                        const attachments = parseAttachments(s.fileUrl);
+                        return (
                         <div key={s.id} className="bg-white dark:bg-slate-800 rounded-2xl p-5 shadow-sm ring-1 ring-slate-200 dark:ring-slate-700 hover:shadow-md transition group">
                             <div className="flex justify-between items-start mb-3">
                                 <div>
@@ -126,10 +140,15 @@ const ReviewerPanel: React.FC<ReviewerPanelProps> = ({ submissions, settings, re
                                     <i className="fa-solid fa-stethoscope text-slate-400 w-5"></i>
                                     {BRANCHES.find(b => b.id === s.branchId)?.label}
                                 </div>
-                                {s.fileUrl && (
-                                    <a href={s.fileUrl} target="_blank" className="flex items-center gap-2 text-sky-600 font-bold hover:underline">
-                                        <i className="fa-solid fa-file-pdf w-5"></i> เปิดดูไฟล์ผลงาน
-                                    </a>
+                                {attachments.length > 0 && (
+                                    <div className="mt-2 pt-2 border-t border-slate-200 dark:border-slate-700 flex flex-col gap-1">
+                                        {attachments.map((f: any, i: number) => (
+                                            <a key={i} href={f.value} target="_blank" className="flex items-center gap-2 text-sky-600 font-bold hover:underline">
+                                                <i className={`fa-solid ${f.type === 'link' ? 'fa-link' : 'fa-file-pdf'} w-5`}></i> 
+                                                {f.name}
+                                            </a>
+                                        ))}
+                                    </div>
                                 )}
                             </div>
 
@@ -140,7 +159,7 @@ const ReviewerPanel: React.FC<ReviewerPanelProps> = ({ submissions, settings, re
                                 <i className="fa-solid fa-pen-fancy"></i> ให้คะแนน / ประเมิน
                             </button>
                         </div>
-                    ))}
+                    )})}
                 </div>
             )}
         </div>
