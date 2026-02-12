@@ -285,12 +285,7 @@ export default function App() {
              <Logo />
           </div>
           
-          <div className="flex items-center gap-3">
-             <div className="hidden md:block px-3 py-1 rounded-full text-[10px] font-bold border tracking-wider transition-colors duration-300
-                ${darkMode ? 'bg-slate-800 text-slate-400 border-slate-700' : 'bg-slate-100 text-slate-500 border-slate-200'}">
-                {settings.mode === 'mock' ? 'MOCK SYSTEM' : 'LIVE SYSTEM'}
-             </div>
-
+          <div className="flex items-center gap-4">
              {/* Dark Mode Toggle */}
              <button
                 onClick={toggleDarkMode}
@@ -339,7 +334,7 @@ export default function App() {
              ) : (
                  <button 
                     onClick={() => setShowAuth(true)}
-                    className="ml-2 px-5 py-2.5 rounded-xl bg-slate-900 text-white text-sm font-bold hover:bg-slate-800 transition shadow-lg shadow-slate-300 flex items-center gap-2 dark:bg-sky-600 dark:hover:bg-sky-500 dark:shadow-sky-900/30"
+                    className="ml-2 px-6 py-2.5 rounded-xl bg-gradient-to-r from-sky-600 to-indigo-600 text-white text-sm font-bold hover:from-sky-500 hover:to-indigo-500 transition shadow-lg shadow-sky-200 dark:shadow-sky-900/30 flex items-center gap-2 transform hover:-translate-y-0.5"
                  >
                     <i className="fa-solid fa-right-to-bracket"></i>
                     <span>เข้าสู่ระบบ</span>
@@ -442,78 +437,125 @@ export default function App() {
       </main>
 
       {/* Official Footer */}
-      <footer className={`mt-20 pt-16 pb-8 border-t-4 border-sky-500 transition-colors duration-300 ${darkMode ? 'bg-slate-900 text-slate-300 border-t-sky-600' : 'bg-slate-900 text-white'}`}>
-          <div className="max-w-7xl mx-auto px-4">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-12 mb-12">
-                  {/* Column 1: Organization */}
-                  <div className="space-y-4">
-                      <div className="flex items-center gap-3 mb-2">
-                           <div className="h-10 w-10 bg-white rounded-lg flex items-center justify-center">
-                               <i className="fa-solid fa-building-columns text-slate-900 text-xl"></i>
+      <footer className={`mt-20 pt-16 pb-8 border-t border-slate-200 dark:border-slate-800 transition-colors duration-300 ${darkMode ? 'bg-slate-950 text-slate-400' : 'bg-slate-900 text-slate-300'}`}>
+          <div className="max-w-7xl mx-auto px-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-12 mb-16">
+                  
+                  {/* Column 1: Organization & About */}
+                  <div className="space-y-6">
+                      <div className="flex items-center gap-4">
+                           <div className="h-12 w-12 bg-gradient-to-br from-sky-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-sky-900/20">
+                               <i className="fa-solid fa-building-columns text-white text-xl"></i>
                            </div>
                            <div>
-                               <h3 className="text-lg font-bold leading-tight text-white">SKMS</h3>
-                               <p className="text-sm text-slate-400">สำนักงานสาธารณสุขจังหวัดสตูล</p>
+                               <h3 className="text-xl font-black text-white tracking-tight">SKMS</h3>
+                               <p className="text-xs font-bold text-sky-500 uppercase tracking-wider">Satun Provincial Public Health</p>
                            </div>
                       </div>
-                      <p className="text-slate-400 text-sm leading-relaxed">
-                          Satun Knowledge Management Systems <br/>
-                          "ต้นน้ำ กลางน้ำ ปลายน้ำ" <br/>
-                          ระบบรวบรวมและบริหารจัดการองค์ความรู้เพื่อความเป็นเลิศทางสุขภาพ
+                      <p className="text-sm leading-relaxed text-slate-400">
+                          ระบบบริหารจัดการองค์ความรู้ (Knowledge Management) <br/>
+                          เพื่อความเป็นเลิศทางสุขภาพ "ต้นน้ำ กลางน้ำ ปลายน้ำ" <br/>
+                          สำนักงานสาธารณสุขจังหวัดสตูล
                       </p>
-                      <div className="flex gap-4 pt-2">
-                          <a href="#" className="h-10 w-10 rounded-full bg-slate-800 flex items-center justify-center hover:bg-sky-600 transition text-white">
-                              <i className="fa-brands fa-facebook-f"></i>
-                          </a>
-                          <a href="#" className="h-10 w-10 rounded-full bg-slate-800 flex items-center justify-center hover:bg-sky-500 transition text-white">
-                              <i className="fa-brands fa-twitter"></i>
-                          </a>
-                          <a href="#" className="h-10 w-10 rounded-full bg-slate-800 flex items-center justify-center hover:bg-emerald-500 transition text-white">
-                              <i className="fa-brands fa-line"></i>
+                      
+                      {/* Only Real Contact / Social Links (Removed Placeholders) */}
+                      <div className="flex gap-3">
+                          <a href="#" className="px-4 py-2 rounded-lg bg-slate-800 flex items-center gap-2 hover:bg-sky-600 hover:text-white transition text-slate-400 border border-slate-700 text-xs font-bold" aria-label="Visit Website">
+                              <i className="fa-solid fa-globe"></i>
+                              <span>เว็บไซต์หลัก</span>
                           </a>
                       </div>
                   </div>
 
-                  {/* Column 2: Quick Links */}
+                  {/* Column 2: System Menu */}
                   <div>
-                      <h4 className="text-lg font-bold mb-6 border-l-4 border-sky-500 pl-3 text-white">เมนูระบบ</h4>
-                      <ul className="space-y-3 text-sm text-slate-300">
-                          <li><button onClick={() => handleTabChange('home')} className="hover:text-sky-400 transition flex items-center gap-2"><i className="fa-solid fa-chevron-right text-xs"></i> หน้าหลัก (KM Portal)</button></li>
-                          <li><button onClick={() => handleTabChange('register')} className="hover:text-sky-400 transition flex items-center gap-2"><i className="fa-solid fa-chevron-right text-xs"></i> นำเข้าองค์ความรู้</button></li>
-                          <li><button onClick={() => handleTabChange('history')} className="hover:text-sky-400 transition flex items-center gap-2"><i className="fa-solid fa-chevron-right text-xs"></i> คลังความรู้ (KM Bank)</button></li>
-                          <li><button onClick={() => handleTabChange('analytics')} className="hover:text-sky-400 transition flex items-center gap-2"><i className="fa-solid fa-chevron-right text-xs"></i> สรุปสถานการณ์</button></li>
-                          <li><button onClick={() => handleTabChange('settings')} className="hover:text-sky-400 transition flex items-center gap-2"><i className="fa-solid fa-chevron-right text-xs"></i> ตั้งค่าระบบ</button></li>
+                      <h4 className="text-white font-bold text-lg mb-6 flex items-center gap-2">
+                          <span className="w-1 h-6 bg-sky-500 rounded-full"></span>
+                          เมนูระบบ
+                      </h4>
+                      <ul className="space-y-3">
+                          {[
+                              { id: 'home', label: 'หน้าหลัก (KM Portal)', icon: 'fa-house' },
+                              { id: 'register', label: 'นำเข้าองค์ความรู้', icon: 'fa-cloud-arrow-up' },
+                              { id: 'history', label: 'คลังความรู้ (KM Bank)', icon: 'fa-book-open' },
+                              { id: 'analytics', label: 'สรุปสถานการณ์', icon: 'fa-chart-pie' },
+                              { id: 'settings', label: 'ตั้งค่าระบบ', icon: 'fa-gear' },
+                          ].map((item) => (
+                              <li key={item.id}>
+                                  <button 
+                                      onClick={() => handleTabChange(item.id)} 
+                                      className="group flex items-center gap-3 text-sm text-slate-400 hover:text-sky-400 transition w-full p-2 rounded-lg hover:bg-slate-800/50"
+                                  >
+                                      <div className="h-6 w-6 rounded flex items-center justify-center bg-slate-800 text-slate-500 group-hover:bg-sky-500 group-hover:text-white transition text-xs">
+                                          <i className={`fa-solid ${item.icon}`}></i>
+                                      </div>
+                                      {item.label}
+                                      <i className="fa-solid fa-chevron-right text-[10px] ml-auto opacity-0 group-hover:opacity-100 transition-opacity"></i>
+                                  </button>
+                              </li>
+                          ))}
                       </ul>
                   </div>
 
-                  {/* Column 3: Contact */}
+                  {/* Column 3: Contact Info (Buttons) */}
                   <div>
-                      <h4 className="text-lg font-bold mb-6 border-l-4 border-emerald-500 pl-3 text-white">ติดต่อสอบถาม</h4>
-                      <ul className="space-y-4 text-sm text-slate-300">
-                          <li className="flex items-start gap-3">
-                              <i className="fa-solid fa-map-location-dot mt-1 text-sky-500"></i>
-                              <span>สำนักงานสาธารณสุขจังหวัดสตูล<br/>เลขที่ 123 ถ.สติล ต.พิมาน อ.เมือง จ.สตูล 91000</span>
-                          </li>
-                          <li className="flex items-center gap-3">
-                              <i className="fa-solid fa-phone text-emerald-500"></i>
-                              <a href="tel:074123456" className="hover:text-emerald-400 transition">074-123-456 ต่อ 110-112</a>
-                          </li>
-                          <li className="flex items-center gap-3">
-                              <i className="fa-solid fa-envelope text-rose-500"></i>
-                              <a href="mailto:skms@satunhealth.go.th" className="hover:text-rose-400 transition">skms@satunhealth.go.th</a>
-                          </li>
-                      </ul>
+                      <h4 className="text-white font-bold text-lg mb-6 flex items-center gap-2">
+                          <span className="w-1 h-6 bg-emerald-500 rounded-full"></span>
+                          ติดต่อสอบถาม
+                      </h4>
+                      
+                      <div className="bg-slate-800/50 rounded-2xl p-5 border border-slate-800 mb-6">
+                          <div className="flex items-start gap-3 mb-1">
+                              <i className="fa-solid fa-map-location-dot mt-1 text-sky-500 text-lg"></i>
+                              <span className="text-sm leading-relaxed text-slate-300">
+                                  <strong className="text-white block mb-1">สำนักงานสาธารณสุขจังหวัดสตูล</strong>
+                                  เลขที่ 123 ถ.สติล ต.พิมาน อ.เมือง <br/>จ.สตูล 91000
+                              </span>
+                          </div>
+                      </div>
+
+                      <div className="space-y-3">
+                          <a 
+                             href="tel:074123456" 
+                             className="flex items-center gap-4 p-3 rounded-xl border border-emerald-500/20 bg-emerald-500/5 text-emerald-400 hover:bg-emerald-500 hover:text-white transition group hover:shadow-lg hover:shadow-emerald-900/20 active:scale-95 duration-200"
+                          >
+                              <div className="h-10 w-10 rounded-lg bg-emerald-500/20 group-hover:bg-white/20 flex items-center justify-center transition">
+                                  <i className="fa-solid fa-phone"></i>
+                              </div>
+                              <div className="flex-1">
+                                  <div className="text-xs font-bold opacity-70">เบอร์โทรศัพท์</div>
+                                  <div className="font-mono text-lg font-bold">074-123-456</div>
+                              </div>
+                              <i className="fa-solid fa-arrow-up-right-from-square text-xs opacity-50"></i>
+                          </a>
+
+                          <a 
+                             href="mailto:skms@satunhealth.go.th" 
+                             className="flex items-center gap-4 p-3 rounded-xl border border-rose-500/20 bg-rose-500/5 text-rose-400 hover:bg-rose-500 hover:text-white transition group hover:shadow-lg hover:shadow-rose-900/20 active:scale-95 duration-200"
+                          >
+                              <div className="h-10 w-10 rounded-lg bg-rose-500/20 group-hover:bg-white/20 flex items-center justify-center transition">
+                                  <i className="fa-solid fa-envelope"></i>
+                              </div>
+                              <div className="flex-1">
+                                  <div className="text-xs font-bold opacity-70">อีเมล (E-mail)</div>
+                                  <div className="text-sm font-bold">skms@satunhealth.go.th</div>
+                              </div>
+                              <i className="fa-solid fa-arrow-up-right-from-square text-xs opacity-50"></i>
+                          </a>
+                      </div>
                   </div>
               </div>
 
               {/* Bottom Copyright */}
-              <div className="border-t border-slate-800 pt-8 flex flex-col md:flex-row justify-between items-center gap-4 text-xs text-slate-500">
+              <div className="border-t border-slate-800 pt-8 flex flex-col md:flex-row justify-between items-center gap-4 text-xs font-medium text-slate-500">
                   <div className="flex items-center gap-2">
-                       <i className="fa-solid fa-code"></i>
+                       <i className="fa-solid fa-code text-sky-500"></i>
                        <span>พัฒนาโดย กลุ่มงานพัฒนายุทธศาสตร์สาธารณสุข (IT SSJ SATUN)</span>
                   </div>
-                  <div>
-                      &copy; {BUDGET_YEAR} Satun Provincial Public Health Office. All rights reserved.
+                  <div className="flex gap-6">
+                      <a href="#" className="hover:text-slate-300 transition">นโยบายความเป็นส่วนตัว</a>
+                      <a href="#" className="hover:text-slate-300 transition">เงื่อนไขการใช้งาน</a>
+                      <span>&copy; {BUDGET_YEAR} All rights reserved.</span>
                   </div>
               </div>
           </div>

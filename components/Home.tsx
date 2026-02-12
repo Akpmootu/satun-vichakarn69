@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { PR_NEWS } from '../constants';
 import { Submission, UserProfile } from '../types';
@@ -38,41 +39,47 @@ const Home: React.FC<HomeProps> = ({ onNavigate, currentUser, onLoginRequest, us
   };
 
   return (
-    <div className="space-y-8 animate-fade-in pb-12">
+    <div className="space-y-12 animate-fade-in pb-12">
       
       {/* Hero / Welcome Section */}
-      <div className="text-center py-8 md:py-16 relative overflow-hidden rounded-3xl bg-slate-900 dark:bg-slate-800 text-white shadow-2xl">
+      <div className="text-center py-12 md:py-20 relative overflow-hidden rounded-[2.5rem] bg-slate-900 dark:bg-slate-800 text-white shadow-2xl ring-1 ring-white/10">
          {/* Background Patterns (Data Flow) */}
          <div className="absolute top-0 left-0 w-full h-full opacity-10">
              <div className="absolute top-10 left-10 h-32 w-32 rounded-full border-4 border-dashed border-sky-500 animate-spin-slow"></div>
              <div className="absolute bottom-10 right-10 h-48 w-48 rounded-full border-2 border-emerald-500 animate-pulse"></div>
-             <i className="fa-solid fa-network-wired absolute top-1/2 left-1/4 text-8xl text-slate-700 transform -translate-y-1/2"></i>
+             <i className="fa-solid fa-network-wired absolute top-1/2 left-1/4 text-8xl text-slate-700 transform -translate-y-1/2 opacity-20"></i>
          </div>
+         
+         {/* Gradient Glow */}
+         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[400px] bg-sky-600/20 blur-[120px] rounded-full pointer-events-none"></div>
 
-         <div className="relative z-10 px-4">
+         <div className="relative z-10 px-6 max-w-4xl mx-auto">
              {currentUser ? (
                  <>
-                    <div className="inline-block px-4 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-xs font-bold mb-4">
-                        <i className="fa-solid fa-circle-check mr-2"></i>
+                    <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-emerald-500/10 text-emerald-300 border border-emerald-500/30 text-xs font-bold mb-6 backdrop-blur-sm">
+                        <span className="relative flex h-2 w-2">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                          <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                        </span>
                         ระบบพร้อมใช้งาน
                     </div>
-                    <h1 className="text-3xl md:text-5xl font-black mb-4 tracking-tight">
+                    <h1 className="text-3xl md:text-5xl font-black mb-4 tracking-tight leading-tight">
                         สวัสดีคุณ <span className="text-sky-400">{currentUser.firstName} {currentUser.lastName}</span>
                     </h1>
-                    <p className="text-lg text-slate-300 max-w-2xl mx-auto mb-6">
-                        ยินดีต้อนรับสู่ระบบ SKMS ติดตามความคืบหน้าและจัดการองค์ความรู้ของคุณได้ทันที
+                    <p className="text-lg text-slate-300 max-w-2xl mx-auto mb-10 leading-relaxed">
+                        ยินดีต้อนรับเข้าสู่ระบบ SKMS พื้นที่สำหรับการแบ่งปันและแลกเปลี่ยนเรียนรู้<br className="hidden md:block"/> เพื่อพัฒนาศักยภาพระบบสุขภาพจังหวัดสตูล
                     </p>
-                    <div className="flex flex-wrap justify-center gap-4 mt-8">
+                    <div className="flex flex-col sm:flex-row justify-center gap-4">
                          <button 
                             onClick={() => handleActionClick('register')}
-                            className="px-6 py-3 rounded-2xl bg-white text-slate-900 font-bold text-sm hover:bg-slate-100 transition shadow-lg flex items-center gap-2"
+                            className="px-8 py-3.5 rounded-2xl bg-white text-slate-900 font-bold text-sm hover:bg-sky-50 transition shadow-lg hover:shadow-xl hover:-translate-y-0.5 active:translate-y-0 flex items-center justify-center gap-2 min-w-[180px]"
                         >
-                            <i className="fa-solid fa-plus"></i>
+                            <i className="fa-solid fa-plus text-sky-600"></i>
                             ส่งผลงานใหม่
                         </button>
                          <button 
                             onClick={() => handleActionClick('history')}
-                            className="px-6 py-3 rounded-2xl bg-slate-800 text-white font-bold text-sm hover:bg-slate-700 transition border border-slate-700 flex items-center gap-2"
+                            className="px-8 py-3.5 rounded-2xl bg-slate-800/80 text-white font-bold text-sm hover:bg-slate-700 transition border border-slate-700 hover:border-slate-600 active:bg-slate-800 flex items-center justify-center gap-2 backdrop-blur-sm min-w-[180px]"
                         >
                             <i className="fa-solid fa-clock-rotate-left"></i>
                             ประวัติของฉัน
@@ -81,45 +88,58 @@ const Home: React.FC<HomeProps> = ({ onNavigate, currentUser, onLoginRequest, us
                  </>
              ) : (
                  <>
-                    <div className="inline-block px-4 py-1 rounded-full bg-sky-500/20 text-sky-300 border border-sky-500/30 text-xs font-bold mb-4 animate-bounce">
-                        <i className="fa-solid fa-star mr-2"></i>
+                    <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-sky-500/10 text-sky-300 border border-sky-500/30 text-xs font-bold mb-6 backdrop-blur-sm">
+                        <i className="fa-solid fa-star"></i>
                         Satun Knowledge Management Systems
                     </div>
-                    <h1 className="text-3xl md:text-5xl font-black mb-4 tracking-tight leading-tight">
-                        ระบบจัดการความรู้<br/>สาธารณสุขจังหวัดสตูล
+                    <h1 className="text-4xl md:text-6xl font-black mb-6 tracking-tight leading-tight">
+                        ระบบจัดการความรู้<br/>
+                        <span className="text-transparent bg-clip-text bg-gradient-to-r from-sky-400 to-emerald-400">สาธารณสุขจังหวัดสตูล</span>
                     </h1>
-                    <p className="text-lg text-slate-300 max-w-2xl mx-auto mb-8 font-light">
-                        "รวบรวม จัดระเบียบ และเผยแพร่ความรู้ สู่ความเป็นเลิศ"
+                    <p className="text-lg text-slate-300 max-w-2xl mx-auto mb-10 font-light leading-relaxed">
+                        "รวบรวม จัดระเบียบ และเผยแพร่ความรู้ สู่ความเป็นเลิศ"<br/>
+                        แพลตฟอร์มกลางสำหรับบุคลากรสาธารณสุขในการแลกเปลี่ยนเรียนรู้
                     </p>
-                    <div className="flex flex-col md:flex-row items-center justify-center gap-4">
+                    
+                    {/* Primary Actions */}
+                    <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-12">
                         <button 
                             onClick={onLoginRequest}
-                            className="px-8 py-3 rounded-2xl bg-white text-slate-900 font-black text-lg hover:scale-105 transition shadow-lg shadow-white/20 ring-4 ring-white/10"
+                            className="w-full sm:w-auto px-8 py-4 rounded-2xl bg-gradient-to-r from-sky-600 to-indigo-600 text-white font-black text-lg hover:from-sky-500 hover:to-indigo-500 hover:scale-105 active:scale-100 transition shadow-lg shadow-sky-900/40 ring-4 ring-white/5"
                         >
                             <i className="fa-solid fa-right-to-bracket mr-2"></i>
                             ลงทะเบียน / เข้าสู่ระบบ
                         </button>
+                        <button 
+                            onClick={() => handleActionClick('history')}
+                             className="w-full sm:w-auto px-8 py-4 rounded-2xl bg-slate-800/50 text-slate-200 font-bold text-lg hover:bg-slate-800 hover:text-white transition border border-slate-700 backdrop-blur-sm active:bg-slate-800"
+                        >
+                            <i className="fa-solid fa-book-open mr-2"></i>
+                            เข้าสู่คลังความรู้
+                        </button>
                     </div>
                     
-                    <div className="mt-8 flex flex-wrap justify-center gap-4">
-                         <button 
+                    {/* Secondary Links (Manuals) */}
+                    <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-3 text-sm text-slate-400">
+                        <span className="text-xs font-bold uppercase tracking-wider opacity-60">เอกสารแนะนำ:</span>
+                        <button 
                             onClick={() => handleDownload(3)}
-                            className="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 font-bold text-sm hover:bg-slate-700 hover:text-white transition border border-slate-700 flex items-center gap-2"
+                            className="group flex items-center gap-2 hover:text-sky-300 transition"
                         >
-                            <i className="fa-solid fa-download text-sky-400"></i>
-                            คู่มือการใช้งานระบบ SKMS
+                            <div className="h-6 w-6 rounded bg-slate-800 border border-slate-700 flex items-center justify-center group-hover:bg-sky-500/20 group-hover:border-sky-500/50 transition">
+                                <i className="fa-solid fa-file-pdf text-xs"></i>
+                            </div>
+                            <span className="border-b border-transparent group-hover:border-sky-300 transition-colors">คู่มือการใช้งานระบบ</span>
                         </button>
-                         <button 
+                        <button 
                             onClick={() => handleDownload(2)}
-                            className="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 font-bold text-sm hover:bg-slate-700 hover:text-white transition border border-slate-700 flex items-center gap-2"
+                             className="group flex items-center gap-2 hover:text-emerald-300 transition"
                         >
-                            <i className="fa-solid fa-download text-emerald-400"></i>
-                            คู่มือการเขียนผลงานวิชาการ
+                            <div className="h-6 w-6 rounded bg-slate-800 border border-slate-700 flex items-center justify-center group-hover:bg-emerald-500/20 group-hover:border-emerald-500/50 transition">
+                                <i className="fa-solid fa-file-pen text-xs"></i>
+                            </div>
+                            <span className="border-b border-transparent group-hover:border-emerald-300 transition-colors">แนวทางการเขียนผลงาน</span>
                         </button>
-                    </div>
-
-                    <div className="mt-4 text-sm text-slate-500">
-                        * ระบบสำหรับบุคลากรสาธารณสุขจังหวัดสตูล
                     </div>
                  </>
              )}
@@ -140,33 +160,56 @@ const Home: React.FC<HomeProps> = ({ onNavigate, currentUser, onLoginRequest, us
           </div>
       )}
 
-      {/* KM Concept: Upstream, Midstream, Downstream */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="rounded-2xl bg-white dark:bg-slate-900 p-6 shadow-sm border-t-4 border-sky-300 hover:shadow-md transition group">
-              <div className="h-12 w-12 rounded-xl bg-sky-50 dark:bg-sky-900/50 text-sky-500 flex items-center justify-center text-2xl mb-4 group-hover:scale-110 transition">
-                  <i className="fa-solid fa-cloud-arrow-up"></i>
+      {/* KM Concept: Upstream, Midstream, Downstream (Improved Cards) */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {/* Card 1: Upstream */}
+          <div className="relative group bg-white dark:bg-slate-800 rounded-[2rem] p-8 shadow-lg shadow-slate-200/50 dark:shadow-none border border-slate-100 dark:border-slate-700 hover:-translate-y-2 hover:shadow-xl transition-all duration-300">
+              <div className="absolute top-0 right-0 p-6 opacity-5 group-hover:opacity-10 group-hover:scale-110 transition-all duration-500">
+                  <i className="fa-solid fa-cloud-arrow-up text-9xl text-sky-500"></i>
               </div>
-              <h3 className="text-lg font-black text-slate-900 dark:text-white mb-2">1. ต้นน้ำ (Upstream)</h3>
-              <p className="text-sm text-slate-500 dark:text-slate-400">
-                  <span className="font-bold text-sky-600 dark:text-sky-400">รวบรวม:</span> การแสวงหาความรู้จากหน้างาน (Tacit Knowledge) และข้อมูลวิชาการ (Explicit Knowledge) เพื่อนำเข้าสู่ระบบ
+              
+              <div className="h-16 w-16 rounded-2xl bg-sky-50 dark:bg-sky-900/30 text-sky-500 flex items-center justify-center text-3xl mb-6 shadow-sm group-hover:bg-sky-500 group-hover:text-white transition-colors duration-300">
+                  <i className="fa-solid fa-magnifying-glass"></i>
+              </div>
+              
+              <h3 className="text-xl font-black text-slate-900 dark:text-white mb-3">1. ต้นน้ำ (Upstream)</h3>
+              <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
+                  <span className="font-bold text-sky-600 dark:text-sky-400 block mb-1">การค้นหาและรวบรวม (Capture)</span>
+                  แสวงหาความรู้จากหน้างาน (Tacit Knowledge) และข้อมูลวิชาการ (Explicit Knowledge) เพื่อนำเข้าสู่ระบบ
               </p>
           </div>
-          <div className="rounded-2xl bg-white dark:bg-slate-900 p-6 shadow-sm border-t-4 border-blue-500 hover:shadow-md transition group">
-              <div className="h-12 w-12 rounded-xl bg-blue-50 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400 flex items-center justify-center text-2xl mb-4 group-hover:scale-110 transition">
-                  <i className="fa-solid fa-boxes-stacked"></i>
+
+          {/* Card 2: Midstream */}
+          <div className="relative group bg-white dark:bg-slate-800 rounded-[2rem] p-8 shadow-lg shadow-slate-200/50 dark:shadow-none border border-slate-100 dark:border-slate-700 hover:-translate-y-2 hover:shadow-xl transition-all duration-300">
+              <div className="absolute top-0 right-0 p-6 opacity-5 group-hover:opacity-10 group-hover:scale-110 transition-all duration-500">
+                  <i className="fa-solid fa-boxes-stacked text-9xl text-indigo-500"></i>
               </div>
-              <h3 className="text-lg font-black text-slate-900 dark:text-white mb-2">2. กลางน้ำ (Midstream)</h3>
-              <p className="text-sm text-slate-500 dark:text-slate-400">
-                  <span className="font-bold text-blue-600 dark:text-blue-400">จัดระเบียบ:</span> การคัดกรอง สังเคราะห์ และจัดหมวดหมู่องค์ความรู้ ให้เป็นระบบ เข้าถึงง่าย และมีมาตรฐาน
+              
+              <div className="h-16 w-16 rounded-2xl bg-indigo-50 dark:bg-indigo-900/30 text-indigo-500 flex items-center justify-center text-3xl mb-6 shadow-sm group-hover:bg-indigo-500 group-hover:text-white transition-colors duration-300">
+                   <i className="fa-solid fa-layer-group"></i>
+              </div>
+              
+              <h3 className="text-xl font-black text-slate-900 dark:text-white mb-3">2. กลางน้ำ (Midstream)</h3>
+              <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
+                  <span className="font-bold text-indigo-600 dark:text-indigo-400 block mb-1">การจัดระเบียบ (Organize)</span>
+                  คัดกรอง สังเคราะห์ และจัดหมวดหมู่องค์ความรู้ ให้เป็นระบบ เข้าถึงง่าย และมีมาตรฐาน
               </p>
           </div>
-          <div className="rounded-2xl bg-white dark:bg-slate-900 p-6 shadow-sm border-t-4 border-emerald-500 hover:shadow-md transition group">
-               <div className="h-12 w-12 rounded-xl bg-emerald-50 dark:bg-emerald-900/50 text-emerald-600 dark:text-emerald-400 flex items-center justify-center text-2xl mb-4 group-hover:scale-110 transition">
-                  <i className="fa-solid fa-share-nodes"></i>
+
+          {/* Card 3: Downstream */}
+          <div className="relative group bg-white dark:bg-slate-800 rounded-[2rem] p-8 shadow-lg shadow-slate-200/50 dark:shadow-none border border-slate-100 dark:border-slate-700 hover:-translate-y-2 hover:shadow-xl transition-all duration-300">
+               <div className="absolute top-0 right-0 p-6 opacity-5 group-hover:opacity-10 group-hover:scale-110 transition-all duration-500">
+                  <i className="fa-solid fa-share-nodes text-9xl text-emerald-500"></i>
               </div>
-              <h3 className="text-lg font-black text-slate-900 dark:text-white mb-2">3. ปลายน้ำ (Downstream)</h3>
-              <p className="text-sm text-slate-500 dark:text-slate-400">
-                  <span className="font-bold text-emerald-600 dark:text-emerald-400">เผยแพร่:</span> การถ่ายทอด แลกเปลี่ยนเรียนรู้ และนำองค์ความรู้ไปประยุกต์ใช้ในการปฏิบัติงานจริง
+              
+              <div className="h-16 w-16 rounded-2xl bg-emerald-50 dark:bg-emerald-900/30 text-emerald-500 flex items-center justify-center text-3xl mb-6 shadow-sm group-hover:bg-emerald-500 group-hover:text-white transition-colors duration-300">
+                  <i className="fa-solid fa-paper-plane"></i>
+              </div>
+              
+              <h3 className="text-xl font-black text-slate-900 dark:text-white mb-3">3. ปลายน้ำ (Downstream)</h3>
+              <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
+                  <span className="font-bold text-emerald-600 dark:text-emerald-400 block mb-1">การเผยแพร่ (Share & Use)</span>
+                  ถ่ายทอด แลกเปลี่ยนเรียนรู้ และนำองค์ความรู้ไปประยุกต์ใช้ในการปฏิบัติงานจริงเพื่อประชาชน
               </p>
           </div>
       </div>
@@ -175,67 +218,97 @@ const Home: React.FC<HomeProps> = ({ onNavigate, currentUser, onLoginRequest, us
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           
           {/* Menu 1: Send Work */}
-          <button 
+          <div 
              onClick={() => handleActionClick('register')}
-             className="group relative overflow-hidden rounded-3xl bg-white dark:bg-slate-900 p-6 shadow-lg shadow-slate-200 dark:shadow-none ring-1 ring-slate-100 dark:ring-slate-700 hover:shadow-xl hover:-translate-y-1 transition duration-300 text-left"
+             className="cursor-pointer group relative overflow-hidden rounded-3xl bg-white dark:bg-slate-900 p-6 shadow-lg shadow-slate-200 dark:shadow-none ring-1 ring-slate-100 dark:ring-slate-700 hover:shadow-xl hover:-translate-y-1 transition duration-300 text-left flex flex-col h-full"
           >
              <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition group-hover:scale-110 duration-500">
                 <i className="fa-solid fa-paper-plane text-9xl text-sky-600"></i>
              </div>
-             <div className="relative z-10">
+             <div className="relative z-10 flex-1">
                 <div className="h-14 w-14 rounded-2xl bg-sky-50 dark:bg-sky-900/50 text-sky-600 dark:text-sky-400 flex items-center justify-center text-2xl mb-4 group-hover:bg-sky-600 group-hover:text-white transition">
                     <i className="fa-solid fa-file-import"></i>
                 </div>
                 <h3 className="text-xl font-black text-slate-900 dark:text-white mb-1">นำเข้าองค์ความรู้</h3>
-                <p className="text-sm text-slate-500 dark:text-slate-400">ส่งผลงานวิชาการ ถอดบทเรียน นวัตกรรม</p>
-                <div className="mt-4 inline-flex items-center text-sm font-bold text-sky-600 dark:text-sky-400">
-                    {currentUser ? 'เริ่มส่งผลงาน' : 'ต้องล็อกอินก่อน'} 
-                    <i className={`fa-solid ${currentUser ? 'fa-arrow-right' : 'fa-lock'} ml-2 group-hover:translate-x-1 transition`}></i>
-                </div>
+                <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">ส่งผลงานวิชาการ ถอดบทเรียน นวัตกรรม</p>
              </div>
-          </button>
+             
+             {/* Action / State Area */}
+             <div className="relative z-10 mt-auto">
+                 {currentUser ? (
+                    <div className="inline-flex items-center text-sm font-bold text-sky-600 dark:text-sky-400 group-hover:translate-x-1 transition">
+                        เริ่มส่งผลงาน <i className="fa-solid fa-arrow-right ml-2"></i>
+                    </div>
+                 ) : (
+                    <div className="bg-slate-50 dark:bg-slate-800 rounded-xl p-3 border border-slate-100 dark:border-slate-700 flex items-center justify-between group-hover:bg-rose-50 dark:group-hover:bg-rose-900/20 group-hover:border-rose-100 dark:group-hover:border-rose-900/50 transition">
+                         <div className="flex items-center gap-2 text-xs font-bold text-slate-500 dark:text-slate-400 group-hover:text-rose-600 dark:group-hover:text-rose-400">
+                             <i className="fa-solid fa-lock"></i> สงวนสิทธิ์สมาชิก
+                         </div>
+                         <span className="text-[10px] font-bold bg-white dark:bg-slate-700 px-2 py-1 rounded shadow-sm text-slate-600 dark:text-slate-300">
+                             เข้าสู่ระบบ
+                         </span>
+                    </div>
+                 )}
+             </div>
+          </div>
 
           {/* Menu 2: View Works (Gallery/History) */}
-          <button 
+          <div 
              onClick={() => handleActionClick('history')}
-             className="group relative overflow-hidden rounded-3xl bg-white dark:bg-slate-900 p-6 shadow-lg shadow-slate-200 dark:shadow-none ring-1 ring-slate-100 dark:ring-slate-700 hover:shadow-xl hover:-translate-y-1 transition duration-300 text-left"
+             className="cursor-pointer group relative overflow-hidden rounded-3xl bg-white dark:bg-slate-900 p-6 shadow-lg shadow-slate-200 dark:shadow-none ring-1 ring-slate-100 dark:ring-slate-700 hover:shadow-xl hover:-translate-y-1 transition duration-300 text-left flex flex-col h-full"
           >
              <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition group-hover:scale-110 duration-500">
                 <i className="fa-solid fa-layer-group text-9xl text-indigo-600"></i>
              </div>
-             <div className="relative z-10">
+             <div className="relative z-10 flex-1">
                 <div className="h-14 w-14 rounded-2xl bg-indigo-50 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 flex items-center justify-center text-2xl mb-4 group-hover:bg-indigo-600 group-hover:text-white transition">
                     <i className="fa-solid fa-book-open-reader"></i>
                 </div>
                 <h3 className="text-xl font-black text-slate-900 dark:text-white mb-1">คลังความรู้ (KM Bank)</h3>
-                <p className="text-sm text-slate-500 dark:text-slate-400">สืบค้นผลงานวิชาการและบทเรียน</p>
-                <div className="mt-4 inline-flex items-center text-sm font-bold text-indigo-600 dark:text-indigo-400">
-                    {currentUser ? 'เข้าสู่คลังความรู้' : 'ต้องล็อกอินก่อน'}
-                    <i className={`fa-solid ${currentUser ? 'fa-arrow-right' : 'fa-lock'} ml-2 group-hover:translate-x-1 transition`}></i>
-                </div>
+                <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">สืบค้นผลงานวิชาการและบทเรียน</p>
              </div>
-          </button>
+
+             {/* Action / State Area */}
+             <div className="relative z-10 mt-auto">
+                 {currentUser ? (
+                    <div className="inline-flex items-center text-sm font-bold text-indigo-600 dark:text-indigo-400 group-hover:translate-x-1 transition">
+                        เข้าสู่คลังความรู้ <i className="fa-solid fa-arrow-right ml-2"></i>
+                    </div>
+                 ) : (
+                    <div className="bg-slate-50 dark:bg-slate-800 rounded-xl p-3 border border-slate-100 dark:border-slate-700 flex items-center justify-between group-hover:bg-rose-50 dark:group-hover:bg-rose-900/20 group-hover:border-rose-100 dark:group-hover:border-rose-900/50 transition">
+                         <div className="flex items-center gap-2 text-xs font-bold text-slate-500 dark:text-slate-400 group-hover:text-rose-600 dark:group-hover:text-rose-400">
+                             <i className="fa-solid fa-lock"></i> สงวนสิทธิ์สมาชิก
+                         </div>
+                         <span className="text-[10px] font-bold bg-white dark:bg-slate-700 px-2 py-1 rounded shadow-sm text-slate-600 dark:text-slate-300">
+                             เข้าสู่ระบบ
+                         </span>
+                    </div>
+                 )}
+             </div>
+          </div>
 
           {/* Menu 3: Inspect (Disabled) */}
-          <div className="relative overflow-hidden rounded-3xl bg-slate-50 dark:bg-slate-800 p-6 ring-1 ring-slate-200 dark:ring-slate-700 text-left opacity-80 grayscale">
+          <div className="relative overflow-hidden rounded-3xl bg-slate-50 dark:bg-slate-800 p-6 ring-1 ring-slate-200 dark:ring-slate-700 text-left opacity-80 grayscale flex flex-col h-full">
              <div className="absolute top-4 right-4">
                  <span className="px-3 py-1 bg-slate-200 dark:bg-slate-700 rounded-full text-xs font-bold text-slate-500 dark:text-slate-300">เร็วๆ นี้</span>
              </div>
-             <div className="relative z-10">
+             <div className="relative z-10 flex-1">
                 <div className="h-14 w-14 rounded-2xl bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-400 flex items-center justify-center text-2xl mb-4">
                     <i className="fa-solid fa-chart-network"></i>
                 </div>
                 <h3 className="text-xl font-black text-slate-900 dark:text-white mb-1">วิเคราะห์เครือข่ายความรู้</h3>
                 <p className="text-sm text-slate-500 dark:text-slate-400">Knowledge Mapping & Analysis</p>
-                <div className="mt-4 inline-flex items-center text-sm font-bold text-slate-400 cursor-not-allowed">
-                    ปิดใช้งาน <i className="fa-solid fa-lock ml-2"></i>
+             </div>
+             <div className="relative z-10 mt-auto pt-6">
+                <div className="inline-flex items-center text-sm font-bold text-slate-400 cursor-not-allowed">
+                    ปิดใช้งานชั่วคราว <i className="fa-solid fa-lock ml-2"></i>
                 </div>
              </div>
           </div>
       </div>
 
       {/* About SKMS Section */}
-      <div className="mt-12 rounded-3xl bg-slate-900 relative overflow-hidden shadow-xl ring-1 ring-slate-800">
+      <div className="mt-12 rounded-[2.5rem] bg-slate-900 relative overflow-hidden shadow-xl ring-1 ring-slate-800">
           {/* Background Gradient & Effects */}
           <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 z-0"></div>
           <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-sky-500/20 rounded-full blur-[100px] -translate-y-1/2 translate-x-1/2 z-0 pointer-events-none"></div>
@@ -275,7 +348,7 @@ const Home: React.FC<HomeProps> = ({ onNavigate, currentUser, onLoginRequest, us
                               <div className="text-xs text-slate-400">ค้นหา & สร้างสรรค์</div>
                           </div>
                           <div className="bg-white/5 border border-white/10 rounded-xl p-4 text-center hover:bg-white/10 transition group">
-                              <div className="h-10 w-10 mx-auto rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center mb-2 group-hover:scale-110 transition">
+                              <div className="h-10 w-10 mx-auto rounded-full bg-indigo-500/20 text-indigo-400 flex items-center justify-center mb-2 group-hover:scale-110 transition">
                                   <i className="fa-solid fa-boxes-stacked"></i>
                               </div>
                               <div className="text-sm font-bold text-white">กลางน้ำ</div>
@@ -291,49 +364,53 @@ const Home: React.FC<HomeProps> = ({ onNavigate, currentUser, onLoginRequest, us
                       </div>
                   </div>
 
-                  {/* Right: Graphic / Journey */}
+                  {/* Right: Graphic / Journey (Improved Timeline) */}
                   <div className="relative">
                       <div className="absolute inset-0 bg-gradient-to-r from-sky-500 to-emerald-500 opacity-20 blur-2xl rounded-full transform rotate-12"></div>
-                      <div className="relative bg-slate-800/50 backdrop-blur-xl border border-white/10 rounded-2xl p-6 md:p-8">
-                          <h3 className="text-lg font-bold text-white mb-6 border-b border-white/10 pb-4">
-                              <i className="fa-solid fa-sitemap mr-2 text-amber-400"></i>
+                      <div className="relative bg-slate-800/80 backdrop-blur-xl border border-white/10 rounded-[2rem] p-8">
+                          <h3 className="text-lg font-bold text-white mb-8 border-b border-white/10 pb-4 flex items-center gap-2">
+                              <i className="fa-solid fa-sitemap text-amber-400"></i>
                               กระบวนการ SKMS Model
                           </h3>
                           
-                          <div className="space-y-6">
-                              <div className="flex gap-4">
-                                  <div className="flex flex-col items-center">
-                                      <div className="w-8 h-8 rounded-full bg-sky-500 flex items-center justify-center font-bold text-white text-sm shadow-lg shadow-sky-500/30">1</div>
-                                      <div className="w-0.5 flex-1 bg-white/10 my-1"></div>
+                          <div className="relative pl-4 space-y-8">
+                              {/* Vertical Connector Line */}
+                              <div className="absolute left-[34px] top-4 bottom-10 w-0.5 bg-gradient-to-b from-sky-500 via-indigo-500 to-emerald-500 opacity-50 rounded-full"></div>
+
+                              {/* Step 1 */}
+                              <div className="relative flex gap-6 group">
+                                  <div className="z-10 flex-shrink-0 w-10 h-10 rounded-full bg-slate-900 border-[3px] border-sky-500 flex items-center justify-center text-white font-black text-sm shadow-lg shadow-sky-500/20 group-hover:scale-110 group-hover:bg-sky-500 transition duration-300">
+                                      1
                                   </div>
-                                  <div>
-                                      <h4 className="text-sky-300 font-bold text-base">Knowledge Capture (ต้นน้ำ)</h4>
-                                      <p className="text-slate-400 text-sm mt-1">
-                                          รวบรวมความรู้ฝังลึก (Tacit) จากประสบการณ์หน้างาน และความรู้ชัดแจ้ง (Explicit) จากงานวิชาการ
+                                  <div className="pt-0.5 transition group-hover:translate-x-1 duration-300">
+                                      <h4 className="text-sky-400 font-bold text-base mb-1">Knowledge Capture (ต้นน้ำ)</h4>
+                                      <p className="text-slate-400 text-sm leading-relaxed">
+                                          รวบรวมความรู้ฝังลึก (Tacit) จากประสบการณ์หน้างาน และความรู้ชัดแจ้ง (Explicit)
                                       </p>
                                   </div>
                               </div>
 
-                              <div className="flex gap-4">
-                                  <div className="flex flex-col items-center">
-                                      <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center font-bold text-white text-sm shadow-lg shadow-blue-500/30">2</div>
-                                      <div className="w-0.5 flex-1 bg-white/10 my-1"></div>
+                              {/* Step 2 */}
+                              <div className="relative flex gap-6 group">
+                                  <div className="z-10 flex-shrink-0 w-10 h-10 rounded-full bg-slate-900 border-[3px] border-indigo-500 flex items-center justify-center text-white font-black text-sm shadow-lg shadow-indigo-500/20 group-hover:scale-110 group-hover:bg-indigo-500 transition duration-300">
+                                      2
                                   </div>
-                                  <div>
-                                      <h4 className="text-blue-300 font-bold text-base">Knowledge Organization (กลางน้ำ)</h4>
-                                      <p className="text-slate-400 text-sm mt-1">
+                                  <div className="pt-0.5 transition group-hover:translate-x-1 duration-300">
+                                      <h4 className="text-indigo-400 font-bold text-base mb-1">Knowledge Organization (กลางน้ำ)</h4>
+                                      <p className="text-slate-400 text-sm leading-relaxed">
                                           ตรวจสอบความถูกต้อง (Validation) จัดหมวดหมู่ และจัดเก็บในคลังความรู้ (KM Bank)
                                       </p>
                                   </div>
                               </div>
 
-                              <div className="flex gap-4">
-                                  <div className="flex flex-col items-center">
-                                      <div className="w-8 h-8 rounded-full bg-emerald-500 flex items-center justify-center font-bold text-white text-sm shadow-lg shadow-emerald-500/30">3</div>
+                              {/* Step 3 */}
+                              <div className="relative flex gap-6 group">
+                                  <div className="z-10 flex-shrink-0 w-10 h-10 rounded-full bg-slate-900 border-[3px] border-emerald-500 flex items-center justify-center text-white font-black text-sm shadow-lg shadow-emerald-500/20 group-hover:scale-110 group-hover:bg-emerald-500 transition duration-300">
+                                      3
                                   </div>
-                                  <div>
-                                      <h4 className="text-emerald-300 font-bold text-base">Knowledge Sharing (ปลายน้ำ)</h4>
-                                      <p className="text-slate-400 text-sm mt-1">
+                                  <div className="pt-0.5 transition group-hover:translate-x-1 duration-300">
+                                      <h4 className="text-emerald-400 font-bold text-base mb-1">Knowledge Sharing (ปลายน้ำ)</h4>
+                                      <p className="text-slate-400 text-sm leading-relaxed">
                                           แลกเปลี่ยนเรียนรู้ผ่านเวทีวิชาการ และนำไปประยุกต์ใช้เพื่อพัฒนาระบบบริการสุขภาพ
                                       </p>
                                   </div>
@@ -348,53 +425,68 @@ const Home: React.FC<HomeProps> = ({ onNavigate, currentUser, onLoginRequest, us
       </div>
 
       {/* News & Downloads Section */}
-      <div className="mt-12 grid grid-cols-1 md:grid-cols-2 gap-8">
+      <div className="mt-12 grid grid-cols-1 lg:grid-cols-2 gap-8">
+          
           {/* PR News List */}
-          <div className="rounded-3xl bg-white dark:bg-slate-900 p-6 md:p-8 shadow-sm ring-1 ring-slate-200 dark:ring-slate-700">
+          <div className="rounded-[2.5rem] bg-slate-50 dark:bg-slate-800/50 p-6 md:p-8 shadow-inner ring-1 ring-slate-200 dark:ring-slate-700">
               <div className="flex items-center justify-between mb-6">
                   <div className="flex items-center gap-3">
-                      <div className="h-10 w-10 rounded-full bg-rose-100 dark:bg-rose-900/50 text-rose-600 dark:text-rose-400 flex items-center justify-center">
-                          <i className="fa-solid fa-bullhorn"></i>
+                      <div className="h-12 w-12 rounded-2xl bg-white dark:bg-slate-700 text-rose-500 dark:text-rose-400 flex items-center justify-center shadow-sm">
+                          <i className="fa-solid fa-bullhorn text-xl"></i>
                       </div>
-                      <h2 className="text-xl font-black text-slate-900 dark:text-white">ข่าวประชาสัมพันธ์</h2>
+                      <div>
+                          <h2 className="text-xl font-black text-slate-900 dark:text-white">ข่าวประชาสัมพันธ์</h2>
+                          <p className="text-xs text-slate-500 dark:text-slate-400">ประกาศและกิจกรรมล่าสุด</p>
+                      </div>
                   </div>
                   <button 
                     onClick={() => onOpenNews(0)}
-                    className="text-xs font-bold text-slate-500 dark:text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 transition flex items-center gap-2 bg-slate-50 dark:bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-100 dark:border-slate-700 hover:border-rose-100 group"
-                    title="เปิดหน้าต่างประกาศ"
+                    className="px-4 py-2 rounded-xl bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:text-rose-500 hover:border-rose-200 transition font-bold text-xs flex items-center gap-2 shadow-sm"
                   >
-                    <i className="fa-solid fa-expand group-hover:scale-110 transition"></i>
-                    <span>เปิดดูทั้งหมด</span>
+                    ดูทั้งหมด <i className="fa-solid fa-arrow-right"></i>
                   </button>
               </div>
+              
               <div className="space-y-4">
                   {PR_NEWS.filter(n => n.type === 'news').map(item => {
                       const fullIndex = PR_NEWS.findIndex(x => x.id === item.id);
                       return (
-                          <div key={item.id} className="group flex gap-4 p-4 rounded-2xl bg-slate-50 dark:bg-slate-800 hover:bg-white dark:hover:bg-slate-700 hover:shadow-md transition border border-transparent hover:border-slate-100 dark:hover:border-slate-600 ring-1 ring-slate-100 dark:ring-slate-700 cursor-pointer" onClick={() => onOpenNews(fullIndex)}>
-                              {item.imageUrl ? (
-                                  <div className="shrink-0 w-24 h-24 rounded-xl overflow-hidden bg-slate-200 ring-1 ring-slate-100">
-                                      <img src={item.imageUrl} alt={item.title} className="w-full h-full object-cover group-hover:scale-105 transition duration-500"/>
+                          <div key={item.id} className="group relative bg-white dark:bg-slate-900 rounded-3xl p-5 shadow-sm hover:shadow-lg transition-all duration-300 ring-1 ring-slate-100 dark:ring-slate-700 border-l-4 border-l-rose-500 cursor-pointer overflow-hidden hover:-translate-y-1" onClick={() => onOpenNews(fullIndex)}>
+                              
+                              <div className="flex flex-col sm:flex-row gap-5">
+                                  {/* Image/Icon */}
+                                  <div className="shrink-0 w-full sm:w-32 h-32 sm:h-auto rounded-2xl overflow-hidden relative">
+                                      {item.imageUrl ? (
+                                          <img src={item.imageUrl} alt={item.title} className="w-full h-full object-cover transform group-hover:scale-110 transition duration-700"/>
+                                      ) : (
+                                          <div className="w-full h-full bg-rose-50 dark:bg-rose-900/20 flex items-center justify-center text-rose-300">
+                                              <i className="fa-regular fa-image text-4xl"></i>
+                                          </div>
+                                      )}
+                                      <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition duration-300 sm:hidden"></div>
                                   </div>
-                              ) : (
-                                  <div className="shrink-0 w-24 h-24 rounded-xl bg-rose-50 dark:bg-rose-900/30 flex items-center justify-center text-rose-500 dark:text-rose-400 ring-1 ring-rose-100 dark:ring-rose-900/50">
-                                      <i className="fa-regular fa-newspaper text-3xl group-hover:scale-110 transition"></i>
+
+                                  <div className="flex-1 flex flex-col justify-between py-1">
+                                      <div>
+                                          <div className="flex items-center gap-2 text-xs font-bold text-slate-400 mb-2">
+                                              <i className="fa-regular fa-calendar-check text-rose-500"></i>
+                                              {item.date}
+                                          </div>
+                                          <h3 className="font-bold text-slate-900 dark:text-white text-lg leading-tight mb-2 group-hover:text-rose-600 transition line-clamp-2">
+                                              {item.title}
+                                          </h3>
+                                          <p className="text-sm text-slate-500 dark:text-slate-400 line-clamp-2 mb-3">
+                                              {item.desc}
+                                          </p>
+                                      </div>
+                                      
+                                      <button 
+                                          className="self-start px-4 py-2 rounded-lg bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-xs font-bold hover:bg-rose-500 hover:text-white hover:shadow-md transition-all duration-300 flex items-center gap-2"
+                                      >
+                                          อ่านเพิ่มเติม
+                                          <i className="fa-solid fa-arrow-right-long group-hover:translate-x-1 transition-transform"></i>
+                                      </button>
                                   </div>
-                              )}
-                              <div className="flex-1 min-w-0 py-1 flex flex-col">
-                                  <div className="text-xs font-bold text-rose-600 dark:text-rose-400 mb-1.5 flex items-center gap-2">
-                                      <i className="fa-regular fa-calendar"></i> {item.date}
-                                  </div>
-                                  <h4 className="font-bold text-slate-800 dark:text-slate-200 mb-2 group-hover:text-sky-700 dark:group-hover:text-sky-400 transition leading-snug line-clamp-2">{item.title}</h4>
-                                  <p className="text-sm text-slate-500 dark:text-slate-400 line-clamp-2 leading-relaxed flex-1">{item.desc}</p>
-                                  
-                                  {/* Read More Button */}
-                                  <button 
-                                      onClick={(e) => { e.stopPropagation(); onOpenNews(fullIndex); }}
-                                      className="mt-2 text-xs font-bold text-sky-600 dark:text-sky-400 hover:underline flex items-center gap-1 w-fit"
-                                  >
-                                      อ่านเพิ่มเติม <i className="fa-solid fa-arrow-right"></i>
-                                  </button>
                               </div>
                           </div>
                       );
@@ -402,40 +494,50 @@ const Home: React.FC<HomeProps> = ({ onNavigate, currentUser, onLoginRequest, us
               </div>
           </div>
 
-          {/* Downloads List */}
-          <div className="rounded-3xl bg-white dark:bg-slate-900 p-6 md:p-8 shadow-sm ring-1 ring-slate-200 dark:ring-slate-700">
+          {/* Downloads List (Grid Layout) */}
+          <div className="rounded-[2.5rem] bg-slate-50 dark:bg-slate-800/50 p-6 md:p-8 shadow-inner ring-1 ring-slate-200 dark:ring-slate-700">
               <div className="flex items-center gap-3 mb-6">
-                  <div className="h-10 w-10 rounded-full bg-emerald-100 dark:bg-emerald-900/50 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
-                      <i className="fa-solid fa-download"></i>
+                  <div className="h-12 w-12 rounded-2xl bg-white dark:bg-slate-700 text-emerald-500 dark:text-emerald-400 flex items-center justify-center shadow-sm">
+                      <i className="fa-solid fa-cloud-arrow-down text-xl"></i>
                   </div>
-                  <h2 className="text-xl font-black text-slate-900 dark:text-white">เอกสารดาวน์โหลด</h2>
+                  <div>
+                      <h2 className="text-xl font-black text-slate-900 dark:text-white">เอกสารดาวน์โหลด</h2>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">คู่มือและแบบฟอร์มต่างๆ</p>
+                  </div>
               </div>
-              <div className="space-y-3">
+              
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {PR_NEWS.filter(n => n.type === 'download').map(item => (
                       <div 
                         key={item.id} 
                         onClick={() => handleDownload(item.id)}
-                        className="flex items-center justify-between p-4 rounded-2xl border border-slate-100 dark:border-slate-700 hover:border-emerald-200 dark:hover:border-emerald-700 hover:bg-emerald-50/50 dark:hover:bg-emerald-900/30 transition cursor-pointer group"
+                        className="group flex flex-col bg-white dark:bg-slate-900 p-5 rounded-3xl shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 ring-1 ring-slate-200 dark:ring-slate-700 cursor-pointer relative overflow-hidden"
                       >
-                          <div className="flex items-center gap-4">
-                              <div className="h-12 w-12 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 flex items-center justify-center font-bold text-xl group-hover:bg-white dark:group-hover:bg-slate-700 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition ring-1 ring-slate-200 dark:ring-slate-700 group-hover:ring-emerald-200">
+                          {/* Decorative BG */}
+                          <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-500/5 rounded-bl-full -mr-4 -mt-4 transition-transform group-hover:scale-150"></div>
+
+                          <div className="flex justify-between items-start mb-4 relative z-10">
+                              <div className="h-12 w-12 rounded-2xl bg-emerald-50 dark:bg-emerald-900/20 text-emerald-500 flex items-center justify-center text-2xl shadow-sm group-hover:bg-emerald-500 group-hover:text-white transition-colors duration-300">
                                   <i className="fa-solid fa-file-pdf"></i>
                               </div>
-                              <div>
-                                  <h4 className="font-bold text-slate-800 dark:text-slate-200 text-sm group-hover:text-emerald-800 dark:group-hover:text-emerald-300 flex items-center gap-2">
-                                      {item.title}
-                                      {/* File Type Badge */}
-                                      <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-rose-100 dark:bg-rose-900/50 text-rose-700 dark:text-rose-300 ring-1 ring-rose-200 dark:ring-rose-800">
-                                          {item.fileType}
-                                      </span>
-                                  </h4>
-                                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 flex items-center gap-2">
-                                     <i className="fa-regular fa-clock"></i> {item.date}
-                                  </p>
-                              </div>
+                              <span className="px-2 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-[10px] font-bold text-slate-500 border border-slate-200 dark:border-slate-700">
+                                  {item.fileType || 'PDF'}
+                              </span>
                           </div>
-                          <div className="h-10 w-10 rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 group-hover:border-emerald-200 transition">
-                              <i className="fa-solid fa-file-arrow-down"></i>
+
+                          <h3 className="font-bold text-slate-800 dark:text-white text-sm mb-1 line-clamp-2 min-h-[2.5em] group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
+                              {item.title}
+                          </h3>
+                          
+                          <div className="text-xs text-slate-400 mb-4 flex items-center gap-2">
+                             <i className="fa-regular fa-clock"></i> {item.date}
+                          </div>
+
+                          <div className="mt-auto pt-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                              <span className="text-xs font-bold text-slate-400 group-hover:text-emerald-500 transition-colors">ดาวน์โหลด</span>
+                              <div className="h-8 w-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-400 group-hover:bg-emerald-500 group-hover:text-white transition-all shadow-sm">
+                                  <i className="fa-solid fa-download text-xs"></i>
+                              </div>
                           </div>
                       </div>
                   ))}

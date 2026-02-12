@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { PR_NEWS } from '../constants';
 
@@ -10,13 +11,24 @@ interface NewsModalProps {
 const NewsModal: React.FC<NewsModalProps> = ({ isOpen, onClose, initialIndex = 0 }) => {
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
   const [dontShow, setDontShow] = useState(false);
+  const [isClosing, setIsClosing] = useState(false);
 
   // Reset index when modal opens
   useEffect(() => {
-    if (isOpen) setCurrentIndex(initialIndex);
+    if (isOpen) {
+        setCurrentIndex(initialIndex);
+        setIsClosing(false);
+    }
   }, [isOpen, initialIndex]);
 
-  if (!isOpen) return null;
+  const handleClose = () => {
+      setIsClosing(true);
+      setTimeout(() => {
+          onClose(dontShow);
+      }, 300); // Wait for animation
+  };
+
+  if (!isOpen && !isClosing) return null;
 
   const totalItems = PR_NEWS.length;
 
@@ -27,29 +39,31 @@ const NewsModal: React.FC<NewsModalProps> = ({ isOpen, onClose, initialIndex = 0
   const isNews = currentItem.type === 'news';
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center px-4 animate-fade-in">
-      {/* Backdrop */}
+    <div className={`fixed inset-0 z-[200] flex items-center justify-center px-4 transition-opacity duration-300 ${isClosing ? 'opacity-0' : 'opacity-100'}`}>
+      
+      {/* Backdrop with stronger blur and smooth transition */}
       <div 
-        className="absolute inset-0 bg-slate-900/70 backdrop-blur-sm transition-opacity"
+        className="absolute inset-0 bg-slate-900/60 backdrop-blur-md transition-opacity duration-300"
+        onClick={handleClose}
       />
       
       {/* Modal Content */}
-      <div className="relative bg-white dark:bg-slate-900 rounded-3xl shadow-2xl max-w-lg w-full overflow-hidden flex flex-col max-h-[90vh] animate-bounce-in ring-1 ring-white/20 dark:ring-slate-700">
+      <div className={`relative bg-white dark:bg-slate-900 rounded-[2rem] shadow-2xl max-w-lg w-full overflow-hidden flex flex-col max-h-[85vh] ring-1 ring-white/20 dark:ring-slate-700 transition-all duration-300 transform ${isClosing ? 'scale-95 translate-y-4' : 'scale-100 translate-y-0 animate-bounce-in'}`}>
         
-        {/* Close Button (Top Right) */}
+        {/* Close Button (Floating) */}
         <button 
-            onClick={() => onClose(dontShow)}
-            className="absolute top-4 right-4 z-20 h-8 w-8 rounded-full bg-black/40 text-white flex items-center justify-center hover:bg-black/60 transition backdrop-blur-md"
+            onClick={handleClose}
+            className="absolute top-4 right-4 z-30 h-9 w-9 rounded-full bg-black/20 hover:bg-black/40 text-white flex items-center justify-center transition backdrop-blur-sm border border-white/10"
         >
-            <i className="fa-solid fa-xmark"></i>
+            <i className="fa-solid fa-xmark text-lg"></i>
         </button>
 
-        {/* Carousel Container */}
-        <div className="h-56 relative bg-slate-200 dark:bg-slate-800 group overflow-hidden">
+        {/* Carousel / Image Header Section */}
+        <div className="h-64 relative bg-slate-100 dark:bg-slate-800 group overflow-hidden shrink-0">
              
-             {/* Slider Wrapper using TranslateX for smooth transition */}
+             {/* Slider Wrapper */}
              <div 
-                className="flex h-full transition-transform duration-500 ease-in-out"
+                className="flex h-full transition-transform duration-500 ease-out will-change-transform"
                 style={{ transform: `translateX(-${currentIndex * 100}%)` }}
              >
                 {PR_NEWS.map((item, index) => {
@@ -64,90 +78,91 @@ const NewsModal: React.FC<NewsModalProps> = ({ isOpen, onClose, initialIndex = 0
                                 />
                             ) : (
                                 <div className={`w-full h-full bg-gradient-to-br ${itemIsNews ? 'from-rose-500 to-orange-400' : 'from-emerald-500 to-teal-400'} flex items-center justify-center`}>
-                                    <i className={`fa-solid ${itemIsNews ? 'fa-bullhorn' : 'fa-file-arrow-down'} text-6xl text-white/30 transform -rotate-12`}></i>
+                                    <div className="relative">
+                                        <i className={`fa-solid ${itemIsNews ? 'fa-bullhorn' : 'fa-file-arrow-down'} text-8xl text-white/20 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 scale-150`}></i>
+                                        <i className={`fa-solid ${itemIsNews ? 'fa-bullhorn' : 'fa-file-arrow-down'} text-6xl text-white relative z-10 drop-shadow-md`}></i>
+                                    </div>
                                 </div>
                             )}
                             
-                            {/* Gradient Overlay (Per slide) */}
-                            <div className="absolute inset-0 bg-gradient-to-t from-slate-900/90 via-transparent to-transparent"></div>
+                            {/* Stylish Gradient Overlay */}
+                            <div className="absolute inset-0 bg-gradient-to-t from-slate-900/90 via-slate-900/20 to-transparent"></div>
                         </div>
                     );
                 })}
              </div>
 
-             {/* Overlay Content (Static position relative to slide) */}
-             <div className="absolute inset-0 pointer-events-none flex items-end p-6 z-10">
-                 <div className="text-white w-full">
-                     <div className="flex justify-between items-end">
-                        <span className={`inline-block px-2 py-1 rounded ${isNews ? 'bg-rose-600' : 'bg-emerald-600'} text-xs font-bold mb-2 shadow-lg`}>
-                            {isNews ? 'ข่าวประชาสัมพันธ์' : 'เอกสารดาวน์โหลด'}
-                        </span>
-                        <span className="text-xs font-medium text-white/80 mb-2">{currentIndex + 1} / {totalItems}</span>
-                     </div>
+             {/* Badge & Counter Overlay */}
+             <div className="absolute inset-x-0 bottom-0 p-6 z-20 flex justify-between items-end">
+                 <div>
+                     <span className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold shadow-lg backdrop-blur-md border border-white/10 ${isNews ? 'bg-rose-500/90 text-white' : 'bg-emerald-500/90 text-white'}`}>
+                        <i className={`fa-solid ${isNews ? 'fa-newspaper' : 'fa-download'}`}></i>
+                        {isNews ? 'ข่าวประชาสัมพันธ์' : 'เอกสารดาวน์โหลด'}
+                     </span>
+                 </div>
+                 <div className="bg-black/30 backdrop-blur-md text-white text-[10px] font-bold px-3 py-1 rounded-full border border-white/10">
+                     {currentIndex + 1} / {totalItems}
                  </div>
              </div>
 
              {/* Navigation Arrows */}
              <button 
                 onClick={prevSlide}
-                className="absolute left-2 top-1/2 -translate-y-1/2 h-10 w-10 z-20 rounded-full bg-black/20 text-white hover:bg-black/50 flex items-center justify-center transition backdrop-blur-sm opacity-0 group-hover:opacity-100"
+                className="absolute left-3 top-1/2 -translate-y-1/2 h-10 w-10 z-20 rounded-full bg-white/10 hover:bg-white/30 text-white border border-white/20 flex items-center justify-center transition backdrop-blur-sm opacity-0 group-hover:opacity-100 translate-x-[-10px] group-hover:translate-x-0"
              >
                 <i className="fa-solid fa-chevron-left"></i>
              </button>
              <button 
                 onClick={nextSlide}
-                className="absolute right-2 top-1/2 -translate-y-1/2 h-10 w-10 z-20 rounded-full bg-black/20 text-white hover:bg-black/50 flex items-center justify-center transition backdrop-blur-sm opacity-0 group-hover:opacity-100"
+                className="absolute right-3 top-1/2 -translate-y-1/2 h-10 w-10 z-20 rounded-full bg-white/10 hover:bg-white/30 text-white border border-white/20 flex items-center justify-center transition backdrop-blur-sm opacity-0 group-hover:opacity-100 translate-x-[10px] group-hover:translate-x-0"
              >
                 <i className="fa-solid fa-chevron-right"></i>
              </button>
-
-             {/* Dots */}
-             <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1.5 z-20">
-                {PR_NEWS.map((_, idx) => (
-                    <button 
-                        key={idx} 
-                        onClick={() => setCurrentIndex(idx)}
-                        className={`h-1.5 rounded-full transition-all ${idx === currentIndex ? 'w-6 bg-white' : 'w-1.5 bg-white/40 hover:bg-white/60'}`}
-                    />
-                ))}
-             </div>
         </div>
 
-        {/* Content (Changes based on current index) */}
-        <div className="p-6 md:p-8 flex-1 overflow-y-auto">
-            {/* Animated Content Wrapper */}
+        {/* Content Body */}
+        <div className="p-8 flex-1 overflow-y-auto custom-scrollbar">
             <div key={currentIndex} className="animate-fade-in">
-                <h3 className="text-xl font-black text-slate-900 dark:text-white mb-2 leading-snug">
-                    {currentItem.title}
-                </h3>
-                <div className="text-xs font-bold text-slate-400 mb-4 flex items-center gap-2">
-                    <i className="fa-regular fa-calendar"></i> {currentItem.date}
+                <div className="flex items-center gap-3 text-xs font-bold text-slate-400 dark:text-slate-500 mb-3 uppercase tracking-wider">
+                    <i className="fa-regular fa-calendar-check text-sky-500"></i>
+                    <span>เผยแพร่เมื่อ: {currentItem.date}</span>
                 </div>
                 
-                <div className="prose prose-slate dark:prose-invert text-sm text-slate-600 dark:text-slate-300 mb-6">
+                <h3 className="text-2xl md:text-3xl font-black text-slate-800 dark:text-white mb-4 leading-tight">
+                    {currentItem.title}
+                </h3>
+                
+                <div className="prose prose-slate dark:prose-invert prose-sm md:prose-base text-slate-600 dark:text-slate-300 leading-relaxed">
                     <p>{currentItem.desc}</p>
                 </div>
             </div>
         </div>
 
         {/* Footer Actions */}
-        <div className="p-4 bg-slate-50 dark:bg-slate-800 border-t border-slate-100 dark:border-slate-700 flex items-center justify-between gap-4">
-             <label className="flex items-center gap-2 cursor-pointer text-slate-600 dark:text-slate-300 hover:text-slate-800 dark:hover:text-white transition select-none group">
-                 <input 
-                    type="checkbox" 
-                    checked={dontShow}
-                    onChange={(e) => setDontShow(e.target.checked)}
-                    className="w-5 h-5 rounded border-slate-300 dark:border-slate-600 text-slate-900 focus:ring-slate-900 dark:focus:ring-sky-500 accent-slate-900 cursor-pointer" 
-                 />
-                 <span className="text-xs font-bold group-hover:text-slate-900 dark:group-hover:text-white">ไม่แสดงอีกในครั้งถัดไป</span>
+        <div className="p-6 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-100 dark:border-slate-700 flex flex-col sm:flex-row items-center justify-between gap-4">
+             {/* Checkbox Group */}
+             <label className="flex items-center gap-3 cursor-pointer group select-none py-2 px-1">
+                 <div className="relative flex items-center">
+                    <input 
+                        type="checkbox" 
+                        checked={dontShow}
+                        onChange={(e) => setDontShow(e.target.checked)}
+                        className="peer h-5 w-5 cursor-pointer appearance-none rounded-md border-2 border-slate-300 bg-white transition-all checked:border-sky-500 checked:bg-sky-500 hover:border-sky-400 dark:border-slate-600 dark:bg-slate-800" 
+                    />
+                    <i className="fa-solid fa-check absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-xs text-white opacity-0 peer-checked:opacity-100 transition-opacity pointer-events-none"></i>
+                 </div>
+                 <span className="text-sm font-bold text-slate-500 group-hover:text-slate-800 dark:text-slate-400 dark:group-hover:text-slate-200 transition">
+                    ไม่แสดงอีกในครั้งถัดไป
+                 </span>
              </label>
 
+             {/* Prominent Action Button */}
              <button
-                onClick={() => onClose(dontShow)}
-                className="px-6 py-2.5 rounded-xl bg-slate-900 dark:bg-sky-600 text-white font-bold text-sm hover:bg-slate-800 dark:hover:bg-sky-500 active:scale-95 transition shadow-lg shadow-slate-200 dark:shadow-none flex items-center gap-2"
+                onClick={handleClose}
+                className="w-full sm:w-auto px-8 py-3 rounded-2xl bg-gradient-to-r from-slate-900 to-slate-800 text-white font-bold text-sm shadow-lg shadow-slate-200 hover:shadow-xl hover:shadow-slate-300 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200 flex items-center justify-center gap-2 dark:from-sky-600 dark:to-sky-500 dark:shadow-none dark:hover:bg-sky-400"
              >
-                <span>รับทราบ</span>
-                <i className="fa-solid fa-check"></i>
+                <span>รับทราบ / ปิดหน้าต่าง</span>
+                <i className="fa-solid fa-arrow-right"></i>
              </button>
         </div>
       </div>
