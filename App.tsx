@@ -360,7 +360,7 @@ export default function App() {
 
       {/* --- Sticky Top Header --- */}
       <header className={`sticky top-0 z-50 transition-all duration-300 ${darkMode ? 'bg-slate-900/90 border-slate-800' : 'bg-white/90 border-slate-200'} border-b backdrop-blur-md`}>
-        {/* ... Header Content (No Changes needed here) ... */}
+        {/* ... Header Content ... */}
         <div className="max-w-7xl mx-auto px-4 h-20 flex items-center justify-between">
           
           {/* 1. Logo */}
@@ -607,6 +607,7 @@ export default function App() {
                         }} 
                         editingSubmission={editingSubmission}
                         onCancelEdit={() => setEditingSubmission(null)}
+                        onNavigateToProfile={() => handleTabChange('profile')}
                     />
                 )}
                 
@@ -645,7 +646,8 @@ export default function App() {
           <i className="fa-solid fa-arrow-up text-lg"></i>
       </button>
 
-      {/* Official Footer */}
+      {/* Footer */}
+      {/* ... (Footer remains same) ... */}
       <footer className={`mt-20 pt-16 pb-8 border-t border-slate-200 dark:border-slate-800 transition-colors duration-300 ${darkMode ? 'bg-slate-950 text-slate-400' : 'bg-slate-900 text-slate-300'}`}>
           <div className="max-w-7xl mx-auto px-6">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-12 mb-12">

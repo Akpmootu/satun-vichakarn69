@@ -66,6 +66,7 @@ export interface ToastMessage {
 export interface WorkTypeOption {
   id: string;
   label: string;
+  description?: string; // Added description
   icon: string;
 }
 
