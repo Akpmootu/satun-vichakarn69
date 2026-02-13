@@ -1,8 +1,8 @@
 
 import React, { useEffect, useState, useRef, useCallback } from "react";
 import { BUDGET_YEAR } from "./constants";
-import { AppSettings, Submission, ToastMessage, UserProfile } from "./types";
-import { apiListSubmissions, loadSettings, getCurrentUser, logoutUser, apiGetUserProfile } from "./services/apiService";
+import { AppSettings, Submission, ToastMessage, UserProfile, VisitorStats } from "./types";
+import { apiListSubmissions, loadSettings, getCurrentUser, logoutUser, apiGetUserProfile, subscribeToVisitorPresence, apiGetVisitorStats, apiRecordVisit } from "./services/apiService";
 
 import Registration from "./components/Registration";
 import History from "./components/History";
@@ -16,6 +16,8 @@ import UserAuthModal from "./components/UserAuthModal";
 import Toast from "./components/ui/Toast";
 import Logo from "./components/ui/Logo";
 import LoadingOverlay from "./components/ui/LoadingOverlay";
+import CookieConsent from "./components/privacy/CookieConsent";
+import PrivacyPolicyModal from "./components/privacy/PrivacyPolicyModal";
 
 // Declare Swal globally
 declare const Swal: any;
@@ -29,6 +31,9 @@ export default function App() {
   const [showAuth, setShowAuth] = useState(false);
   const [isPageLoading, setIsPageLoading] = useState(false);
   
+  // Privacy Modals State
+  const [showPrivacyPolicy, setShowPrivacyPolicy] = useState(false);
+
   // Editing State
   const [editingSubmission, setEditingSubmission] = useState<Submission | null>(null);
 
@@ -44,6 +49,9 @@ export default function App() {
   // Shared Data State
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [loading, setLoading] = useState(false);
+
+  // Stats State
+  const [visitorStats, setVisitorStats] = useState<VisitorStats>({ online: 1, week: 0, month: 0, year: 0, total: 0 });
 
   // Auto Logout Timer Ref
   const inactivityTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -79,6 +87,40 @@ export default function App() {
             .catch(err => console.error("Sync profile failed:", err));
       }
   }, []); // Run once on mount
+
+  // --- Visitor Stats & Logging Logic ---
+  useEffect(() => {
+      // 1. Get Realtime Online Count (Presence)
+      const unsubscribePresence = subscribeToVisitorPresence((count) => {
+          setVisitorStats(prev => ({ ...prev, online: count }));
+      });
+
+      // 2. Fetch Historical Data from DB (via RPC)
+      apiGetVisitorStats().then(data => {
+          setVisitorStats(prev => ({ ...prev, ...data }));
+      });
+
+      // 3. Record Visit (Once per Session)
+      const hasRecorded = sessionStorage.getItem('svk_visit_recorded');
+      if (!hasRecorded) {
+          // Generate Persistent Client ID if not exists
+          let clientId = localStorage.getItem('svk_client_id');
+          if (!clientId) {
+              clientId = crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2);
+              localStorage.setItem('svk_client_id', clientId);
+          }
+
+          // Record visit to DB
+          apiRecordVisit(clientId, currentUser?.id);
+          
+          // Mark session as recorded
+          sessionStorage.setItem('svk_visit_recorded', 'true');
+      }
+
+      return () => {
+          unsubscribePresence();
+      };
+  }, []); // Run once on mount (dependency array empty is intentionally mostly empty, though currentUser could be added if we strictly want to re-log on login, but usually per-session is enough)
 
   // Check Session for News Popup
   useEffect(() => {
@@ -243,6 +285,11 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [settings, activeTab, currentUser]);
 
+  // Handle open cookie settings from footer
+  const triggerCookieSettings = () => {
+      window.dispatchEvent(new CustomEvent('open-cookie-settings'));
+  };
+
   const tabs = [
     { id: "home", label: "หน้าหลัก", icon: "fa-house" },
     { id: "register", label: "ลงทะเบียนส่งงาน", icon: "fa-pen-to-square" },
@@ -258,6 +305,10 @@ export default function App() {
   return (
     <div className={`min-h-screen font-sans pb-10 flex flex-col transition-colors duration-300 ${darkMode ? 'bg-slate-950 text-slate-100' : 'bg-slate-50 text-slate-900'}`}>
       
+      {/* Privacy Components */}
+      <CookieConsent />
+      <PrivacyPolicyModal isOpen={showPrivacyPolicy} onClose={() => setShowPrivacyPolicy(false)} />
+
       {/* Full Screen Loading Overlay */}
       <LoadingOverlay isLoading={isPageLoading} />
 
@@ -439,7 +490,7 @@ export default function App() {
       {/* Official Footer */}
       <footer className={`mt-20 pt-16 pb-8 border-t border-slate-200 dark:border-slate-800 transition-colors duration-300 ${darkMode ? 'bg-slate-950 text-slate-400' : 'bg-slate-900 text-slate-300'}`}>
           <div className="max-w-7xl mx-auto px-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-12 mb-16">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-12 mb-12">
                   
                   {/* Column 1: Organization & About */}
                   <div className="space-y-6">
@@ -458,7 +509,6 @@ export default function App() {
                           สำนักงานสาธารณสุขจังหวัดสตูล
                       </p>
                       
-                      {/* Only Real Contact / Social Links (Removed Placeholders) */}
                       <div className="flex gap-3">
                           <a href="#" className="px-4 py-2 rounded-lg bg-slate-800 flex items-center gap-2 hover:bg-sky-600 hover:text-white transition text-slate-400 border border-slate-700 text-xs font-bold" aria-label="Visit Website">
                               <i className="fa-solid fa-globe"></i>
@@ -504,19 +554,30 @@ export default function App() {
                           ติดต่อสอบถาม
                       </h4>
                       
-                      <div className="bg-slate-800/50 rounded-2xl p-5 border border-slate-800 mb-6">
-                          <div className="flex items-start gap-3 mb-1">
-                              <i className="fa-solid fa-map-location-dot mt-1 text-sky-500 text-lg"></i>
-                              <span className="text-sm leading-relaxed text-slate-300">
-                                  <strong className="text-white block mb-1">สำนักงานสาธารณสุขจังหวัดสตูล</strong>
-                                  เลขที่ 123 ถ.สติล ต.พิมาน อ.เมือง <br/>จ.สตูล 91000
-                              </span>
+                      {/* Updated: Link to Satun MOPH instead of map text */}
+                      <a href="https://satun.moph.go.th" target="_blank" rel="noopener noreferrer" className="block group mb-4">
+                          <div className="bg-slate-800/50 rounded-2xl p-5 border border-slate-800 group-hover:border-sky-500/50 group-hover:bg-slate-800 transition relative overflow-hidden">
+                              <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition group-hover:scale-110">
+                                  <i className="fa-solid fa-globe text-6xl text-white"></i>
+                              </div>
+                              <div className="relative z-10 flex items-center gap-4">
+                                  <div className="h-12 w-12 rounded-xl bg-sky-500/10 text-sky-500 flex items-center justify-center text-xl group-hover:bg-sky-500 group-hover:text-white transition">
+                                      <i className="fa-solid fa-location-dot"></i>
+                                  </div>
+                                  <div>
+                                      <div className="text-xs text-slate-400 font-bold uppercase mb-1">เว็บไซต์หน่วยงาน</div>
+                                      <div className="text-white font-bold text-sm">สำนักงานสาธารณสุขจังหวัดสตูล</div>
+                                      <div className="text-sky-500 text-xs mt-1 flex items-center gap-1">
+                                          ไปที่เว็บไซต์ <i className="fa-solid fa-arrow-up-right-from-square text-[10px]"></i>
+                                      </div>
+                                  </div>
+                              </div>
                           </div>
-                      </div>
+                      </a>
 
                       <div className="space-y-3">
                           <a 
-                             href="tel:074123456" 
+                             href="tel:074711071" 
                              className="flex items-center gap-4 p-3 rounded-xl border border-emerald-500/20 bg-emerald-500/5 text-emerald-400 hover:bg-emerald-500 hover:text-white transition group hover:shadow-lg hover:shadow-emerald-900/20 active:scale-95 duration-200"
                           >
                               <div className="h-10 w-10 rounded-lg bg-emerald-500/20 group-hover:bg-white/20 flex items-center justify-center transition">
@@ -524,37 +585,67 @@ export default function App() {
                               </div>
                               <div className="flex-1">
                                   <div className="text-xs font-bold opacity-70">เบอร์โทรศัพท์</div>
-                                  <div className="font-mono text-lg font-bold">074-123-456</div>
+                                  <div className="font-mono text-lg font-bold">074-711-071</div>
                               </div>
                               <i className="fa-solid fa-arrow-up-right-from-square text-xs opacity-50"></i>
                           </a>
-
-                          <a 
-                             href="mailto:skms@satunhealth.go.th" 
-                             className="flex items-center gap-4 p-3 rounded-xl border border-rose-500/20 bg-rose-500/5 text-rose-400 hover:bg-rose-500 hover:text-white transition group hover:shadow-lg hover:shadow-rose-900/20 active:scale-95 duration-200"
-                          >
-                              <div className="h-10 w-10 rounded-lg bg-rose-500/20 group-hover:bg-white/20 flex items-center justify-center transition">
-                                  <i className="fa-solid fa-envelope"></i>
-                              </div>
-                              <div className="flex-1">
-                                  <div className="text-xs font-bold opacity-70">อีเมล (E-mail)</div>
-                                  <div className="text-sm font-bold">skms@satunhealth.go.th</div>
-                              </div>
-                              <i className="fa-solid fa-arrow-up-right-from-square text-xs opacity-50"></i>
-                          </a>
+                          
+                          {/* Removed Email Section as requested */}
                       </div>
                   </div>
               </div>
 
-              {/* Bottom Copyright */}
+              {/* Visitor Stats Section */}
+              <div className="mb-8 border-t border-slate-800 pt-6">
+                  <div className="flex flex-wrap items-center justify-center md:justify-between gap-4 bg-slate-900/50 p-4 rounded-2xl border border-slate-800">
+                      <div className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-2">
+                          <i className="fa-solid fa-chart-simple text-sky-500"></i> สถิติการเข้าชม
+                      </div>
+                      
+                      <div className="flex flex-wrap justify-center gap-4 md:gap-8">
+                          <div className="flex flex-col items-center">
+                              <span className="text-[10px] text-slate-500 uppercase font-bold mb-1">Online</span>
+                              <span className="text-emerald-400 font-mono font-bold text-lg flex items-center gap-1.5">
+                                  <span className="relative flex h-2 w-2">
+                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                                  </span>
+                                  {visitorStats.online.toLocaleString()}
+                              </span>
+                          </div>
+                          <div className="w-px h-8 bg-slate-800 hidden md:block"></div>
+                          
+                          <div className="flex flex-col items-center">
+                              <span className="text-[10px] text-slate-500 uppercase font-bold mb-1">รายสัปดาห์</span>
+                              <span className="text-white font-mono font-bold text-lg">{visitorStats.week.toLocaleString()}</span>
+                          </div>
+                          <div className="flex flex-col items-center">
+                              <span className="text-[10px] text-slate-500 uppercase font-bold mb-1">รายเดือน</span>
+                              <span className="text-white font-mono font-bold text-lg">{visitorStats.month.toLocaleString()}</span>
+                          </div>
+                          <div className="flex flex-col items-center">
+                              <span className="text-[10px] text-slate-500 uppercase font-bold mb-1">รายปี</span>
+                              <span className="text-white font-mono font-bold text-lg">{visitorStats.year.toLocaleString()}</span>
+                          </div>
+                          <div className="w-px h-8 bg-slate-800 hidden md:block"></div>
+                          
+                          <div className="flex flex-col items-center">
+                              <span className="text-[10px] text-slate-500 uppercase font-bold mb-1">ทั้งหมด</span>
+                              <span className="text-sky-400 font-mono font-bold text-lg">{visitorStats.total.toLocaleString()}</span>
+                          </div>
+                      </div>
+                  </div>
+              </div>
+
+              {/* Bottom Copyright with Privacy Actions */}
               <div className="border-t border-slate-800 pt-8 flex flex-col md:flex-row justify-between items-center gap-4 text-xs font-medium text-slate-500">
                   <div className="flex items-center gap-2">
                        <i className="fa-solid fa-code text-sky-500"></i>
-                       <span>พัฒนาโดย กลุ่มงานพัฒนายุทธศาสตร์สาธารณสุข (IT SSJ SATUN)</span>
+                       <span>พัฒนาโดย กลุ่มงานสุขภาพดิจิทัล สำนักงานสาธารณสุขจังหวัดสตูล</span>
                   </div>
                   <div className="flex gap-6">
-                      <a href="#" className="hover:text-slate-300 transition">นโยบายความเป็นส่วนตัว</a>
-                      <a href="#" className="hover:text-slate-300 transition">เงื่อนไขการใช้งาน</a>
+                      <button onClick={() => setShowPrivacyPolicy(true)} className="hover:text-slate-300 transition">นโยบายความเป็นส่วนตัว</button>
+                      <button onClick={triggerCookieSettings} className="hover:text-slate-300 transition">ตั้งค่าคุกกี้</button>
                       <span>&copy; {BUDGET_YEAR} All rights reserved.</span>
                   </div>
               </div>

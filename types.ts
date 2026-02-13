@@ -72,3 +72,11 @@ export interface BranchOption {
   id: number;
   label: string;
 }
+
+export interface VisitorStats {
+  online: number;
+  week: number;
+  month: number;
+  year: number;
+  total: number;
+}

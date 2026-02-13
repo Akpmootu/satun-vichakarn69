@@ -1,5 +1,5 @@
 
-import { AppSettings, Submission, UserProfile, NewsItem, UserRole } from '../types';
+import { AppSettings, Submission, UserProfile, NewsItem, UserRole, VisitorStats } from '../types';
 import { supabase } from '../lib/supabaseClient';
 import { PR_NEWS } from '../constants';
 
@@ -260,9 +260,6 @@ export function nowISO(): string { return new Date().toISOString(); }
 export async function apiListSubmissions(settings: AppSettings, userId?: string): Promise<Submission[]> {
     let query = supabase.from('submissions').select('*').order('created_at', { ascending: false });
     
-    // If userId provided, filter by it. EXCEPT if the requesting user is 'admin' or 'reviewer' (handled in logic layer, but here we expect 'userId' param to be the filter target)
-    // NOTE: In App.tsx logic: const userId = (currentUser?.role === 'admin' || currentUser?.role === 'reviewer') ? undefined : currentUser?.id;
-    // So if userId is undefined, it fetches ALL. If defined, fetches specific user.
     if (userId) { 
         query = query.eq('user_id', userId); 
     }
@@ -298,12 +295,10 @@ export async function apiCreateSubmission(settings: AppSettings, payload: Submis
 export async function apiUpdateSubmission(settings: AppSettings, id: string, patch: Partial<Submission>): Promise<Submission> {
     const dbPatch: any = { updated_at: new Date().toISOString() };
     
-    // Status & Audit & Reviewer
     if (patch.status) dbPatch.status = patch.status;
     if (patch.audit) dbPatch.audit = patch.audit;
     if (patch.reviewerId !== undefined) dbPatch.reviewer_id = patch.reviewerId;
 
-    // Personal Info
     if (patch.firstName) dbPatch.first_name = patch.firstName;
     if (patch.lastName) dbPatch.last_name = patch.lastName;
     if (patch.position) dbPatch.position = patch.position;
@@ -311,7 +306,6 @@ export async function apiUpdateSubmission(settings: AppSettings, id: string, pat
     if (patch.email) dbPatch.email = patch.email;
     if (patch.phone) dbPatch.phone = patch.phone;
 
-    // Work Info
     if (patch.workType) dbPatch.work_type = patch.workType;
     if (patch.branchId) dbPatch.branch_id = patch.branchId;
     if (patch.fileUrl) dbPatch.file_url = patch.fileUrl;
@@ -325,4 +319,66 @@ export async function apiUpdateSubmission(settings: AppSettings, id: string, pat
 export async function apiDeleteSubmission(settings: AppSettings, id: string): Promise<void> {
     const { error } = await supabase.from('submissions').delete().eq('id', id);
     if (error) throw new Error(error.message);
+}
+
+// --- Visitor Statistics Service ---
+
+// 1. Subscribe to Online Users (Supabase Presence)
+export function subscribeToVisitorPresence(onCountChange: (count: number) => void) {
+    const channel = supabase.channel('visitor_presence');
+
+    channel
+        .on('presence', { event: 'sync' }, () => {
+            const state = channel.presenceState();
+            const count = Object.keys(state).length;
+            onCountChange(count);
+        })
+        .subscribe(async (status) => {
+            if (status === 'SUBSCRIBED') {
+                await channel.track({ online_at: new Date().toISOString() });
+            }
+        });
+
+    return () => {
+        supabase.removeChannel(channel);
+    };
+}
+
+// 2. Record Visit (Insert into DB) - Real Logging
+export async function apiRecordVisit(clientId: string, userId?: string) {
+    try {
+        await supabase.from('visitor_logs').insert([
+            { 
+                client_id: clientId, 
+                user_id: userId || null,
+                page_url: window.location.pathname
+            }
+        ]);
+    } catch (e) {
+        console.error("Error recording visit:", e);
+    }
+}
+
+// 3. Get Historical Stats (Using Supabase RPC) - Real Data
+export async function apiGetVisitorStats(): Promise<Omit<VisitorStats, 'online'>> {
+    try {
+        const { data, error } = await supabase.rpc('get_visitor_stats');
+        
+        if (error) {
+            console.error("Error fetching stats RPC:", error);
+            // Fallback to zeros if RPC fails
+            return { week: 0, month: 0, year: 0, total: 0 };
+        }
+
+        // RPC returns JSON object matching the struct
+        return {
+            week: data.week || 0,
+            month: data.month || 0,
+            year: data.year || 0,
+            total: data.total || 0
+        };
+    } catch (e) {
+        console.error("API Stats Error:", e);
+        return { week: 0, month: 0, year: 0, total: 0 };
+    }
 }
