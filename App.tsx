@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState, useRef, useCallback } from "react";
+import React, { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { BUDGET_YEAR } from "./constants";
 import { AppSettings, Submission, ToastMessage, UserProfile, VisitorStats } from "./types";
 import { apiListSubmissions, loadSettings, getCurrentUser, logoutUser, apiGetUserProfile, subscribeToVisitorPresence, apiGetVisitorStats, apiRecordVisit } from "./services/apiService";
@@ -31,6 +31,10 @@ export default function App() {
   const [showAuth, setShowAuth] = useState(false);
   const [isPageLoading, setIsPageLoading] = useState(false);
   
+  // UI States
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [showScrollTop, setShowScrollTop] = useState(false);
+  
   // Privacy Modals State
   const [showPrivacyPolicy, setShowPrivacyPolicy] = useState(false);
 
@@ -57,6 +61,10 @@ export default function App() {
   const inactivityTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const INACTIVITY_LIMIT = 30 * 60 * 1000; // 30 Minutes
 
+  // Helper to check if special view
+  const isAdmin = currentUser?.role === 'admin';
+  const isReviewer = currentUser?.role === 'reviewer';
+
   // Apply Dark Mode Class
   useEffect(() => {
     if (darkMode) {
@@ -69,13 +77,28 @@ export default function App() {
 
   const toggleDarkMode = () => setDarkMode(!darkMode);
 
+  // Scroll to Top Listener
+  useEffect(() => {
+      const handleScroll = () => {
+          if (window.scrollY > 300) {
+              setShowScrollTop(true);
+          } else {
+              setShowScrollTop(false);
+          }
+      };
+      window.addEventListener('scroll', handleScroll);
+      return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  const scrollToTop = () => {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   // --- Profile Sync Logic ---
   useEffect(() => {
-      // If user is logged in, try to fetch the latest profile from DB to check for Role updates
       if (currentUser) {
           apiGetUserProfile(currentUser.id)
             .then(freshProfile => {
-                // If role or details changed in DB, update local state
                 if (JSON.stringify(freshProfile) !== JSON.stringify(currentUser)) {
                     setCurrentUser(freshProfile);
                     localStorage.setItem("svk_supabase_user", JSON.stringify(freshProfile));
@@ -86,48 +109,39 @@ export default function App() {
             })
             .catch(err => console.error("Sync profile failed:", err));
       }
-  }, []); // Run once on mount
+  }, []); 
 
   // --- Visitor Stats & Logging Logic ---
   useEffect(() => {
-      // 1. Get Realtime Online Count (Presence)
       const unsubscribePresence = subscribeToVisitorPresence((count) => {
           setVisitorStats(prev => ({ ...prev, online: count }));
       });
 
-      // 2. Fetch Historical Data from DB (via RPC)
       apiGetVisitorStats().then(data => {
           setVisitorStats(prev => ({ ...prev, ...data }));
       });
 
-      // 3. Record Visit (Once per Session)
       const hasRecorded = sessionStorage.getItem('svk_visit_recorded');
       if (!hasRecorded) {
-          // Generate Persistent Client ID if not exists
           let clientId = localStorage.getItem('svk_client_id');
           if (!clientId) {
               clientId = crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2);
               localStorage.setItem('svk_client_id', clientId);
           }
-
-          // Record visit to DB
           apiRecordVisit(clientId, currentUser?.id);
-          
-          // Mark session as recorded
           sessionStorage.setItem('svk_visit_recorded', 'true');
       }
 
       return () => {
           unsubscribePresence();
       };
-  }, []); // Run once on mount (dependency array empty is intentionally mostly empty, though currentUser could be added if we strictly want to re-log on login, but usually per-session is enough)
+  }, []);
 
   // Check Session for News Popup
   useEffect(() => {
     const dontShowAgain = localStorage.getItem("svk_dont_show_news");
     const hasSeenSession = sessionStorage.getItem("svk_has_seen_news");
     
-    // Only show news for regular users or guests
     if (!dontShowAgain && !hasSeenSession && (!currentUser || currentUser.role === 'user')) {
       setTimeout(() => setShowNews(true), 1500); 
     }
@@ -167,13 +181,10 @@ export default function App() {
 
   useEffect(() => {
     if (currentUser) {
-        // Add event listeners to detect activity
         window.addEventListener('mousemove', resetInactivityTimer);
         window.addEventListener('keydown', resetInactivityTimer);
         window.addEventListener('click', resetInactivityTimer);
         window.addEventListener('scroll', resetInactivityTimer);
-        
-        // Initial start
         resetInactivityTimer();
     } else {
         if (inactivityTimer.current) clearTimeout(inactivityTimer.current);
@@ -213,7 +224,7 @@ export default function App() {
           text: 'คุณต้องการออกจากระบบใช่หรือไม่',
           icon: 'question',
           showCancelButton: true,
-          confirmButtonColor: '#f43f5e', // rose-500
+          confirmButtonColor: '#f43f5e', 
           cancelButtonColor: '#64748b',
           confirmButtonText: '<i class="fa-solid fa-right-from-bracket mr-2"></i>ออกจากระบบ',
           cancelButtonText: 'ยกเลิก',
@@ -233,7 +244,6 @@ export default function App() {
   const loadData = async () => {
     setLoading(true);
     try {
-      // Pass null userId if admin or reviewer to fetch all
       const userId = (currentUser?.role === 'admin' || currentUser?.role === 'reviewer') ? undefined : currentUser?.id; 
       const data = await apiListSubmissions(settings, userId);
       setSubmissions(Array.isArray(data) ? data : []);
@@ -244,9 +254,7 @@ export default function App() {
     }
   };
 
-  // Simulate Page Loading when switching tabs
   const handleTabChange = (tabId: string) => {
-      // Allow re-clicking home to reset view or just return if same tab
       if (tabId === activeTab && tabId !== 'home') return;
 
       if ((tabId === 'register' || tabId === 'history') && !currentUser) {
@@ -255,16 +263,19 @@ export default function App() {
           return;
       }
 
-      // If user clicks register tab manually, clear any pending edit session
       if (tabId === 'register') {
           setEditingSubmission(null);
       }
 
       setIsPageLoading(true);
+      setIsMobileMenuOpen(false); // Close mobile menu on navigate
+      
       setTimeout(() => {
           setActiveTab(tabId);
           setIsPageLoading(false);
-      }, 800); // Reduced delay slightly for snappier feel
+          // Scroll top when changing tabs for better UX
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+      }, 600);
   };
 
   const handleEditSubmission = (submission: Submission) => {
@@ -276,8 +287,6 @@ export default function App() {
       }, 800);
   };
 
-  // Reload data when settings change or tab switches to history/analytics
-  // OR if user just logged in as admin/reviewer
   useEffect(() => {
     if (activeTab === 'history' || activeTab === 'analytics' || currentUser) {
        loadData();
@@ -285,12 +294,12 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [settings, activeTab, currentUser]);
 
-  // Handle open cookie settings from footer
   const triggerCookieSettings = () => {
       window.dispatchEvent(new CustomEvent('open-cookie-settings'));
   };
 
-  const tabs = [
+  // --- Navigation Data Logic ---
+  const allTabs = [
     { id: "home", label: "หน้าหลัก", icon: "fa-house" },
     { id: "register", label: "ลงทะเบียนส่งงาน", icon: "fa-pen-to-square" },
     { id: "history", label: "ประวัติผลงาน", icon: "fa-clock-rotate-left" },
@@ -298,9 +307,13 @@ export default function App() {
     { id: "settings", label: "ตั้งค่า", icon: "fa-gear" },
   ];
 
-  // Helper to check if special view
-  const isAdmin = currentUser?.role === 'admin';
-  const isReviewer = currentUser?.role === 'reviewer';
+  // Filter tabs: Show Settings only if Admin
+  const navTabs = useMemo(() => {
+      return allTabs.filter(tab => {
+          if (tab.id === 'settings') return isAdmin;
+          return true;
+      });
+  }, [isAdmin]);
 
   return (
     <div className={`min-h-screen font-sans pb-10 flex flex-col transition-colors duration-300 ${darkMode ? 'bg-slate-950 text-slate-100' : 'bg-slate-50 text-slate-900'}`}>
@@ -326,33 +339,66 @@ export default function App() {
         showToast={showToast}
       />
 
-      {/* Top Header */}
-      <header className={`sticky top-0 z-40 backdrop-blur-md border-b transition-colors duration-300 ${darkMode ? 'bg-slate-900/80 border-slate-800' : 'bg-white/80 border-slate-200'}`}>
+      {/* --- Sticky Top Header --- */}
+      <header className={`sticky top-0 z-50 transition-all duration-300 ${darkMode ? 'bg-slate-900/90 border-slate-800' : 'bg-white/90 border-slate-200'} border-b backdrop-blur-md`}>
         <div className="max-w-7xl mx-auto px-4 h-20 flex items-center justify-between">
+          
+          {/* 1. Logo */}
           <div 
-             className="cursor-pointer hover:opacity-80 transition"
+             className="cursor-pointer hover:opacity-80 transition flex-shrink-0"
              onClick={() => handleTabChange('home')}
           >
-             <Logo />
+             <Logo className="h-10 md:h-12" />
           </div>
           
-          <div className="flex items-center gap-4">
-             {/* Dark Mode Toggle */}
+          {/* 2. Desktop Navigation (Hidden on Mobile) */}
+          {!isAdmin && !isReviewer && (
+              <nav className="hidden lg:flex items-center gap-1">
+                  {navTabs.map(tab => {
+                      const isActive = activeTab === tab.id;
+                      return (
+                          <button
+                              key={tab.id}
+                              onClick={() => handleTabChange(tab.id)}
+                              className={`
+                                  relative px-4 py-2 rounded-xl text-sm font-bold transition-all duration-200 flex items-center gap-2
+                                  ${isActive 
+                                      ? (darkMode ? 'bg-slate-800 text-sky-400' : 'bg-slate-100 text-sky-600') 
+                                      : (darkMode ? 'text-slate-400 hover:text-white hover:bg-slate-800' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50')
+                                  }
+                              `}
+                          >
+                              <i className={`fa-solid ${tab.icon} ${isActive ? '' : 'opacity-70'}`}></i>
+                              {tab.label}
+                              {isActive && (
+                                  <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-1/2 h-0.5 bg-sky-500 rounded-t-full"></span>
+                              )}
+                          </button>
+                      );
+                  })}
+              </nav>
+          )}
+
+          {/* 3. Right Side Actions */}
+          <div className="flex items-center gap-3">
+             
+             {/* Desktop Dark Mode Toggle */}
              <button
                 onClick={toggleDarkMode}
-                className={`h-10 w-10 rounded-full flex items-center justify-center transition shadow-lg ${darkMode ? 'bg-slate-800 text-amber-400 hover:bg-slate-700' : 'bg-white text-slate-400 hover:text-slate-600 shadow-slate-200'}`}
+                className={`hidden md:flex h-10 w-10 rounded-full items-center justify-center transition shadow-sm ${darkMode ? 'bg-slate-800 text-amber-400 hover:bg-slate-700' : 'bg-slate-100 text-slate-400 hover:text-slate-600 hover:bg-slate-200'}`}
                 title="Toggle Dark Mode"
              >
                 <i className={`fa-solid ${darkMode ? 'fa-moon' : 'fa-sun'}`}></i>
              </button>
              
              {currentUser ? (
-                 <div className="flex items-center gap-3 pl-3">
-                     <div className={`hidden md:flex items-center gap-3 px-3 py-1.5 rounded-2xl border transition-all duration-300 shadow-sm
-                        ${darkMode ? 'bg-slate-800/50 border-slate-700' : 'bg-white border-slate-200 hover:shadow-md'}`}>
+                 <div className="flex items-center gap-3 pl-2">
+                     {/* User Profile (Collapsed on mobile, Detailed on Desktop) */}
+                     <div className={`flex items-center gap-3 px-1 md:px-3 py-1.5 rounded-full md:rounded-2xl transition-all duration-300 md:border md:shadow-sm
+                        ${darkMode ? 'md:bg-slate-800/50 md:border-slate-700' : 'md:bg-white md:border-slate-200'}`}>
                          
-                         {/* Avatar Circle */}
-                         <div className={`h-9 w-9 rounded-full flex items-center justify-center text-sm font-bold border-2
+                         {/* Avatar */}
+                         <div className={`h-9 w-9 rounded-full flex items-center justify-center text-sm font-bold border-2 shrink-0
                             ${isAdmin ? 'bg-rose-100 text-rose-600 border-rose-200' : 
                               isReviewer ? 'bg-indigo-100 text-indigo-600 border-indigo-200' : 
                               'bg-sky-100 text-sky-600 border-sky-200'}
@@ -360,7 +406,8 @@ export default function App() {
                              {currentUser.firstName.charAt(0)}
                          </div>
 
-                         <div className="text-right leading-tight">
+                         {/* Text Info (Desktop Only) */}
+                         <div className="text-right leading-tight hidden md:block">
                              <div className={`text-sm font-bold ${darkMode ? 'text-slate-200' : 'text-slate-800'}`}>
                                  {currentUser.firstName} {currentUser.lastName}
                              </div>
@@ -385,16 +432,65 @@ export default function App() {
              ) : (
                  <button 
                     onClick={() => setShowAuth(true)}
-                    className="ml-2 px-6 py-2.5 rounded-xl bg-gradient-to-r from-sky-600 to-indigo-600 text-white text-sm font-bold hover:from-sky-500 hover:to-indigo-500 transition shadow-lg shadow-sky-200 dark:shadow-sky-900/30 flex items-center gap-2 transform hover:-translate-y-0.5"
+                    className="ml-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-sky-600 to-indigo-600 text-white text-sm font-bold hover:from-sky-500 hover:to-indigo-500 transition shadow-lg shadow-sky-200 dark:shadow-sky-900/30 flex items-center gap-2 transform hover:-translate-y-0.5"
                  >
                     <i className="fa-solid fa-right-to-bracket"></i>
-                    <span>เข้าสู่ระบบ</span>
+                    <span className="hidden sm:inline">เข้าสู่ระบบ</span>
+                 </button>
+             )}
+
+             {/* Hamburger Button (Mobile Only) */}
+             {!isAdmin && !isReviewer && (
+                 <button
+                    onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                    className={`lg:hidden ml-1 h-10 w-10 rounded-xl flex items-center justify-center transition border ${isMobileMenuOpen ? 'bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-600' : 'border-transparent hover:bg-slate-100 dark:hover:bg-slate-800'}`}
+                 >
+                    <i className={`fa-solid ${isMobileMenuOpen ? 'fa-xmark' : 'fa-bars'} text-lg ${darkMode ? 'text-white' : 'text-slate-800'}`}></i>
                  </button>
              )}
           </div>
         </div>
+
+        {/* --- Mobile Dropdown Menu --- */}
+        <div className={`lg:hidden overflow-hidden transition-all duration-300 ease-in-out ${isMobileMenuOpen ? 'max-h-screen opacity-100 border-t border-slate-100 dark:border-slate-800' : 'max-h-0 opacity-0'}`}>
+            <div className={`p-4 space-y-2 shadow-lg ${darkMode ? 'bg-slate-900' : 'bg-white'}`}>
+                {navTabs.map(tab => (
+                    <button
+                        key={tab.id}
+                        onClick={() => handleTabChange(tab.id)}
+                        className={`w-full flex items-center gap-4 p-3 rounded-xl transition ${activeTab === tab.id 
+                            ? (darkMode ? 'bg-slate-800 text-sky-400 font-bold' : 'bg-sky-50 text-sky-700 font-bold') 
+                            : (darkMode ? 'text-slate-400 hover:bg-slate-800 hover:text-white' : 'text-slate-600 hover:bg-slate-50')}`}
+                    >
+                        <div className={`h-8 w-8 rounded-lg flex items-center justify-center ${activeTab === tab.id ? 'bg-sky-500 text-white' : 'bg-slate-200 dark:bg-slate-700'}`}>
+                            <i className={`fa-solid ${tab.icon} text-sm`}></i>
+                        </div>
+                        {tab.label}
+                    </button>
+                ))}
+                
+                {/* Mobile Dark Mode Toggle Inside Menu */}
+                <div className="pt-2 mt-2 border-t border-slate-100 dark:border-slate-800">
+                    <button 
+                        onClick={toggleDarkMode}
+                        className="w-full flex items-center justify-between p-3 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition"
+                    >
+                        <span className="flex items-center gap-3">
+                            <div className="h-8 w-8 rounded-lg bg-slate-200 dark:bg-slate-700 flex items-center justify-center">
+                                <i className={`fa-solid ${darkMode ? 'fa-moon text-amber-400' : 'fa-sun text-slate-500'}`}></i>
+                            </div>
+                            {darkMode ? 'โหมดกลางคืน (On)' : 'โหมดกลางคืน (Off)'}
+                        </span>
+                        <div className={`w-10 h-5 rounded-full relative transition ${darkMode ? 'bg-sky-500' : 'bg-slate-300'}`}>
+                            <div className={`absolute top-1 w-3 h-3 rounded-full bg-white transition-all ${darkMode ? 'left-6' : 'left-1'}`}></div>
+                        </div>
+                    </button>
+                </div>
+            </div>
+        </div>
       </header>
 
+      {/* --- Main Content Area --- */}
       <main className="flex-grow max-w-7xl w-full mx-auto px-4 mt-8">
         
         {/* Render Special Panels for Admin/Reviewer OR Standard Tabs for Users */}
@@ -413,27 +509,7 @@ export default function App() {
                 showToast={showToast} 
             />
         ) : (
-            <>
-                {/* Navigation Tabs (Only for standard users) */}
-                <nav className="flex overflow-x-auto pb-4 gap-2 no-scrollbar mb-6 justify-center md:justify-start">
-                {tabs.map(tab => (
-                    <button
-                        key={tab.id}
-                        onClick={() => handleTabChange(tab.id)}
-                        className={`whitespace-nowrap flex items-center gap-2 px-6 py-3 rounded-full text-sm font-bold transition-all duration-300 border ${
-                            activeTab === tab.id 
-                            ? (darkMode ? 'bg-sky-600 text-white border-sky-600 shadow-lg shadow-sky-900/50 transform -translate-y-1' : 'bg-slate-900 text-white shadow-lg shadow-slate-300 transform -translate-y-1 border-slate-900')
-                            : (darkMode ? 'bg-slate-900 text-slate-400 border-slate-800 hover:bg-slate-800 hover:text-white' : 'bg-white text-slate-500 hover:bg-slate-100 border-slate-200 hover:border-slate-300 hover:text-slate-700')
-                        }`}
-                        >
-                        <i className={`fa-solid ${tab.icon}`} />
-                        {tab.label}
-                    </button>
-                ))}
-                </nav>
-
-                {/* Content Area */}
-                <div className="min-h-[600px] animate-fade-in">
+            <div className="min-h-[600px] animate-fade-in">
                 {activeTab === 'home' && (
                     <Home 
                         onNavigate={handleTabChange} 
@@ -474,18 +550,26 @@ export default function App() {
                     <Dashboard submissions={submissions} />
                 )}
                 
-                {activeTab === 'settings' && (
+                {activeTab === 'settings' && isAdmin && (
                     <Settings 
                         settings={settings} 
                         onUpdate={setSettings} 
                         showToast={showToast} 
                     />
                 )}
-                </div>
-            </>
+            </div>
         )}
 
       </main>
+
+      {/* Scroll To Top Button */}
+      <button
+          onClick={scrollToTop}
+          className={`fixed bottom-6 right-6 z-40 h-12 w-12 rounded-full bg-slate-900 dark:bg-sky-600 text-white shadow-xl hover:shadow-2xl hover:-translate-y-1 active:translate-y-0 transition-all duration-300 flex items-center justify-center border-2 border-white/20 ${showScrollTop ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10 pointer-events-none'}`}
+          aria-label="Scroll to top"
+      >
+          <i className="fa-solid fa-arrow-up text-lg"></i>
+      </button>
 
       {/* Official Footer */}
       <footer className={`mt-20 pt-16 pb-8 border-t border-slate-200 dark:border-slate-800 transition-colors duration-300 ${darkMode ? 'bg-slate-950 text-slate-400' : 'bg-slate-900 text-slate-300'}`}>
@@ -529,7 +613,6 @@ export default function App() {
                               { id: 'register', label: 'นำเข้าองค์ความรู้', icon: 'fa-cloud-arrow-up' },
                               { id: 'history', label: 'คลังความรู้ (KM Bank)', icon: 'fa-book-open' },
                               { id: 'analytics', label: 'สรุปสถานการณ์', icon: 'fa-chart-pie' },
-                              { id: 'settings', label: 'ตั้งค่าระบบ', icon: 'fa-gear' },
                           ].map((item) => (
                               <li key={item.id}>
                                   <button 
@@ -589,8 +672,6 @@ export default function App() {
                               </div>
                               <i className="fa-solid fa-arrow-up-right-from-square text-xs opacity-50"></i>
                           </a>
-                          
-                          {/* Removed Email Section as requested */}
                       </div>
                   </div>
               </div>
