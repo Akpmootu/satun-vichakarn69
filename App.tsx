@@ -11,6 +11,7 @@ import Settings from "./components/Settings";
 import Home from "./components/Home";
 import AdminPanel from "./components/AdminPanel";
 import ReviewerPanel from "./components/ReviewerPanel";
+import ProfileSettings from "./components/ProfileSettings";
 import NewsModal from "./components/NewsModal";
 import UserAuthModal from "./components/UserAuthModal";
 import Toast from "./components/ui/Toast";
@@ -34,6 +35,7 @@ export default function App() {
   // UI States
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [showScrollTop, setShowScrollTop] = useState(false);
+  const [showProfileMenu, setShowProfileMenu] = useState(false); // For desktop dropdown
   
   // Privacy Modals State
   const [showPrivacyPolicy, setShowPrivacyPolicy] = useState(false);
@@ -55,11 +57,12 @@ export default function App() {
   const [loading, setLoading] = useState(false);
 
   // Stats State
-  const [visitorStats, setVisitorStats] = useState<VisitorStats>({ online: 1, week: 0, month: 0, year: 0, total: 0 });
+  const [visitorStats, setVisitorStats] = useState<VisitorStats>({ online: 1, today: 0, week: 0, month: 0, year: 0, total: 0 });
 
   // Auto Logout Timer Ref
   const inactivityTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const INACTIVITY_LIMIT = 30 * 60 * 1000; // 30 Minutes
+  const profileMenuRef = useRef<HTMLDivElement>(null);
 
   // Helper to check if special view
   const isAdmin = currentUser?.role === 'admin';
@@ -88,6 +91,17 @@ export default function App() {
       };
       window.addEventListener('scroll', handleScroll);
       return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  // Click outside listener for profile menu
+  useEffect(() => {
+      const handleClickOutside = (event: MouseEvent) => {
+          if (profileMenuRef.current && !profileMenuRef.current.contains(event.target as Node)) {
+              setShowProfileMenu(false);
+          }
+      };
+      document.addEventListener("mousedown", handleClickOutside);
+      return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
   const scrollToTop = () => {
@@ -154,6 +168,7 @@ export default function App() {
     setSubmissions([]); 
     setEditingSubmission(null);
     handleTabChange('home');
+    setShowProfileMenu(false);
 
     if (isAuto) {
         Swal.fire({
@@ -257,7 +272,7 @@ export default function App() {
   const handleTabChange = (tabId: string) => {
       if (tabId === activeTab && tabId !== 'home') return;
 
-      if ((tabId === 'register' || tabId === 'history') && !currentUser) {
+      if ((tabId === 'register' || tabId === 'history' || tabId === 'profile') && !currentUser) {
           showToast({ type: 'info', title: 'ต้องเข้าสู่ระบบ', message: 'กรุณาเข้าสู่ระบบก่อนใช้งานเมนูนี้' });
           setShowAuth(true);
           return;
@@ -268,12 +283,12 @@ export default function App() {
       }
 
       setIsPageLoading(true);
-      setIsMobileMenuOpen(false); // Close mobile menu on navigate
+      setIsMobileMenuOpen(false); // Close mobile menu
+      setShowProfileMenu(false); // Close profile dropdown
       
       setTimeout(() => {
           setActiveTab(tabId);
           setIsPageLoading(false);
-          // Scroll top when changing tabs for better UX
           window.scrollTo({ top: 0, behavior: 'smooth' });
       }, 600);
   };
@@ -285,6 +300,10 @@ export default function App() {
           setActiveTab('register');
           setIsPageLoading(false);
       }, 800);
+  };
+
+  const handleUpdateUser = (updatedUser: UserProfile) => {
+      setCurrentUser(updatedUser);
   };
 
   useEffect(() => {
@@ -304,10 +323,10 @@ export default function App() {
     { id: "register", label: "ลงทะเบียนส่งงาน", icon: "fa-pen-to-square" },
     { id: "history", label: "ประวัติผลงาน", icon: "fa-clock-rotate-left" },
     { id: "analytics", label: "วิเคราะห์", icon: "fa-chart-pie" },
-    { id: "settings", label: "ตั้งค่า", icon: "fa-gear" },
+    { id: "settings", label: "ตั้งค่าระบบ", icon: "fa-gear" },
   ];
 
-  // Filter tabs: Show Settings only if Admin
+  // Filter tabs
   const navTabs = useMemo(() => {
       return allTabs.filter(tab => {
           if (tab.id === 'settings') return isAdmin;
@@ -325,7 +344,7 @@ export default function App() {
       {/* Full Screen Loading Overlay */}
       <LoadingOverlay isLoading={isPageLoading} />
 
-      {/* News Popup Modal (Only standard flow) */}
+      {/* News Popup Modal */}
       <NewsModal isOpen={showNews} onClose={handleCloseNews} initialIndex={newsStartIndex} />
       
       {/* Auth Modal */}
@@ -341,6 +360,7 @@ export default function App() {
 
       {/* --- Sticky Top Header --- */}
       <header className={`sticky top-0 z-50 transition-all duration-300 ${darkMode ? 'bg-slate-900/90 border-slate-800' : 'bg-white/90 border-slate-200'} border-b backdrop-blur-md`}>
+        {/* ... Header Content (No Changes needed here) ... */}
         <div className="max-w-7xl mx-auto px-4 h-20 flex items-center justify-between">
           
           {/* 1. Logo */}
@@ -351,11 +371,12 @@ export default function App() {
              <Logo className="h-10 md:h-12" />
           </div>
           
-          {/* 2. Desktop Navigation (Hidden on Mobile) */}
+          {/* 2. Desktop Navigation */}
           {!isAdmin && !isReviewer && (
               <nav className="hidden lg:flex items-center gap-1">
                   {navTabs.map(tab => {
                       const isActive = activeTab === tab.id;
+                      if(tab.id === 'settings') return null; // Already filtered but just in case
                       return (
                           <button
                               key={tab.id}
@@ -382,7 +403,7 @@ export default function App() {
           {/* 3. Right Side Actions */}
           <div className="flex items-center gap-3">
              
-             {/* Desktop Dark Mode Toggle */}
+             {/* Desktop Dark Mode */}
              <button
                 onClick={toggleDarkMode}
                 className={`hidden md:flex h-10 w-10 rounded-full items-center justify-center transition shadow-sm ${darkMode ? 'bg-slate-800 text-amber-400 hover:bg-slate-700' : 'bg-slate-100 text-slate-400 hover:text-slate-600 hover:bg-slate-200'}`}
@@ -392,42 +413,81 @@ export default function App() {
              </button>
              
              {currentUser ? (
-                 <div className="flex items-center gap-3 pl-2">
-                     {/* User Profile (Collapsed on mobile, Detailed on Desktop) */}
-                     <div className={`flex items-center gap-3 px-1 md:px-3 py-1.5 rounded-full md:rounded-2xl transition-all duration-300 md:border md:shadow-sm
-                        ${darkMode ? 'md:bg-slate-800/50 md:border-slate-700' : 'md:bg-white md:border-slate-200'}`}>
-                         
+                 <div className="relative pl-2" ref={profileMenuRef}>
+                     {/* User Profile Trigger */}
+                     <div 
+                        onClick={() => setShowProfileMenu(!showProfileMenu)}
+                        className={`cursor-pointer flex items-center gap-3 px-1 md:px-3 py-1.5 rounded-full md:rounded-2xl transition-all duration-300 md:border md:shadow-sm select-none
+                        ${darkMode ? 'md:bg-slate-800/50 md:border-slate-700 hover:bg-slate-800' : 'md:bg-white md:border-slate-200 hover:bg-slate-50'}`}
+                     >
                          {/* Avatar */}
-                         <div className={`h-9 w-9 rounded-full flex items-center justify-center text-sm font-bold border-2 shrink-0
+                         <div className={`h-9 w-9 rounded-full flex items-center justify-center text-sm font-bold border-2 shrink-0 overflow-hidden
                             ${isAdmin ? 'bg-rose-100 text-rose-600 border-rose-200' : 
                               isReviewer ? 'bg-indigo-100 text-indigo-600 border-indigo-200' : 
                               'bg-sky-100 text-sky-600 border-sky-200'}
                          `}>
-                             {currentUser.firstName.charAt(0)}
+                             {currentUser.avatarUrl ? (
+                                 <img src={currentUser.avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+                             ) : (
+                                 currentUser.firstName.charAt(0)
+                             )}
                          </div>
 
-                         {/* Text Info (Desktop Only) */}
+                         {/* Text Info */}
                          <div className="text-right leading-tight hidden md:block">
                              <div className={`text-sm font-bold ${darkMode ? 'text-slate-200' : 'text-slate-800'}`}>
                                  {currentUser.firstName} {currentUser.lastName}
                              </div>
-                             <div className="flex items-center justify-end gap-2">
-                                 <span className="text-[10px] text-slate-500 font-medium">{currentUser.position || 'สมาชิกทั่วไป'}</span>
-                                 {isAdmin && <span className="px-1.5 py-0.5 rounded bg-rose-500 text-white text-[9px] font-bold uppercase tracking-wider">Admin</span>}
-                                 {isReviewer && <span className="px-1.5 py-0.5 rounded bg-indigo-500 text-white text-[9px] font-bold uppercase tracking-wider">Reviewer</span>}
-                             </div>
+                             <div className="text-[10px] text-slate-500 font-medium">{currentUser.position || 'สมาชิกทั่วไป'}</div>
                          </div>
+
+                         {/* Dropdown Icon */}
+                         <i className={`fa-solid fa-chevron-down text-xs text-slate-400 hidden md:block transition-transform ${showProfileMenu ? 'rotate-180' : ''}`}></i>
                      </div>
 
-                     <div className={`h-8 w-px ${darkMode ? 'bg-slate-700' : 'bg-slate-200'} mx-1 hidden md:block`}></div>
+                     {/* Dropdown Menu */}
+                     {showProfileMenu && (
+                         <div className="absolute right-0 top-full mt-2 w-56 bg-white dark:bg-slate-800 rounded-2xl shadow-xl ring-1 ring-slate-200 dark:ring-slate-700 overflow-hidden animate-fade-in z-50">
+                             <div className="p-4 border-b border-slate-100 dark:border-slate-700 md:hidden">
+                                 <div className="font-bold text-slate-900 dark:text-white">{currentUser.firstName}</div>
+                                 <div className="text-xs text-slate-500">{currentUser.email}</div>
+                             </div>
+                             
+                             <button 
+                                onClick={() => handleTabChange('profile')}
+                                className="w-full text-left px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center gap-3 text-sm font-bold text-slate-700 dark:text-slate-200 transition"
+                             >
+                                 <div className="h-8 w-8 rounded-lg bg-sky-100 dark:bg-sky-900/50 text-sky-600 flex items-center justify-center">
+                                     <i className="fa-solid fa-user-pen"></i>
+                                 </div>
+                                 แก้ไขข้อมูลส่วนตัว
+                             </button>
 
-                     <button 
-                        onClick={handleLogout}
-                        className={`h-10 w-10 rounded-full flex items-center justify-center hover:bg-slate-700 hover:scale-105 active:scale-95 transition shadow-lg border-2 ${darkMode ? 'bg-slate-800 text-rose-400 border-slate-700 shadow-slate-900' : 'bg-white text-rose-500 border-slate-100 shadow-slate-200'}`}
-                        title="ออกจากระบบ"
-                     >
-                         <i className="fa-solid fa-power-off"></i>
-                     </button>
+                             {isAdmin && (
+                                 <button 
+                                    onClick={() => handleTabChange('settings')}
+                                    className="w-full text-left px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center gap-3 text-sm font-bold text-slate-700 dark:text-slate-200 transition"
+                                 >
+                                     <div className="h-8 w-8 rounded-lg bg-amber-100 dark:bg-amber-900/50 text-amber-600 flex items-center justify-center">
+                                         <i className="fa-solid fa-gear"></i>
+                                     </div>
+                                     ตั้งค่าระบบ
+                                 </button>
+                             )}
+
+                             <div className="border-t border-slate-100 dark:border-slate-700 my-1"></div>
+                             
+                             <button 
+                                onClick={handleLogout}
+                                className="w-full text-left px-4 py-3 hover:bg-rose-50 dark:hover:bg-rose-900/20 flex items-center gap-3 text-sm font-bold text-rose-600 transition"
+                             >
+                                 <div className="h-8 w-8 rounded-lg bg-rose-100 dark:bg-rose-900/50 text-rose-600 flex items-center justify-center">
+                                     <i className="fa-solid fa-right-from-bracket"></i>
+                                 </div>
+                                 ออกจากระบบ
+                             </button>
+                         </div>
+                     )}
                  </div>
              ) : (
                  <button 
@@ -469,7 +529,7 @@ export default function App() {
                     </button>
                 ))}
                 
-                {/* Mobile Dark Mode Toggle Inside Menu */}
+                {/* Mobile Dark Mode Toggle */}
                 <div className="pt-2 mt-2 border-t border-slate-100 dark:border-slate-800">
                     <button 
                         onClick={toggleDarkMode}
@@ -492,22 +552,37 @@ export default function App() {
 
       {/* --- Main Content Area --- */}
       <main className="flex-grow max-w-7xl w-full mx-auto px-4 mt-8">
-        
-        {/* Render Special Panels for Admin/Reviewer OR Standard Tabs for Users */}
+        {/* ... Main Content Logic (No changes needed here) ... */}
         {isAdmin ? (
-            <AdminPanel 
-                submissions={submissions} 
-                settings={settings} 
-                refreshData={loadData} 
-                showToast={showToast} 
-            />
+            activeTab === 'profile' ? (
+                <ProfileSettings 
+                    currentUser={currentUser!} 
+                    onUpdateUser={handleUpdateUser} 
+                    showToast={showToast} 
+                />
+            ) : (
+                <AdminPanel 
+                    submissions={submissions} 
+                    settings={settings} 
+                    refreshData={loadData} 
+                    showToast={showToast} 
+                />
+            )
         ) : isReviewer ? (
-            <ReviewerPanel 
-                submissions={submissions} 
-                settings={settings} 
-                refreshData={loadData} 
-                showToast={showToast} 
-            />
+             activeTab === 'profile' ? (
+                <ProfileSettings 
+                    currentUser={currentUser!} 
+                    onUpdateUser={handleUpdateUser} 
+                    showToast={showToast} 
+                />
+            ) : (
+                <ReviewerPanel 
+                    submissions={submissions} 
+                    settings={settings} 
+                    refreshData={loadData} 
+                    showToast={showToast} 
+                />
+            )
         ) : (
             <div className="min-h-[600px] animate-fade-in">
                 {activeTab === 'home' && (
@@ -550,16 +625,15 @@ export default function App() {
                     <Dashboard submissions={submissions} />
                 )}
                 
-                {activeTab === 'settings' && isAdmin && (
-                    <Settings 
-                        settings={settings} 
-                        onUpdate={setSettings} 
+                {activeTab === 'profile' && currentUser && (
+                    <ProfileSettings 
+                        currentUser={currentUser} 
+                        onUpdateUser={handleUpdateUser} 
                         showToast={showToast} 
                     />
                 )}
             </div>
         )}
-
       </main>
 
       {/* Scroll To Top Button */}
@@ -637,7 +711,6 @@ export default function App() {
                           ติดต่อสอบถาม
                       </h4>
                       
-                      {/* Updated: Link to Satun MOPH instead of map text */}
                       <a href="https://satun.moph.go.th" target="_blank" rel="noopener noreferrer" className="block group mb-4">
                           <div className="bg-slate-800/50 rounded-2xl p-5 border border-slate-800 group-hover:border-sky-500/50 group-hover:bg-slate-800 transition relative overflow-hidden">
                               <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition group-hover:scale-110">
@@ -695,6 +768,12 @@ export default function App() {
                               </span>
                           </div>
                           <div className="w-px h-8 bg-slate-800 hidden md:block"></div>
+
+                          {/* Added Today Stat */}
+                          <div className="flex flex-col items-center">
+                              <span className="text-[10px] text-slate-500 uppercase font-bold mb-1">รายวัน</span>
+                              <span className="text-white font-mono font-bold text-lg">{visitorStats.today.toLocaleString()}</span>
+                          </div>
                           
                           <div className="flex flex-col items-center">
                               <span className="text-[10px] text-slate-500 uppercase font-bold mb-1">รายสัปดาห์</span>

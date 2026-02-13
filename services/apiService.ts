@@ -7,7 +7,7 @@ import { PR_NEWS } from '../constants';
 const mapSubmissionFromDB = (data: any): Submission => ({
     id: data.id,
     userId: data.user_id,
-    reviewerId: data.reviewer_id, // Map from DB
+    reviewerId: data.reviewer_id, 
     budgetYear: data.budget_year,
     firstName: data.first_name,
     lastName: data.last_name,
@@ -33,8 +33,9 @@ const mapProfileFromDB = (data: any): UserProfile => ({
     phone: data.phone,
     organization: data.organization,
     position: data.position,
-    level: data.level, // Map level
-    role: data.role || 'user' // Default to 'user' if null for safety
+    level: data.level, 
+    role: data.role || 'user',
+    avatarUrl: data.avatar_url || null // Map avatar_url
 });
 
 // --- Auth Methods (Supabase Auth) ---
@@ -60,6 +61,99 @@ export async function apiGetUserProfile(userId: string): Promise<UserProfile> {
     return mapProfileFromDB(data);
 }
 
+export async function apiUpdateUserProfile(userId: string, updates: Partial<UserProfile>): Promise<UserProfile> {
+    const dbPayload: any = {};
+    
+    // Check for undefined specifically to allow clearing values with empty strings
+    if (updates.firstName !== undefined) dbPayload.first_name = updates.firstName;
+    if (updates.lastName !== undefined) dbPayload.last_name = updates.lastName;
+    if (updates.phone !== undefined) dbPayload.phone = updates.phone;
+    if (updates.organization !== undefined) dbPayload.organization = updates.organization;
+    if (updates.position !== undefined) dbPayload.position = updates.position;
+    if (updates.level !== undefined) dbPayload.level = updates.level;
+    if (updates.avatarUrl !== undefined) dbPayload.avatar_url = updates.avatarUrl;
+
+    const { data, error } = await supabase
+        .from('profiles')
+        .update(dbPayload)
+        .eq('id', userId)
+        .select()
+        .single();
+
+    if (error) {
+        // Friendlier error message for schema mismatch
+        if (error.message.includes("Could not find the 'level' column")) {
+            throw new Error("ระบบฐานข้อมูลยังไม่อัปเดต (Missing Column: level) กรุณาติดต่อผู้ดูแลระบบ");
+        }
+        throw new Error(error.message);
+    }
+    
+    const updatedProfile = mapProfileFromDB(data);
+    localStorage.setItem("svk_supabase_user", JSON.stringify(updatedProfile)); // Update local storage
+    return updatedProfile;
+}
+
+export async function apiChangePassword(newPassword: string): Promise<void> {
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
+    if (error) throw new Error(error.message);
+}
+
+export async function apiUploadAvatar(userId: string, file: File): Promise<string> {
+    // Define folder path for this user (User ID as folder name)
+    const folderPath = userId;
+
+    // 1. CLEANUP: Try to list and delete ALL existing files in this folder first
+    try {
+        const { data: existingFiles, error: listError } = await supabase.storage
+            .from('avatars')
+            .list(folderPath, {
+                limit: 100,
+                offset: 0,
+                sortBy: { column: 'name', order: 'asc' },
+            });
+
+        if (listError) {
+            console.warn("Avatar Cleanup: Could not list files (Check RLS Policy SELECT permission):", listError.message);
+        } else if (existingFiles && existingFiles.length > 0) {
+            // Filter out system placeholders if any
+            const filesToRemove = existingFiles
+                .filter(x => x.name !== '.emptyFolderPlaceholder')
+                .map(x => `${folderPath}/${x.name}`);
+
+            if (filesToRemove.length > 0) {
+                // console.log("Avatar Cleanup: Deleting old files:", filesToRemove);
+                const { error: removeError } = await supabase.storage
+                    .from('avatars')
+                    .remove(filesToRemove);
+                
+                if (removeError) console.error("Avatar Cleanup: Delete failed:", removeError.message);
+            }
+        }
+    } catch (cleanupEx) {
+        console.error("Avatar Cleanup Exception:", cleanupEx);
+        // Continue to upload even if cleanup fails
+    }
+
+    // 2. PREPARE: New filename with timestamp to prevent browser caching
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${folderPath}/${Date.now()}.${fileExt}`;
+
+    // 3. UPLOAD: Upload new file
+    const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(fileName, file, { 
+            upsert: true,
+            contentType: file.type,
+            cacheControl: '3600'
+        });
+
+    if (uploadError) throw new Error("Upload Failed: " + uploadError.message);
+
+    // 4. URL: Get Public URL
+    const { data } = supabase.storage.from('avatars').getPublicUrl(fileName);
+    return data.publicUrl;
+}
+
 export async function apiRegisterUser(user: UserProfile, password?: string): Promise<UserProfile> {
     const finalPassword = password || 'password123';
     
@@ -77,7 +171,6 @@ export async function apiRegisterUser(user: UserProfile, password?: string): Pro
 
     if (authError) {
         console.error("Supabase Auth Error:", authError);
-        // Translate common Supabase errors to Thai
         if (authError.message.includes('already registered')) {
             throw new Error("อีเมลนี้ถูกลงทะเบียนไว้แล้ว กรุณาเข้าสู่ระบบ");
         }
@@ -115,8 +208,8 @@ export async function apiRegisterUser(user: UserProfile, password?: string): Pro
         .single();
 
     if (dbError) {
-        // Handle case where profile might already exist (rare race condition or cleanup issue)
-        if (dbError.code === '23505') { // Unique violation
+        // Handle case where profile might already exist
+        if (dbError.code === '23505') { 
              const { data: existingProfile } = await supabase
                 .from('profiles')
                 .select('*')
@@ -155,7 +248,7 @@ export async function apiLoginUser(email: string, password?: string): Promise<Us
     
     if (!data.user) throw new Error("ไม่พบผู้ใช้งาน");
 
-    // 2. Fetch Profile details (Role, Organization, Name) from 'profiles' table
+    // 2. Fetch Profile details
     const { data: profileData, error: profileError } = await supabase
         .from('profiles')
         .select('*')
@@ -163,7 +256,6 @@ export async function apiLoginUser(email: string, password?: string): Promise<Us
         .single();
 
     if (profileError || !profileData) {
-        // Fallback if profile missing (Should not happen if registered correctly)
         console.error("Profile missing for user:", data.user.id);
         throw new Error("ไม่พบข้อมูลโปรไฟล์ (Profile Missing) - กรุณาติดต่อผู้ดูแลระบบ");
     }
@@ -178,7 +270,6 @@ export async function apiLoginUser(email: string, password?: string): Promise<Us
 
 // --- User Management API (Admin Only) ---
 export async function apiGetAllUsers(): Promise<UserProfile[]> {
-    // FIX: Changed order from 'created_at' to 'first_name' to avoid "column does not exist" error
     const { data, error } = await supabase
         .from('profiles')
         .select('*')
@@ -200,7 +291,6 @@ export async function apiGetUsersByRole(role: UserRole): Promise<UserProfile[]> 
 }
 
 export async function apiUpdateUserRole(userId: string, newRole: UserRole): Promise<void> {
-    // IMPORTANT: Check for successful update by selecting the returned row
     const { data, error } = await supabase
         .from('profiles')
         .update({ role: newRole })
@@ -209,16 +299,13 @@ export async function apiUpdateUserRole(userId: string, newRole: UserRole): Prom
 
     if (error) throw new Error(error.message);
     
-    // If no data returned, it means RLS blocked the update or row not found
     if (!data || data.length === 0) {
-        // We throw a specific error code to be caught by the UI
         throw new Error("RLS_BLOCK");
     }
 }
 
 // --- News Management ---
-// Changed from hardcoded PR_NEWS to DB query
-export function apiGetNews(): NewsItem[] { return PR_NEWS; } // Fallback sync
+export function apiGetNews(): NewsItem[] { return PR_NEWS; } 
 export async function apiFetchNewsAsync(): Promise<NewsItem[]> {
     const { data, error } = await supabase.from('news').select('*').order('id', { ascending: false });
     if (error) { console.error(error); return PR_NEWS; }
@@ -322,8 +409,6 @@ export async function apiDeleteSubmission(settings: AppSettings, id: string): Pr
 }
 
 // --- Visitor Statistics Service ---
-
-// 1. Subscribe to Online Users (Supabase Presence)
 export function subscribeToVisitorPresence(onCountChange: (count: number) => void) {
     const channel = supabase.channel('visitor_presence');
 
@@ -344,7 +429,6 @@ export function subscribeToVisitorPresence(onCountChange: (count: number) => voi
     };
 }
 
-// 2. Record Visit (Insert into DB) - Real Logging
 export async function apiRecordVisit(clientId: string, userId?: string) {
     try {
         await supabase.from('visitor_logs').insert([
@@ -359,19 +443,17 @@ export async function apiRecordVisit(clientId: string, userId?: string) {
     }
 }
 
-// 3. Get Historical Stats (Using Supabase RPC) - Real Data
 export async function apiGetVisitorStats(): Promise<Omit<VisitorStats, 'online'>> {
     try {
         const { data, error } = await supabase.rpc('get_visitor_stats');
         
         if (error) {
             console.error("Error fetching stats RPC:", error);
-            // Fallback to zeros if RPC fails
-            return { week: 0, month: 0, year: 0, total: 0 };
+            return { today: 0, week: 0, month: 0, year: 0, total: 0 };
         }
 
-        // RPC returns JSON object matching the struct
         return {
+            today: data.today || 0, // Mapped today
             week: data.week || 0,
             month: data.month || 0,
             year: data.year || 0,
@@ -379,6 +461,6 @@ export async function apiGetVisitorStats(): Promise<Omit<VisitorStats, 'online'>
         };
     } catch (e) {
         console.error("API Stats Error:", e);
-        return { week: 0, month: 0, year: 0, total: 0 };
+        return { today: 0, week: 0, month: 0, year: 0, total: 0 };
     }
 }

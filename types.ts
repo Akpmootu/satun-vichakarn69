@@ -16,8 +16,9 @@ export interface UserProfile {
   phone?: string;
   organization?: string;
   position?: string;
-  level?: string; // Added level
+  level?: string; 
   role: UserRole;
+  avatarUrl?: string; // Added avatarUrl
 }
 
 export interface Submission {
@@ -75,6 +76,7 @@ export interface BranchOption {
 
 export interface VisitorStats {
   online: number;
+  today: number; // Added daily stat
   week: number;
   month: number;
   year: number;
