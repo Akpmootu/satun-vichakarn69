@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { BRANCHES, BUDGET_YEAR, WORK_TYPES } from '../constants';
-import { AppSettings, Submission, UserProfile, SubmissionStatus } from '../types';
+import { BRANCHES, BUDGET_YEAR, WORK_TYPES, HEALTH_POSITIONS, JOB_LEVELS } from '../constants';
+import { AppSettings, Submission, UserProfile, SubmissionStatus, CoAuthor } from '../types';
 import { apiCreateSubmission, apiUpdateSubmission, nowISO } from '../services/apiService';
 import Badge from './ui/Badge';
 
@@ -163,11 +163,11 @@ const Registration: React.FC<RegistrationProps> = ({ settings, onSuccess, showTo
     branchId: "",
     title: "", // ชื่อเรื่อง (New)
     bookNo: "", // เลขที่หนังสือ (New)
-    coAuthor: "", // ผู้เขียนร่วม (New - Simple string for now)
     bossName: "", // ผอ./หัวหน้า (New)
     bossPosition: "ผู้อำนวยการโรงพยาบาล/สาธารณสุขอำเภอ", // (New)
   });
   
+  const [coAuthors, setCoAuthors] = useState<CoAuthor[]>([]);
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [linkInput, setLinkInput] = useState({ url: '', name: '' });
   const [isDragging, setIsDragging] = useState(false);
@@ -182,12 +182,14 @@ const Registration: React.FC<RegistrationProps> = ({ settings, onSuccess, showTo
             workType: editingSubmission.workType,
             branchId: String(editingSubmission.branchId),
             title: editingSubmission.fileName || "",
-            bookNo: "",
-            coAuthor: "",
+            bookNo: "", // Not stored yet, could be added to DB if needed
             bossName: "",
             bossPosition: "ผู้อำนวยการโรงพยาบาล/สาธารณสุขอำเภอ"
         });
         
+        // Co-Authors
+        setCoAuthors(editingSubmission.coAuthors || []);
+
         try {
             if (editingSubmission.fileUrl && editingSubmission.fileUrl.startsWith('[')) {
                  setAttachments(JSON.parse(editingSubmission.fileUrl));
@@ -202,10 +204,10 @@ const Registration: React.FC<RegistrationProps> = ({ settings, onSuccess, showTo
             branchId: "", 
             title: "", 
             bookNo: "",
-            coAuthor: "",
             bossName: "",
             bossPosition: "ผู้อำนวยการโรงพยาบาล/สาธารณสุขอำเภอ"
         });
+        setCoAuthors([]);
         setAttachments([]);
     }
   }, [editingSubmission]);
@@ -230,6 +232,17 @@ const Registration: React.FC<RegistrationProps> = ({ settings, onSuccess, showTo
       delete next[key];
       return next;
     });
+  };
+
+  // Co-Author Logic
+  const addCoAuthor = () => {
+      setCoAuthors([...coAuthors, { id: Math.random().toString(36).substr(2, 9), firstName: '', lastName: '', position: '', level: '', organization: '', phone: '', email: '' }]);
+  };
+  const removeCoAuthor = (id: string) => {
+      setCoAuthors(coAuthors.filter(c => c.id !== id));
+  };
+  const updateCoAuthor = (id: string, field: keyof CoAuthor, value: string) => {
+      setCoAuthors(coAuthors.map(c => c.id === id ? { ...c, [field]: value } : c));
   };
 
   // --- Handlers (File, DragDrop, Links) ---
@@ -291,6 +304,7 @@ const Registration: React.FC<RegistrationProps> = ({ settings, onSuccess, showTo
         fileName: form.title, 
         fileUrl: filePayload, 
         status: nextStatus,
+        coAuthors: coAuthors // Pass JSON array
       };
 
       if (editingSubmission) {
@@ -305,7 +319,12 @@ const Registration: React.FC<RegistrationProps> = ({ settings, onSuccess, showTo
       }
 
       if (mode === 'submit') { await Swal.fire({ title: 'สำเร็จ!', text: 'ส่งผลงานเรียบร้อยแล้ว', icon: 'success', confirmButtonColor: '#0ea5e9', customClass: { popup: 'rounded-3xl' } }); } else { showToast({ type: "success", title: "บันทึกร่างสำเร็จ", message: "ระบบบันทึกความคืบหน้าแล้ว" }); }
-      if (!editingSubmission) { setForm({ workType: "", branchId: "", title: "", bookNo: "", coAuthor: "", bossName: "", bossPosition: "ผู้อำนวยการโรงพยาบาล/สาธารณสุขอำเภอ" }); setAttachments([]); setLinkInput({ url: '', name: '' }); }
+      if (!editingSubmission) { 
+          setForm({ workType: "", branchId: "", title: "", bookNo: "", bossName: "", bossPosition: "ผู้อำนวยการโรงพยาบาล/สาธารณสุขอำเภอ" }); 
+          setCoAuthors([]);
+          setAttachments([]); 
+          setLinkInput({ url: '', name: '' }); 
+      }
       onSuccess();
     } catch (e: any) { showToast({ type: 'error', title: 'ผิดพลาด', message: e.message }); } finally { setSaving(false); }
   };
@@ -487,12 +506,13 @@ const Registration: React.FC<RegistrationProps> = ({ settings, onSuccess, showTo
                         (<Fill t={`${toThaiNum(currentUser.firstName)} ${toThaiNum(currentUser.lastName)}`} w="5cm" />)<br/>
                         ........../...................../..............
                     </div>
-                    {form.coAuthor && (
+                    {/* Render first co-author if exists */}
+                    {coAuthors.length > 0 && (
                         <div className="signature-center" style={{ width: '45%' }}>
                             ลงนามผู้เขียนร่วม (ชื่อที่ {toThaiNum(2)})
                             <br/><br/>
                             .....................................................<br/>
-                            (<Fill t={toThaiNum(form.coAuthor)} w="5cm" />)<br/>
+                            (<Fill t={`${toThaiNum(coAuthors[0].firstName)} ${toThaiNum(coAuthors[0].lastName)}`} w="5cm" />)<br/>
                             ........../...................../..............
                         </div>
                     )}
@@ -531,35 +551,50 @@ const Registration: React.FC<RegistrationProps> = ({ settings, onSuccess, showTo
                     <span className="bold">สถานที่ปฏิบัติงานปัจจุบัน</span> <Fill t={toThaiNum(currentUser.organization)} w="12cm" />
                 </div>
                 <div style={{ marginBottom: '15px' }}>
-                    <span className="bold">สถานที่ติดต่อได้สะดวก</span> <Fill t={toThaiNum(currentUser.organization)} w="12cm" />
+                    <span className="bold">สถานที่ติดต่อได้สะดวก</span> 
+                    {currentUser.addressInfo ? (
+                        <span className="ml-2 border-b border-dotted border-black px-2">
+                            {toThaiNum(currentUser.addressInfo.houseNo)} หมู่ {toThaiNum(currentUser.addressInfo.moo)} ต.{currentUser.addressInfo.subDistrict} อ.{currentUser.addressInfo.district} จ.{currentUser.addressInfo.province} {toThaiNum(currentUser.addressInfo.zipCode)}
+                        </span>
+                    ) : (
+                        <Fill t="" w="12cm" />
+                    )}
                 </div>
                 <div style={{ marginBottom: '15px' }}>
                     <span className="bold">เบอร์โทรศัพท์</span> <Fill t={toThaiNum(currentUser.phone)} w="5cm" /> <span className="bold">E-mail</span> <Fill t={currentUser.email} w="6cm" />
                 </div>
                 <div style={{ marginBottom: '30px' }}>
                     <span className="bold">ประวัติการศึกษา (ตั้งแต่ปริญญาตรีจนถึงการศึกษาสูงสุด ระบุสาขาที่จบ)</span><br/>
-                    <div style={{ borderBottom: '1px dotted #000', height: '1.5em', marginTop: '10px' }}></div>
-                    <div style={{ borderBottom: '1px dotted #000', height: '1.5em', marginTop: '10px' }}></div>
+                    {currentUser.educationHistory && currentUser.educationHistory.length > 0 ? (
+                        <div className="ml-8 mt-2 space-y-2">
+                            {currentUser.educationHistory.map((edu, i) => (
+                                <div key={i} className="border-b border-dotted border-black pb-1">
+                                    - {toThaiNum(edu.degree)} สาขา{edu.major} สถาบัน{edu.institution} ({toThaiNum(edu.year)})
+                                </div>
+                            ))}
+                        </div>
+                    ) : (
+                        <>
+                            <div style={{ borderBottom: '1px dotted #000', height: '1.5em', marginTop: '10px' }}></div>
+                            <div style={{ borderBottom: '1px dotted #000', height: '1.5em', marginTop: '10px' }}></div>
+                        </>
+                    )}
                 </div>
 
-                {/* Co-Author Section */}
-                <div style={{ marginBottom: '15px' }}>
-                    <span className="bold">ชื่อ-สกุล ผู้เขียนหลัก (ชื่อที่ {toThaiNum(2)})</span> <Fill t={toThaiNum(form.coAuthor)} w="10cm" />
-                </div>
-                <div style={{ marginBottom: '15px' }}>
-                    <span className="bold">สถานที่ปฏิบัติงานปัจจุบัน</span> <Fill t="" w="12cm" />
-                </div>
-                <div style={{ marginBottom: '15px' }}>
-                    <span className="bold">สถานที่ติดต่อได้สะดวก</span> <Fill t="" w="12cm" />
-                </div>
-                <div style={{ marginBottom: '15px' }}>
-                    <span className="bold">เบอร์โทรศัพท์</span> <Fill t="" w="5cm" /> <span className="bold">E-mail</span> <Fill t="" w="6cm" />
-                </div>
-                <div style={{ marginBottom: '15px' }}>
-                    <span className="bold">ประวัติการศึกษา (ตั้งแต่ปริญญาตรีจนถึงการศึกษาสูงสุด ระบุสาขาที่จบ)</span><br/>
-                    <div style={{ borderBottom: '1px dotted #000', height: '1.5em', marginTop: '10px' }}></div>
-                    <div style={{ borderBottom: '1px dotted #000', height: '1.5em', marginTop: '10px' }}></div>
-                </div>
+                {/* Co-Author Sections (Iterate over added co-authors) */}
+                {coAuthors.map((ca, idx) => (
+                    <div key={idx} style={{ marginTop: '20px' }}>
+                        <div style={{ marginBottom: '15px' }}>
+                            <span className="bold">ชื่อ-สกุล ผู้เขียนร่วม (ชื่อที่ {toThaiNum(idx + 2)})</span> <Fill t={`${toThaiNum(ca.firstName)} ${toThaiNum(ca.lastName)}`} w="10cm" />
+                        </div>
+                        <div style={{ marginBottom: '15px' }}>
+                            <span className="bold">สถานที่ปฏิบัติงานปัจจุบัน</span> <Fill t={toThaiNum(ca.organization)} w="12cm" />
+                        </div>
+                        <div style={{ marginBottom: '15px' }}>
+                            <span className="bold">เบอร์โทรศัพท์</span> <Fill t={toThaiNum(ca.phone)} w="5cm" /> <span className="bold">E-mail</span> <Fill t={ca.email} w="6cm" />
+                        </div>
+                    </div>
+                ))}
             </div>
 
             {/* PAGE 4: ACADEMIC CERT (หนังสือรับรองผลงานวิชาการ) */}
@@ -663,7 +698,7 @@ const Registration: React.FC<RegistrationProps> = ({ settings, onSuccess, showTo
             </div>
         </div>
 
-        {/* --- SENDER PROFILE CARD (Same as before) --- */}
+        {/* --- SENDER PROFILE CARD --- */}
         <div className="bg-gradient-to-br from-white to-slate-50 dark:from-slate-800 dark:to-slate-900 rounded-2xl p-5 shadow-sm ring-1 ring-slate-200 dark:ring-slate-700 mb-6 flex flex-col md:flex-row items-center gap-5 relative overflow-hidden group print:hidden">
             <div className="absolute top-0 right-0 w-32 h-32 bg-sky-50 dark:bg-sky-900/10 rounded-bl-full -mr-8 -mt-8 transition-transform group-hover:scale-110"></div>
             <div className="shrink-0 relative">
@@ -838,15 +873,7 @@ const Registration: React.FC<RegistrationProps> = ({ settings, onSuccess, showTo
                                 className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 outline-none focus:ring-2 focus:ring-amber-200 dark:text-white"
                             />
                         </div>
-                        <div>
-                            <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 uppercase">ผู้เขียนร่วม (ถ้ามี)</label>
-                            <input 
-                                value={form.coAuthor}
-                                onChange={e => onChangeField("coAuthor", e.target.value)}
-                                placeholder="ระบุชื่อ-สกุล"
-                                className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 outline-none focus:ring-2 focus:ring-amber-200 dark:text-white"
-                            />
-                        </div>
+                        {/* Removed Simple CoAuthor Input in favor of Dynamic List below */}
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                         <div>
@@ -872,6 +899,71 @@ const Registration: React.FC<RegistrationProps> = ({ settings, onSuccess, showTo
                             </select>
                         </div>
                     </div>
+
+                    {/* Co-Authors Dynamic List */}
+                    <div className="pt-4 border-t border-slate-100 dark:border-slate-700">
+                        <div className="flex justify-between items-center mb-4">
+                            <label className="block text-sm font-bold text-slate-700 dark:text-slate-300">
+                                ผู้ร่วมส่งผลงาน (Co-Authors) <span className="text-xs text-slate-400 font-normal">(ถ้ามี)</span>
+                            </label>
+                            <button onClick={addCoAuthor} className="text-xs font-bold bg-slate-100 dark:bg-slate-700 px-3 py-1.5 rounded-lg hover:bg-sky-50 dark:hover:bg-sky-900/30 text-slate-600 dark:text-slate-300 hover:text-sky-600 transition">
+                                <i className="fa-solid fa-plus mr-1"></i> เพิ่มรายชื่อ
+                            </button>
+                        </div>
+                        
+                        <div className="space-y-3">
+                            {coAuthors.map((ca, index) => (
+                                <div key={ca.id} className="p-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 relative group">
+                                    <button onClick={() => removeCoAuthor(ca.id)} className="absolute top-2 right-2 h-7 w-7 rounded-full bg-white dark:bg-slate-800 text-slate-400 hover:text-rose-500 flex items-center justify-center shadow-sm border border-slate-200 dark:border-slate-700 transition">
+                                        <i className="fa-solid fa-xmark"></i>
+                                    </button>
+                                    <div className="text-xs font-bold text-slate-400 mb-2">ลำดับที่ {index + 2} (ผู้ร่วมวิจัย)</div>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                                        <input 
+                                            value={ca.firstName} 
+                                            onChange={e => updateCoAuthor(ca.id, 'firstName', e.target.value)}
+                                            placeholder="ชื่อจริง" 
+                                            className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-2 text-sm focus:border-sky-500 outline-none"
+                                        />
+                                        <input 
+                                            value={ca.lastName} 
+                                            onChange={e => updateCoAuthor(ca.id, 'lastName', e.target.value)}
+                                            placeholder="นามสกุล" 
+                                            className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-2 text-sm focus:border-sky-500 outline-none"
+                                        />
+                                        <select 
+                                            value={ca.position} 
+                                            onChange={e => updateCoAuthor(ca.id, 'position', e.target.value)}
+                                            className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-2 text-sm focus:border-sky-500 outline-none"
+                                        >
+                                            <option value="">-- ตำแหน่ง --</option>
+                                            {HEALTH_POSITIONS.map(p => <option key={p} value={p}>{p}</option>)}
+                                        </select>
+                                        <input 
+                                            value={ca.organization} 
+                                            onChange={e => updateCoAuthor(ca.id, 'organization', e.target.value)}
+                                            placeholder="หน่วยงาน" 
+                                            className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-2 text-sm focus:border-sky-500 outline-none"
+                                        />
+                                        <input 
+                                            value={ca.phone} 
+                                            onChange={e => updateCoAuthor(ca.id, 'phone', e.target.value)}
+                                            placeholder="เบอร์โทร" 
+                                            className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-2 text-sm focus:border-sky-500 outline-none"
+                                        />
+                                        <input 
+                                            value={ca.email} 
+                                            onChange={e => updateCoAuthor(ca.id, 'email', e.target.value)}
+                                            placeholder="อีเมล" 
+                                            className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-2 text-sm focus:border-sky-500 outline-none"
+                                        />
+                                    </div>
+                                </div>
+                            ))}
+                            {coAuthors.length === 0 && <div className="text-center text-slate-400 text-xs italic py-2">ไม่มีรายชื่อผู้ร่วม (คลิกเพิ่มรายชื่อหากต้องการ)</div>}
+                        </div>
+                    </div>
+
                     <div className="bg-amber-50 dark:bg-amber-900/20 p-3 rounded-xl flex gap-3 items-center border border-amber-100 dark:border-amber-800">
                         <i className="fa-solid fa-print text-amber-500 text-xl pl-2"></i>
                         <div className="text-xs text-amber-800 dark:text-amber-200">

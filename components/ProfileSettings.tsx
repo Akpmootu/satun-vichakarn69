@@ -1,6 +1,6 @@
 
 import React, { useState, useRef } from 'react';
-import { UserProfile } from '../types';
+import { UserProfile, Education } from '../types';
 import { apiUpdateUserProfile, apiUploadAvatar, apiChangePassword } from '../services/apiService';
 import { HEALTH_POSITIONS, JOB_LEVELS } from '../constants';
 
@@ -24,6 +24,16 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({ currentUser, onUpdate
         position: currentUser.position || '',
         level: currentUser.level || ''
     });
+
+    // Address State
+    const [address, setAddress] = useState(currentUser.addressInfo || {
+        houseNo: '', moo: '', road: '', soi: '',
+        subDistrict: '', district: '', province: 'สตูล', zipCode: ''
+    });
+
+    // Education State
+    const [educations, setEducations] = useState<Education[]>(currentUser.educationHistory || []);
+
     const [avatarUrl, setAvatarUrl] = useState<string | undefined>(currentUser.avatarUrl);
     const [loading, setLoading] = useState(false);
     const [uploading, setUploading] = useState(false);
@@ -62,18 +72,8 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({ currentUser, onUpdate
 
     const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         let raw = e.target.value.replace(/\D/g, '');
-        if (raw.length > 9) raw = raw.substring(0, 9);
-        let formatted = "";
-        if (raw.length > 0) formatted += raw.substring(0, 2);
-        if (raw.length >= 3) formatted += "-" + raw.substring(2, 6);
-        if (raw.length >= 7) formatted += "-" + raw.substring(6, 9);
-        const finalValue = raw.length > 0 ? `0${formatted}` : '';
-        setForm({ ...form, phone: finalValue });
-    };
-
-    const getPhoneDisplayValue = () => {
-        if (!form.phone) return "";
-        return form.phone.startsWith('0') ? form.phone.substring(1) : form.phone;
+        if (raw.length > 10) raw = raw.substring(0, 10);
+        setForm({ ...form, phone: raw });
     };
 
     const handleSaveProfile = async () => {
@@ -81,14 +81,14 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({ currentUser, onUpdate
             showToast({ type: 'error', title: 'ข้อมูลไม่ครบ', message: 'กรุณากรอกชื่อและนามสกุล' });
             return;
         }
-        const rawPhone = form.phone.replace(/\D/g, '');
-        if (rawPhone.length > 0 && rawPhone.length < 10) {
-             showToast({ type: 'error', title: 'เบอร์โทรศัพท์ไม่ครบ', message: 'กรุณากรอกเบอร์โทรศัพท์ให้ครบถ้วน' });
-             return;
-        }
+        
         setLoading(true);
         try {
-            const updated = await apiUpdateUserProfile(currentUser.id, form);
+            const updated = await apiUpdateUserProfile(currentUser.id, {
+                ...form,
+                addressInfo: address,
+                educationHistory: educations
+            });
             onUpdateUser(updated);
             showToast({ type: 'success', title: 'บันทึกสำเร็จ', message: 'ปรับปรุงข้อมูลส่วนตัวเรียบร้อยแล้ว' });
         } catch (e: any) {
@@ -96,6 +96,22 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({ currentUser, onUpdate
         } finally {
             setLoading(false);
         }
+    };
+
+    // Education Handlers
+    const addEducation = () => {
+        setEducations([...educations, { 
+            id: Math.random().toString(36).substr(2, 9), 
+            degree: '', major: '', institution: '', year: '' 
+        }]);
+    };
+
+    const updateEducation = (id: string, field: keyof Education, value: string) => {
+        setEducations(educations.map(edu => edu.id === id ? { ...edu, [field]: value } : edu));
+    };
+
+    const removeEducation = (id: string) => {
+        setEducations(educations.filter(edu => edu.id !== id));
     };
 
     const calculateStrength = (pass: string) => {
@@ -117,10 +133,6 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({ currentUser, onUpdate
         if (newPassword !== confirmPassword) {
             showToast({ type: 'error', title: 'รหัสผ่านไม่ตรงกัน', message: 'กรุณายืนยันรหัสผ่านให้ถูกต้อง' });
             return;
-        }
-        if (strength < 2) {
-             showToast({ type: 'error', title: 'รหัสผ่านง่ายเกินไป', message: 'กรุณาเพิ่มตัวเลข หรือตัวอักษรใหญ่เพื่อความปลอดภัย' });
-             return;
         }
         setPassLoading(true);
         try {
@@ -200,7 +212,7 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({ currentUser, onUpdate
                     {activeTab === 'general' && (
                         <div className="space-y-6 animate-fade-in">
                             
-                            {/* Card: Avatar & Basic Info */}
+                            {/* Card 1: Avatar & Basic Info */}
                             <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm ring-1 ring-slate-200 dark:ring-slate-700 p-6 md:p-8">
                                 <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6 mb-8 border-b border-slate-100 dark:border-slate-700 pb-8">
                                     <div className="relative group shrink-0">
@@ -235,7 +247,7 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({ currentUser, onUpdate
                                     <div className="text-center sm:text-left flex-1">
                                         <h3 className="text-lg font-bold text-slate-900 dark:text-white">รูปโปรไฟล์</h3>
                                         <p className="text-sm text-slate-500 mb-4 max-w-sm">
-                                            รองรับไฟล์ .jpg หรือ .png ขนาดไม่เกิน 2MB รูปภาพจะถูกแสดงในหน้าโปรไฟล์และคอมเมนต์
+                                            รองรับไฟล์ .jpg หรือ .png ขนาดไม่เกิน 2MB
                                         </p>
                                         <button 
                                             onClick={handleAvatarClick}
@@ -268,36 +280,24 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({ currentUser, onUpdate
                                 </div>
                             </div>
 
-                            {/* Card: Contact & Work */}
+                            {/* Card 2: Contact & Work */}
                             <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm ring-1 ring-slate-200 dark:ring-slate-700 p-6 md:p-8">
                                 <h3 className="text-base font-bold text-slate-900 dark:text-white mb-4">การติดต่อและการทำงาน</h3>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                                     <div>
                                         <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5 uppercase">อีเมล</label>
-                                        <div className="relative">
-                                            <i className="fa-regular fa-envelope absolute left-4 top-3 text-slate-400"></i>
-                                            <input 
-                                                value={currentUser.email}
-                                                disabled
-                                                className="w-full rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 px-4 pl-10 py-2.5 text-sm text-slate-500 cursor-not-allowed"
-                                            />
-                                        </div>
+                                        <input value={currentUser.email} disabled className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-500 cursor-not-allowed" />
                                     </div>
                                     <div>
                                         <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5 uppercase">เบอร์โทรศัพท์</label>
-                                        <div className="flex items-center rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 overflow-hidden focus-within:ring-2 focus-within:ring-sky-500 transition">
-                                            <div className="bg-slate-50 dark:bg-slate-800 px-3 py-2.5 border-r border-slate-200 dark:border-slate-600 text-slate-500 dark:text-slate-400 font-bold select-none text-sm">
-                                                0
-                                            </div>
-                                            <input 
-                                                value={getPhoneDisplayValue()}
-                                                onChange={handlePhoneChange}
-                                                className="w-full px-3 py-2.5 text-sm outline-none bg-transparent dark:text-white placeholder-slate-400"
-                                                placeholder="XX-XXXX-XXX"
-                                                inputMode="numeric"
-                                            />
-                                        </div>
+                                        <input 
+                                            value={form.phone}
+                                            onChange={handlePhoneChange}
+                                            className="w-full rounded-xl border border-slate-200 dark:border-slate-600 px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-sky-500 dark:bg-slate-900 dark:text-white"
+                                            placeholder="08X-XXX-XXXX"
+                                        />
                                     </div>
+                                    
                                     <div className="md:col-span-2 border-t border-slate-100 dark:border-slate-700 my-2"></div>
                                     
                                     <div>
@@ -331,6 +331,107 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({ currentUser, onUpdate
                                             {JOB_LEVELS.map(l => <option key={l} value={l}>{l}</option>)}
                                         </select>
                                     </div>
+                                </div>
+                            </div>
+
+                            {/* Card 3: Address Info (New) */}
+                            <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm ring-1 ring-slate-200 dark:ring-slate-700 p-6 md:p-8">
+                                <h3 className="text-base font-bold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
+                                    <i className="fa-solid fa-map-location-dot text-sky-500"></i> สถานที่ติดต่อสะดวก
+                                </h3>
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                    <div className="col-span-1">
+                                        <label className="text-xs font-bold text-slate-500">บ้านเลขที่</label>
+                                        <input value={address.houseNo} onChange={e => setAddress({...address, houseNo: e.target.value})} className="w-full mt-1 p-2 rounded-lg border border-slate-200 dark:border-slate-600 dark:bg-slate-900 dark:text-white text-sm outline-none focus:border-sky-500" />
+                                    </div>
+                                    <div className="col-span-1">
+                                        <label className="text-xs font-bold text-slate-500">หมู่ที่</label>
+                                        <input value={address.moo} onChange={e => setAddress({...address, moo: e.target.value})} className="w-full mt-1 p-2 rounded-lg border border-slate-200 dark:border-slate-600 dark:bg-slate-900 dark:text-white text-sm outline-none focus:border-sky-500" />
+                                    </div>
+                                    <div className="col-span-2">
+                                        <label className="text-xs font-bold text-slate-500">ถนน</label>
+                                        <input value={address.road} onChange={e => setAddress({...address, road: e.target.value})} className="w-full mt-1 p-2 rounded-lg border border-slate-200 dark:border-slate-600 dark:bg-slate-900 dark:text-white text-sm outline-none focus:border-sky-500" />
+                                    </div>
+                                    <div className="col-span-2">
+                                        <label className="text-xs font-bold text-slate-500">ซอย</label>
+                                        <input value={address.soi} onChange={e => setAddress({...address, soi: e.target.value})} className="w-full mt-1 p-2 rounded-lg border border-slate-200 dark:border-slate-600 dark:bg-slate-900 dark:text-white text-sm outline-none focus:border-sky-500" />
+                                    </div>
+                                    <div className="col-span-2">
+                                        <label className="text-xs font-bold text-slate-500">ตำบล/แขวง</label>
+                                        <input value={address.subDistrict} onChange={e => setAddress({...address, subDistrict: e.target.value})} className="w-full mt-1 p-2 rounded-lg border border-slate-200 dark:border-slate-600 dark:bg-slate-900 dark:text-white text-sm outline-none focus:border-sky-500" />
+                                    </div>
+                                    <div className="col-span-2">
+                                        <label className="text-xs font-bold text-slate-500">อำเภอ/เขต</label>
+                                        <input value={address.district} onChange={e => setAddress({...address, district: e.target.value})} className="w-full mt-1 p-2 rounded-lg border border-slate-200 dark:border-slate-600 dark:bg-slate-900 dark:text-white text-sm outline-none focus:border-sky-500" />
+                                    </div>
+                                    <div className="col-span-2">
+                                        <label className="text-xs font-bold text-slate-500">จังหวัด</label>
+                                        <input value={address.province} onChange={e => setAddress({...address, province: e.target.value})} className="w-full mt-1 p-2 rounded-lg border border-slate-200 dark:border-slate-600 dark:bg-slate-900 dark:text-white text-sm outline-none focus:border-sky-500" />
+                                    </div>
+                                    <div className="col-span-2">
+                                        <label className="text-xs font-bold text-slate-500">รหัสไปรษณีย์</label>
+                                        <input value={address.zipCode} onChange={e => setAddress({...address, zipCode: e.target.value})} className="w-full mt-1 p-2 rounded-lg border border-slate-200 dark:border-slate-600 dark:bg-slate-900 dark:text-white text-sm outline-none focus:border-sky-500" />
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Card 4: Education History (New) */}
+                            <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm ring-1 ring-slate-200 dark:ring-slate-700 p-6 md:p-8">
+                                <div className="flex justify-between items-center mb-4">
+                                    <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                                        <i className="fa-solid fa-graduation-cap text-sky-500"></i> ประวัติการศึกษา
+                                    </h3>
+                                    <button onClick={addEducation} className="text-xs font-bold bg-slate-100 dark:bg-slate-700 px-3 py-1.5 rounded-lg hover:bg-sky-50 dark:hover:bg-sky-900/30 text-slate-600 dark:text-slate-300 hover:text-sky-600 transition">
+                                        <i className="fa-solid fa-plus mr-1"></i> เพิ่มวุฒิ
+                                    </button>
+                                </div>
+                                <div className="space-y-3">
+                                    {educations.length === 0 && <div className="text-center text-slate-400 py-4 text-sm bg-slate-50 dark:bg-slate-900 rounded-xl">ยังไม่มีข้อมูลการศึกษา</div>}
+                                    {educations.map((edu, idx) => (
+                                        <div key={edu.id} className="p-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 relative group">
+                                            <button onClick={() => removeEducation(edu.id)} className="absolute top-2 right-2 h-7 w-7 rounded-full bg-white dark:bg-slate-800 text-slate-400 hover:text-rose-500 flex items-center justify-center shadow-sm border border-slate-200 dark:border-slate-700 opacity-0 group-hover:opacity-100 transition">
+                                                <i className="fa-solid fa-xmark"></i>
+                                            </button>
+                                            <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                                                <div className="md:col-span-1">
+                                                    <label className="text-[10px] font-bold text-slate-400 uppercase">ระดับ/วุฒิ</label>
+                                                    <input 
+                                                        value={edu.degree} 
+                                                        onChange={e => updateEducation(edu.id, 'degree', e.target.value)}
+                                                        placeholder="เช่น ปริญญาตรี" 
+                                                        className="w-full mt-1 bg-transparent border-b border-slate-300 dark:border-slate-600 text-sm focus:border-sky-500 outline-none pb-1"
+                                                    />
+                                                </div>
+                                                <div className="md:col-span-1">
+                                                    <label className="text-[10px] font-bold text-slate-400 uppercase">สาขาวิชา</label>
+                                                    <input 
+                                                        value={edu.major} 
+                                                        onChange={e => updateEducation(edu.id, 'major', e.target.value)}
+                                                        placeholder="ระบุสาขา" 
+                                                        className="w-full mt-1 bg-transparent border-b border-slate-300 dark:border-slate-600 text-sm focus:border-sky-500 outline-none pb-1"
+                                                    />
+                                                </div>
+                                                <div className="md:col-span-1">
+                                                    <label className="text-[10px] font-bold text-slate-400 uppercase">สถาบัน</label>
+                                                    <input 
+                                                        value={edu.institution} 
+                                                        onChange={e => updateEducation(edu.id, 'institution', e.target.value)}
+                                                        placeholder="ชื่อมหาวิทยาลัย" 
+                                                        className="w-full mt-1 bg-transparent border-b border-slate-300 dark:border-slate-600 text-sm focus:border-sky-500 outline-none pb-1"
+                                                    />
+                                                </div>
+                                                <div className="md:col-span-1">
+                                                    <label className="text-[10px] font-bold text-slate-400 uppercase">ปีที่จบ</label>
+                                                    <input 
+                                                        value={edu.year} 
+                                                        onChange={e => updateEducation(edu.id, 'year', e.target.value)}
+                                                        placeholder="พ.ศ." 
+                                                        className="w-full mt-1 bg-transparent border-b border-slate-300 dark:border-slate-600 text-sm focus:border-sky-500 outline-none pb-1"
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
                                 </div>
                             </div>
 

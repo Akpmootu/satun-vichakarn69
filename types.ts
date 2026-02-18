@@ -8,6 +8,36 @@ export interface AuditLog {
   note: string;
 }
 
+export interface AddressInfo {
+  houseNo: string;
+  moo: string;
+  road: string;
+  soi: string;
+  subDistrict: string;
+  district: string;
+  province: string;
+  zipCode: string;
+}
+
+export interface Education {
+  id: string; // generated uuid
+  degree: string; // ปริญญาตรี, โท, เอก
+  major: string; // สาขา
+  institution: string; // สถาบัน
+  year: string; // ปีที่จบ
+}
+
+export interface CoAuthor {
+  id: string;
+  firstName: string;
+  lastName: string;
+  position: string;
+  level: string;
+  organization: string;
+  phone: string;
+  email: string;
+}
+
 export interface UserProfile {
   id: string;
   firstName: string;
@@ -18,13 +48,15 @@ export interface UserProfile {
   position?: string;
   level?: string; 
   role: UserRole;
-  avatarUrl?: string; // Added avatarUrl
+  avatarUrl?: string;
+  addressInfo?: AddressInfo; // Added
+  educationHistory?: Education[]; // Added
 }
 
 export interface Submission {
   id: string;
-  userId?: string; // Link to user
-  reviewerId?: string; // Link to assigned reviewer
+  userId?: string; 
+  reviewerId?: string; 
   budgetYear: number;
   firstName: string;
   lastName: string;
@@ -34,12 +66,13 @@ export interface Submission {
   organization: string;
   workType: string;
   branchId: number;
-  fileUrl?: string; // Base64 or URL of the uploaded file
+  fileUrl?: string; 
   fileName?: string;
   status: SubmissionStatus;
   createdAt: string;
   updatedAt: string;
   audit: AuditLog[];
+  coAuthors?: CoAuthor[]; // Replaced string with structured array
 }
 
 export interface NewsItem {
@@ -66,7 +99,7 @@ export interface ToastMessage {
 export interface WorkTypeOption {
   id: string;
   label: string;
-  description?: string; // Added description
+  description?: string; 
   icon: string;
 }
 
@@ -77,7 +110,7 @@ export interface BranchOption {
 
 export interface VisitorStats {
   online: number;
-  today: number; // Added daily stat
+  today: number; 
   week: number;
   month: number;
   year: number;
