@@ -152,6 +152,14 @@ const BranchSelector: React.FC<{
                                 </div>
                             );
                         })}
+                        {BRANCH_GROUPS.every(group => 
+                            group.ids.every(id => {
+                                const b = BRANCHES.find(br => br.id === id);
+                                return !(b && (b.label.toLowerCase().includes(search.toLowerCase()) || String(b.id).includes(search)));
+                            })
+                        ) && (
+                            <div className="p-4 text-center text-slate-400 text-xs">ไม่พบสาขาที่ค้นหา</div>
+                        )}
                     </div>
                 </div>
             )}
