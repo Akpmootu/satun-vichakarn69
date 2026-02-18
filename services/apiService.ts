@@ -305,6 +305,8 @@ export async function apiDeleteSubmission(settings: AppSettings, id: string): Pr
 }
 
 // --- Visitor Statistics Service ---
+
+// 1. Presence (Who is online right now)
 export function subscribeToVisitorPresence(onCountChange: (count: number) => void) {
     const channel = supabase.channel('visitor_presence');
     channel.on('presence', { event: 'sync' }, () => {
@@ -318,14 +320,67 @@ export function subscribeToVisitorPresence(onCountChange: (count: number) => voi
     return () => { supabase.removeChannel(channel); };
 }
 
+// 2. Persistent Stats (Listen to DB inserts)
+export function subscribeToStatsUpdates(onUpdate: (stats: Omit<VisitorStats, 'online'>) => void) {
+    const channel = supabase
+      .channel('visitor_stats_changes')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'visitor_logs' },
+        async () => {
+            // When a new log is inserted, re-fetch the aggregated stats
+            const stats = await apiGetVisitorStats();
+            onUpdate(stats);
+        }
+      )
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+}
+
 export async function apiRecordVisit(clientId: string, userId?: string) {
     try { await supabase.from('visitor_logs').insert([{ client_id: clientId, user_id: userId || null, page_url: window.location.pathname }]); } catch (e) { console.error(e); }
 }
 
 export async function apiGetVisitorStats(): Promise<Omit<VisitorStats, 'online'>> {
     try {
-        const { data, error } = await supabase.rpc('get_visitor_stats');
-        if (error) return { today: 0, week: 0, month: 0, year: 0, total: 0 };
-        return { today: data.today || 0, week: data.week || 0, month: data.month || 0, year: data.year || 0, total: data.total || 0 };
-    } catch (e) { return { today: 0, week: 0, month: 0, year: 0, total: 0 }; }
+        const now = new Date();
+        const getISO = (d: Date) => d.toISOString();
+
+        // 1. Start of Day (Today 00:00:00)
+        const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        
+        // 2. Start of Week (Sunday 00:00:00)
+        const startOfWeek = new Date(now);
+        const day = startOfWeek.getDay(); // 0 (Sun) - 6 (Sat)
+        const diff = startOfWeek.getDate() - day;
+        startOfWeek.setDate(diff);
+        startOfWeek.setHours(0, 0, 0, 0);
+
+        // 3. Start of Month (1st of current month)
+        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+        
+        // 4. Start of Year (1st Jan of current year)
+        const startOfYear = new Date(now.getFullYear(), 0, 1);
+
+        // Execute counts in parallel using Supabase Count Option
+        const [totalRes, yearRes, monthRes, weekRes, dayRes] = await Promise.all([
+            supabase.from('visitor_logs').select('*', { count: 'exact', head: true }),
+            supabase.from('visitor_logs').select('*', { count: 'exact', head: true }).gte('created_at', getISO(startOfYear)),
+            supabase.from('visitor_logs').select('*', { count: 'exact', head: true }).gte('created_at', getISO(startOfMonth)),
+            supabase.from('visitor_logs').select('*', { count: 'exact', head: true }).gte('created_at', getISO(startOfWeek)),
+            supabase.from('visitor_logs').select('*', { count: 'exact', head: true }).gte('created_at', getISO(startOfDay))
+        ]);
+
+        return { 
+            today: dayRes.count || 0, 
+            week: weekRes.count || 0, 
+            month: monthRes.count || 0, 
+            year: yearRes.count || 0, 
+            total: totalRes.count || 0 
+        };
+    } catch (e) { 
+        console.error("Exception fetching stats:", e);
+        return { today: 0, week: 0, month: 0, year: 0, total: 0 }; 
+    }
 }

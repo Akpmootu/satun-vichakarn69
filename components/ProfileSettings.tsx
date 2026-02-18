@@ -2,7 +2,9 @@
 import React, { useState, useRef } from 'react';
 import { UserProfile, Education } from '../types';
 import { apiUpdateUserProfile, apiUploadAvatar, apiChangePassword } from '../services/apiService';
-import { HEALTH_POSITIONS, JOB_LEVELS } from '../constants';
+import { HEALTH_POSITIONS, JOB_LEVELS, EDUCATION_LEVELS } from '../constants';
+import OrgAutocomplete from './ui/OrgAutocomplete';
+import UniversityAutocomplete from './ui/UniversityAutocomplete';
 
 interface ProfileSettingsProps {
     currentUser: UserProfile;
@@ -44,6 +46,10 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({ currentUser, onUpdate
     const [confirmPassword, setConfirmPassword] = useState("");
     const [showPass, setShowPass] = useState(false);
     const [passLoading, setPassLoading] = useState(false);
+
+    // Years for dropdown
+    const currentYear = new Date().getFullYear() + 543;
+    const yearOptions = Array.from({length: 50}, (_, i) => currentYear - i);
 
     // --- Logic Handlers ---
 
@@ -216,8 +222,12 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({ currentUser, onUpdate
                         <div className="space-y-6 animate-fade-in">
                             
                             {/* Card 1: Avatar & Basic Info */}
-                            <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm ring-1 ring-slate-200 dark:ring-slate-700 p-6 md:p-8">
-                                <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6 mb-8 border-b border-slate-100 dark:border-slate-700 pb-8">
+                            <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm ring-1 ring-slate-200 dark:ring-slate-700 p-6 md:p-8 relative">
+                                <div className="absolute inset-0 overflow-hidden rounded-2xl pointer-events-none">
+                                    <i className="fa-solid fa-address-card absolute -bottom-2 -right-2 text-9xl text-slate-50 dark:text-slate-700 opacity-50 transform -rotate-12"></i>
+                                </div>
+                                
+                                <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6 mb-8 border-b border-slate-100 dark:border-slate-700 pb-8 relative z-10">
                                     <div className="relative group shrink-0">
                                         <div 
                                             onClick={handleAvatarClick}
@@ -264,183 +274,204 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({ currentUser, onUpdate
                                     </div>
                                 </div>
 
-                                <h3 className="text-base font-bold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
-                                    <i className="fa-solid fa-address-card text-sky-500"></i> ข้อมูลส่วนตัว
-                                </h3>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                                    <div>
-                                        <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5 uppercase">ชื่อจริง</label>
-                                        <input 
-                                            value={form.firstName}
-                                            onChange={e => setForm({...form, firstName: e.target.value})}
-                                            className="w-full rounded-xl border border-slate-200 dark:border-slate-600 px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-sky-500 dark:bg-slate-900 dark:text-white transition"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5 uppercase">นามสกุล</label>
-                                        <input 
-                                            value={form.lastName}
-                                            onChange={e => setForm({...form, lastName: e.target.value})}
-                                            className="w-full rounded-xl border border-slate-200 dark:border-slate-600 px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-sky-500 dark:bg-slate-900 dark:text-white transition"
-                                        />
+                                <div className="relative z-10">
+                                    <h3 className="text-base font-bold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
+                                        <i className="fa-solid fa-user-tag text-sky-500"></i> ข้อมูลส่วนตัว
+                                    </h3>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                        <div>
+                                            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5 uppercase">ชื่อจริง</label>
+                                            <input 
+                                                value={form.firstName}
+                                                onChange={e => setForm({...form, firstName: e.target.value})}
+                                                className="w-full rounded-xl border border-slate-200 dark:border-slate-600 px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-sky-500 dark:bg-slate-900 dark:text-white transition"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5 uppercase">นามสกุล</label>
+                                            <input 
+                                                value={form.lastName}
+                                                onChange={e => setForm({...form, lastName: e.target.value})}
+                                                className="w-full rounded-xl border border-slate-200 dark:border-slate-600 px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-sky-500 dark:bg-slate-900 dark:text-white transition"
+                                            />
+                                        </div>
                                     </div>
                                 </div>
                             </div>
 
                             {/* Card 2: Contact & Work */}
-                            <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm ring-1 ring-slate-200 dark:ring-slate-700 p-6 md:p-8">
-                                <h3 className="text-base font-bold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
-                                    <i className="fa-solid fa-briefcase text-sky-500"></i> การติดต่อและการทำงาน
-                                </h3>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                                    <div>
-                                        <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5 uppercase">อีเมล</label>
-                                        <input value={currentUser.email} disabled className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-500 cursor-not-allowed" />
-                                    </div>
-                                    <div>
-                                        <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5 uppercase">เบอร์โทรศัพท์</label>
-                                        <input 
-                                            value={form.phone}
-                                            onChange={handlePhoneChange}
-                                            className="w-full rounded-xl border border-slate-200 dark:border-slate-600 px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-sky-500 dark:bg-slate-900 dark:text-white"
-                                            placeholder="08X-XXX-XXXX"
-                                        />
-                                    </div>
-                                    
-                                    <div className="md:col-span-2 border-t border-slate-100 dark:border-slate-700 my-2"></div>
-                                    
-                                    <div>
-                                        <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5 uppercase">หน่วยงาน/สังกัด</label>
-                                        <input 
-                                            value={form.organization}
-                                            onChange={e => setForm({...form, organization: e.target.value})}
-                                            className="w-full rounded-xl border border-slate-200 dark:border-slate-600 px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-sky-500 dark:bg-slate-900 dark:text-white transition"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5 uppercase">ตำแหน่ง</label>
-                                        <input 
-                                            list="positions"
-                                            value={form.position}
-                                            onChange={e => setForm({...form, position: e.target.value})}
-                                            className="w-full rounded-xl border border-slate-200 dark:border-slate-600 px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-sky-500 dark:bg-slate-900 dark:text-white transition"
-                                        />
-                                        <datalist id="positions">
-                                            {HEALTH_POSITIONS.map(p => <option key={p} value={p} />)}
-                                        </datalist>
-                                    </div>
-                                    <div>
-                                        <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5 uppercase">ระดับ</label>
-                                        <select 
-                                            value={form.level}
-                                            onChange={e => setForm({...form, level: e.target.value})}
-                                            className="w-full rounded-xl border border-slate-200 dark:border-slate-600 px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-sky-500 dark:bg-slate-900 dark:text-white transition"
-                                        >
-                                            <option value="">-- เลือกระดับ --</option>
-                                            {JOB_LEVELS.map(l => <option key={l} value={l}>{l}</option>)}
-                                        </select>
-                                    </div>
+                            <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm ring-1 ring-slate-200 dark:ring-slate-700 p-6 md:p-8 relative">
+                                <div className="absolute inset-0 overflow-hidden rounded-2xl pointer-events-none">
+                                    <i className="fa-solid fa-briefcase absolute -bottom-2 -right-2 text-9xl text-slate-50 dark:text-slate-700 opacity-50 transform -rotate-12"></i>
                                 </div>
-                            </div>
-
-                            {/* Card 3: Address Info (New) */}
-                            <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm ring-1 ring-slate-200 dark:ring-slate-700 p-6 md:p-8">
-                                <h3 className="text-base font-bold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
-                                    <i className="fa-solid fa-map-location-dot text-sky-500"></i> สถานที่ติดต่อสะดวก
-                                </h3>
-                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                    <div className="col-span-1">
-                                        <label className="text-xs font-bold text-slate-500">บ้านเลขที่</label>
-                                        <input value={address.houseNo} onChange={e => setAddress({...address, houseNo: e.target.value})} className="w-full mt-1 p-2 rounded-lg border border-slate-200 dark:border-slate-600 dark:bg-slate-900 dark:text-white text-sm outline-none focus:border-sky-500" />
-                                    </div>
-                                    <div className="col-span-1">
-                                        <label className="text-xs font-bold text-slate-500">หมู่ที่</label>
-                                        <input value={address.moo} onChange={e => setAddress({...address, moo: e.target.value})} className="w-full mt-1 p-2 rounded-lg border border-slate-200 dark:border-slate-600 dark:bg-slate-900 dark:text-white text-sm outline-none focus:border-sky-500" />
-                                    </div>
-                                    <div className="col-span-2">
-                                        <label className="text-xs font-bold text-slate-500">ถนน</label>
-                                        <input value={address.road} onChange={e => setAddress({...address, road: e.target.value})} className="w-full mt-1 p-2 rounded-lg border border-slate-200 dark:border-slate-600 dark:bg-slate-900 dark:text-white text-sm outline-none focus:border-sky-500" />
-                                    </div>
-                                    <div className="col-span-2">
-                                        <label className="text-xs font-bold text-slate-500">ซอย</label>
-                                        <input value={address.soi} onChange={e => setAddress({...address, soi: e.target.value})} className="w-full mt-1 p-2 rounded-lg border border-slate-200 dark:border-slate-600 dark:bg-slate-900 dark:text-white text-sm outline-none focus:border-sky-500" />
-                                    </div>
-                                    <div className="col-span-2">
-                                        <label className="text-xs font-bold text-slate-500">ตำบล/แขวง</label>
-                                        <input value={address.subDistrict} onChange={e => setAddress({...address, subDistrict: e.target.value})} className="w-full mt-1 p-2 rounded-lg border border-slate-200 dark:border-slate-600 dark:bg-slate-900 dark:text-white text-sm outline-none focus:border-sky-500" />
-                                    </div>
-                                    <div className="col-span-2">
-                                        <label className="text-xs font-bold text-slate-500">อำเภอ/เขต</label>
-                                        <input value={address.district} onChange={e => setAddress({...address, district: e.target.value})} className="w-full mt-1 p-2 rounded-lg border border-slate-200 dark:border-slate-600 dark:bg-slate-900 dark:text-white text-sm outline-none focus:border-sky-500" />
-                                    </div>
-                                    <div className="col-span-2">
-                                        <label className="text-xs font-bold text-slate-500">จังหวัด</label>
-                                        <input value={address.province} onChange={e => setAddress({...address, province: e.target.value})} className="w-full mt-1 p-2 rounded-lg border border-slate-200 dark:border-slate-600 dark:bg-slate-900 dark:text-white text-sm outline-none focus:border-sky-500" />
-                                    </div>
-                                    <div className="col-span-2">
-                                        <label className="text-xs font-bold text-slate-500">รหัสไปรษณีย์</label>
-                                        <input value={address.zipCode} onChange={e => setAddress({...address, zipCode: e.target.value})} className="w-full mt-1 p-2 rounded-lg border border-slate-200 dark:border-slate-600 dark:bg-slate-900 dark:text-white text-sm outline-none focus:border-sky-500" />
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Card 4: Education History (New) */}
-                            <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm ring-1 ring-slate-200 dark:ring-slate-700 p-6 md:p-8">
-                                <div className="flex justify-between items-center mb-4">
-                                    <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                                        <i className="fa-solid fa-graduation-cap text-sky-500"></i> ประวัติการศึกษา
+                                <div className="relative z-10">
+                                    <h3 className="text-base font-bold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
+                                        <i className="fa-solid fa-building-user text-amber-500"></i> การติดต่อและการทำงาน
                                     </h3>
-                                    <button onClick={addEducation} className="text-xs font-bold bg-slate-100 dark:bg-slate-700 px-3 py-1.5 rounded-lg hover:bg-sky-50 dark:hover:bg-sky-900/30 text-slate-600 dark:text-slate-300 hover:text-sky-600 transition">
-                                        <i className="fa-solid fa-plus mr-1"></i> เพิ่มวุฒิ
-                                    </button>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                        <div>
+                                            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5 uppercase">อีเมล</label>
+                                            <input value={currentUser.email} disabled className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-500 cursor-not-allowed" />
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5 uppercase">เบอร์โทรศัพท์</label>
+                                            <input 
+                                                value={form.phone}
+                                                onChange={handlePhoneChange}
+                                                className="w-full rounded-xl border border-slate-200 dark:border-slate-600 px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-amber-500 dark:bg-slate-900 dark:text-white"
+                                                placeholder="08X-XXX-XXXX"
+                                            />
+                                        </div>
+                                        
+                                        <div className="md:col-span-2 border-t border-slate-100 dark:border-slate-700 my-2"></div>
+                                        
+                                        <div>
+                                            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5 uppercase">หน่วยงาน/สังกัด</label>
+                                            <OrgAutocomplete 
+                                                value={form.organization}
+                                                onChange={(val) => setForm({...form, organization: val})}
+                                                className="w-full rounded-xl border border-slate-200 dark:border-slate-600 px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-amber-500 dark:bg-slate-900 dark:text-white transition"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5 uppercase">ตำแหน่ง</label>
+                                            <input 
+                                                list="positions"
+                                                value={form.position}
+                                                onChange={e => setForm({...form, position: e.target.value})}
+                                                className="w-full rounded-xl border border-slate-200 dark:border-slate-600 px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-amber-500 dark:bg-slate-900 dark:text-white transition"
+                                            />
+                                            <datalist id="positions">
+                                                {HEALTH_POSITIONS.map(p => <option key={p} value={p} />)}
+                                            </datalist>
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5 uppercase">ระดับ</label>
+                                            <select 
+                                                value={form.level}
+                                                onChange={e => setForm({...form, level: e.target.value})}
+                                                className="w-full rounded-xl border border-slate-200 dark:border-slate-600 px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-amber-500 dark:bg-slate-900 dark:text-white transition"
+                                            >
+                                                <option value="">-- เลือกระดับ --</option>
+                                                {JOB_LEVELS.map(l => <option key={l} value={l}>{l}</option>)}
+                                            </select>
+                                        </div>
+                                    </div>
                                 </div>
-                                <div className="space-y-3">
-                                    {educations.length === 0 && <div className="text-center text-slate-400 py-4 text-sm bg-slate-50 dark:bg-slate-900 rounded-xl">ยังไม่มีข้อมูลการศึกษา</div>}
-                                    {educations.map((edu, idx) => (
-                                        <div key={edu.id} className="p-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 relative group">
-                                            <button onClick={() => removeEducation(edu.id)} className="absolute top-2 right-2 h-7 w-7 rounded-full bg-white dark:bg-slate-800 text-slate-400 hover:text-rose-500 flex items-center justify-center shadow-sm border border-slate-200 dark:border-slate-700 opacity-0 group-hover:opacity-100 transition">
-                                                <i className="fa-solid fa-xmark"></i>
-                                            </button>
-                                            <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-                                                <div className="md:col-span-1">
-                                                    <label className="text-[10px] font-bold text-slate-400 uppercase">ระดับ/วุฒิ</label>
-                                                    <input 
-                                                        value={edu.degree} 
-                                                        onChange={e => updateEducation(edu.id, 'degree', e.target.value)}
-                                                        placeholder="เช่น ปริญญาตรี" 
-                                                        className="w-full mt-1 bg-transparent border-b border-slate-300 dark:border-slate-600 text-sm focus:border-sky-500 outline-none pb-1"
-                                                    />
-                                                </div>
-                                                <div className="md:col-span-1">
-                                                    <label className="text-[10px] font-bold text-slate-400 uppercase">สาขาวิชา</label>
-                                                    <input 
-                                                        value={edu.major} 
-                                                        onChange={e => updateEducation(edu.id, 'major', e.target.value)}
-                                                        placeholder="ระบุสาขา" 
-                                                        className="w-full mt-1 bg-transparent border-b border-slate-300 dark:border-slate-600 text-sm focus:border-sky-500 outline-none pb-1"
-                                                    />
-                                                </div>
-                                                <div className="md:col-span-1">
-                                                    <label className="text-[10px] font-bold text-slate-400 uppercase">สถาบัน</label>
-                                                    <input 
-                                                        value={edu.institution} 
-                                                        onChange={e => updateEducation(edu.id, 'institution', e.target.value)}
-                                                        placeholder="ชื่อมหาวิทยาลัย" 
-                                                        className="w-full mt-1 bg-transparent border-b border-slate-300 dark:border-slate-600 text-sm focus:border-sky-500 outline-none pb-1"
-                                                    />
-                                                </div>
-                                                <div className="md:col-span-1">
-                                                    <label className="text-[10px] font-bold text-slate-400 uppercase">ปีที่จบ</label>
-                                                    <input 
-                                                        value={edu.year} 
-                                                        onChange={e => updateEducation(edu.id, 'year', e.target.value)}
-                                                        placeholder="พ.ศ." 
-                                                        className="w-full mt-1 bg-transparent border-b border-slate-300 dark:border-slate-600 text-sm focus:border-sky-500 outline-none pb-1"
-                                                    />
+                            </div>
+
+                            {/* Card 3: Address Info */}
+                            <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm ring-1 ring-slate-200 dark:ring-slate-700 p-6 md:p-8 relative">
+                                <div className="absolute inset-0 overflow-hidden rounded-2xl pointer-events-none">
+                                    <i className="fa-solid fa-map-location-dot absolute -bottom-2 -right-2 text-9xl text-slate-50 dark:text-slate-700 opacity-50 transform -rotate-12"></i>
+                                </div>
+                                <div className="relative z-10">
+                                    <h3 className="text-base font-bold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
+                                        <i className="fa-solid fa-location-dot text-emerald-500"></i> สถานที่ติดต่อสะดวก
+                                    </h3>
+                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                        <div className="col-span-1">
+                                            <label className="text-xs font-bold text-slate-500">บ้านเลขที่</label>
+                                            <input value={address.houseNo} onChange={e => setAddress({...address, houseNo: e.target.value})} className="w-full mt-1 p-2 rounded-lg border border-slate-200 dark:border-slate-600 dark:bg-slate-900 dark:text-white text-sm outline-none focus:border-emerald-500" />
+                                        </div>
+                                        <div className="col-span-1">
+                                            <label className="text-xs font-bold text-slate-500">หมู่ที่</label>
+                                            <input value={address.moo} onChange={e => setAddress({...address, moo: e.target.value})} className="w-full mt-1 p-2 rounded-lg border border-slate-200 dark:border-slate-600 dark:bg-slate-900 dark:text-white text-sm outline-none focus:border-emerald-500" />
+                                        </div>
+                                        <div className="col-span-2">
+                                            <label className="text-xs font-bold text-slate-500">ถนน</label>
+                                            <input value={address.road} onChange={e => setAddress({...address, road: e.target.value})} className="w-full mt-1 p-2 rounded-lg border border-slate-200 dark:border-slate-600 dark:bg-slate-900 dark:text-white text-sm outline-none focus:border-emerald-500" />
+                                        </div>
+                                        <div className="col-span-2">
+                                            <label className="text-xs font-bold text-slate-500">ซอย</label>
+                                            <input value={address.soi} onChange={e => setAddress({...address, soi: e.target.value})} className="w-full mt-1 p-2 rounded-lg border border-slate-200 dark:border-slate-600 dark:bg-slate-900 dark:text-white text-sm outline-none focus:border-emerald-500" />
+                                        </div>
+                                        <div className="col-span-2">
+                                            <label className="text-xs font-bold text-slate-500">ตำบล/แขวง</label>
+                                            <input value={address.subDistrict} onChange={e => setAddress({...address, subDistrict: e.target.value})} className="w-full mt-1 p-2 rounded-lg border border-slate-200 dark:border-slate-600 dark:bg-slate-900 dark:text-white text-sm outline-none focus:border-emerald-500" />
+                                        </div>
+                                        <div className="col-span-2">
+                                            <label className="text-xs font-bold text-slate-500">อำเภอ/เขต</label>
+                                            <input value={address.district} onChange={e => setAddress({...address, district: e.target.value})} className="w-full mt-1 p-2 rounded-lg border border-slate-200 dark:border-slate-600 dark:bg-slate-900 dark:text-white text-sm outline-none focus:border-emerald-500" />
+                                        </div>
+                                        <div className="col-span-2">
+                                            <label className="text-xs font-bold text-slate-500">จังหวัด</label>
+                                            <input value={address.province} onChange={e => setAddress({...address, province: e.target.value})} className="w-full mt-1 p-2 rounded-lg border border-slate-200 dark:border-slate-600 dark:bg-slate-900 dark:text-white text-sm outline-none focus:border-emerald-500" />
+                                        </div>
+                                        <div className="col-span-2">
+                                            <label className="text-xs font-bold text-slate-500">รหัสไปรษณีย์</label>
+                                            <input value={address.zipCode} onChange={e => setAddress({...address, zipCode: e.target.value})} className="w-full mt-1 p-2 rounded-lg border border-slate-200 dark:border-slate-600 dark:bg-slate-900 dark:text-white text-sm outline-none focus:border-emerald-500" />
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Card 4: Education History */}
+                            <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm ring-1 ring-slate-200 dark:ring-slate-700 p-6 md:p-8 relative">
+                                <div className="absolute inset-0 overflow-hidden rounded-2xl pointer-events-none">
+                                    <i className="fa-solid fa-graduation-cap absolute -bottom-2 -right-2 text-9xl text-slate-50 dark:text-slate-700 opacity-50 transform -rotate-12"></i>
+                                </div>
+                                <div className="relative z-10">
+                                    <div className="flex justify-between items-center mb-4">
+                                        <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                                            <i className="fa-solid fa-user-graduate text-indigo-500"></i> ประวัติการศึกษา
+                                        </h3>
+                                        <button onClick={addEducation} className="text-xs font-bold bg-slate-100 dark:bg-slate-700 px-3 py-1.5 rounded-lg hover:bg-sky-50 dark:hover:bg-sky-900/30 text-slate-600 dark:text-slate-300 hover:text-sky-600 transition">
+                                            <i className="fa-solid fa-plus mr-1"></i> เพิ่มวุฒิ
+                                        </button>
+                                    </div>
+                                    <div className="space-y-3">
+                                        {educations.length === 0 && <div className="text-center text-slate-400 py-4 text-sm bg-slate-50 dark:bg-slate-900 rounded-xl">ยังไม่มีข้อมูลการศึกษา</div>}
+                                        {educations.map((edu, idx) => (
+                                            <div key={edu.id} className="p-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 relative group">
+                                                <button onClick={() => removeEducation(edu.id)} className="absolute top-2 right-2 h-7 w-7 rounded-full bg-white dark:bg-slate-800 text-slate-400 hover:text-rose-500 flex items-center justify-center shadow-sm border border-slate-200 dark:border-slate-700 opacity-0 group-hover:opacity-100 transition">
+                                                    <i className="fa-solid fa-xmark"></i>
+                                                </button>
+                                                <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                                                    <div className="md:col-span-1">
+                                                        <label className="text-[10px] font-bold text-slate-400 uppercase">ระดับ/วุฒิ</label>
+                                                        <select
+                                                            value={edu.degree}
+                                                            onChange={e => updateEducation(edu.id, 'degree', e.target.value)}
+                                                            className="w-full mt-1 bg-transparent border-b border-slate-300 dark:border-slate-600 text-sm focus:border-indigo-500 outline-none pb-1 cursor-pointer"
+                                                        >
+                                                            <option value="">-- เลือก --</option>
+                                                            {EDUCATION_LEVELS.map(l => <option key={l} value={l}>{l}</option>)}
+                                                        </select>
+                                                    </div>
+                                                    <div className="md:col-span-1">
+                                                        <label className="text-[10px] font-bold text-slate-400 uppercase">สาขาวิชา</label>
+                                                        <input 
+                                                            value={edu.major} 
+                                                            onChange={e => updateEducation(edu.id, 'major', e.target.value)}
+                                                            placeholder="ระบุสาขา" 
+                                                            className="w-full mt-1 bg-transparent border-b border-slate-300 dark:border-slate-600 text-sm focus:border-indigo-500 outline-none pb-1"
+                                                        />
+                                                    </div>
+                                                    <div className="md:col-span-1">
+                                                        <label className="text-[10px] font-bold text-slate-400 uppercase">สถาบัน</label>
+                                                        <input 
+                                                            value={edu.institution} 
+                                                            onChange={e => updateEducation(edu.id, 'institution', e.target.value)}
+                                                            placeholder="ชื่อมหาวิทยาลัย" 
+                                                            className="w-full mt-1 bg-transparent border-b border-slate-300 dark:border-slate-600 text-sm focus:border-indigo-500 outline-none pb-1"
+                                                        />
+                                                    </div>
+                                                    <div className="md:col-span-1">
+                                                        <label className="text-[10px] font-bold text-slate-400 uppercase">ปีที่จบ</label>
+                                                        <select 
+                                                            value={edu.year} 
+                                                            onChange={e => updateEducation(edu.id, 'year', e.target.value)}
+                                                            className="w-full mt-1 bg-transparent border-b border-slate-300 dark:border-slate-600 text-sm focus:border-indigo-500 outline-none pb-1 cursor-pointer"
+                                                        >
+                                                            <option value="">-- ปีที่จบ --</option>
+                                                            {yearOptions.map(y => <option key={y} value={y}>{y}</option>)}
+                                                        </select>
+                                                    </div>
                                                 </div>
                                             </div>
-                                        </div>
-                                    ))}
+                                        ))}
+                                    </div>
                                 </div>
                             </div>
 
@@ -460,74 +491,79 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({ currentUser, onUpdate
 
                     {/* --- SECURITY TAB --- */}
                     {activeTab === 'security' && (
-                        <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm ring-1 ring-slate-200 dark:ring-slate-700 p-6 md:p-8 animate-fade-in">
-                            <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2 flex items-center gap-2">
-                                <i className="fa-solid fa-key text-sky-500"></i> เปลี่ยนรหัสผ่าน
-                            </h3>
-                            <p className="text-sm text-slate-500 mb-6">เพื่อความปลอดภัย กรุณาตั้งรหัสผ่านที่มีความยาวอย่างน้อย 8 ตัวอักษร</p>
+                        <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm ring-1 ring-slate-200 dark:ring-slate-700 p-6 md:p-8 animate-fade-in relative">
+                            <div className="absolute inset-0 overflow-hidden rounded-2xl pointer-events-none">
+                                <i className="fa-solid fa-shield-cat absolute -bottom-6 -right-6 text-9xl text-slate-50 dark:text-slate-700 opacity-50 transform -rotate-12"></i>
+                            </div>
+                            <div className="relative z-10">
+                                <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2 flex items-center gap-2">
+                                    <i className="fa-solid fa-key text-sky-500"></i> เปลี่ยนรหัสผ่าน
+                                </h3>
+                                <p className="text-sm text-slate-500 mb-6">เพื่อความปลอดภัย กรุณาตั้งรหัสผ่านที่มีความยาวอย่างน้อย 8 ตัวอักษร</p>
 
-                            <div className="max-w-md space-y-5">
-                                <div>
-                                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5 uppercase">รหัสผ่านใหม่</label>
-                                    <div className="relative">
+                                <div className="max-w-md space-y-5">
+                                    <div>
+                                        <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5 uppercase">รหัสผ่านใหม่</label>
+                                        <div className="relative">
+                                            <input 
+                                                type={showPass ? "text" : "password"}
+                                                value={newPassword}
+                                                onChange={(e) => setNewPassword(e.target.value)}
+                                                className="w-full rounded-xl border border-slate-200 dark:border-slate-600 px-4 py-2.5 pr-10 text-sm outline-none focus:ring-2 focus:ring-sky-500 dark:bg-slate-900 dark:text-white transition"
+                                                placeholder="New Password"
+                                            />
+                                            <button 
+                                                type="button"
+                                                onClick={() => setShowPass(!showPass)}
+                                                className="absolute right-3 top-3 text-slate-400 hover:text-slate-600"
+                                            >
+                                                <i className={`fa-solid ${showPass ? 'fa-eye-slash' : 'fa-eye'}`}></i>
+                                            </button>
+                                        </div>
+                                        
+                                        {/* Strength Meter */}
+                                        <div className="mt-2 flex gap-1 h-1.5 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-700">
+                                            {[1, 2, 3, 4].map((step) => (
+                                                <div 
+                                                    key={step} 
+                                                    className={`flex-1 transition-all duration-300 ${strength >= step 
+                                                        ? (strength <= 1 ? 'bg-rose-500' : strength <= 2 ? 'bg-amber-500' : 'bg-emerald-500') 
+                                                        : 'bg-transparent'}`} 
+                                                />
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5 uppercase">ยืนยันรหัสผ่านใหม่</label>
                                         <input 
-                                            type={showPass ? "text" : "password"}
-                                            value={newPassword}
-                                            onChange={(e) => setNewPassword(e.target.value)}
-                                            className="w-full rounded-xl border border-slate-200 dark:border-slate-600 px-4 py-2.5 pr-10 text-sm outline-none focus:ring-2 focus:ring-sky-500 dark:bg-slate-900 dark:text-white transition"
-                                            placeholder="New Password"
+                                            type="password"
+                                            value={confirmPassword}
+                                            onChange={(e) => setConfirmPassword(e.target.value)}
+                                            onPaste={(e) => {
+                                                e.preventDefault();
+                                                showToast({ type: 'info', title: 'ห้ามวาง', message: 'กรุณาพิมพ์ยืนยันรหัสผ่านด้วยตนเอง' });
+                                            }}
+                                            className={`w-full rounded-xl border px-4 py-2.5 text-sm outline-none focus:ring-2 dark:bg-slate-900 dark:text-white transition
+                                                ${confirmPassword && newPassword !== confirmPassword ? 'border-rose-300 focus:ring-rose-200' : 'border-slate-200 dark:border-slate-600 focus:ring-sky-500'}
+                                            `}
+                                            placeholder="Confirm New Password"
                                         />
+                                        {confirmPassword && newPassword !== confirmPassword && (
+                                            <div className="text-xs text-rose-500 mt-1 font-bold"><i className="fa-solid fa-triangle-exclamation mr-1"></i> รหัสผ่านไม่ตรงกัน</div>
+                                        )}
+                                    </div>
+
+                                    <div className="pt-4">
                                         <button 
-                                            type="button"
-                                            onClick={() => setShowPass(!showPass)}
-                                            className="absolute right-3 top-3 text-slate-400 hover:text-slate-600"
+                                            onClick={handleChangePassword}
+                                            disabled={passLoading || !newPassword || newPassword !== confirmPassword || strength < 2}
+                                            className="px-6 py-2.5 rounded-xl bg-emerald-600 text-white font-bold hover:bg-emerald-700 transition shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                                         >
-                                            <i className={`fa-solid ${showPass ? 'fa-eye-slash' : 'fa-eye'}`}></i>
+                                            {passLoading ? <i className="fa-solid fa-spinner animate-spin"></i> : <i className="fa-solid fa-check"></i>}
+                                            ยืนยันการเปลี่ยนรหัสผ่าน
                                         </button>
                                     </div>
-                                    
-                                    {/* Strength Meter */}
-                                    <div className="mt-2 flex gap-1 h-1.5 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-700">
-                                        {[1, 2, 3, 4].map((step) => (
-                                            <div 
-                                                key={step} 
-                                                className={`flex-1 transition-all duration-300 ${strength >= step 
-                                                    ? (strength <= 1 ? 'bg-rose-500' : strength <= 2 ? 'bg-amber-500' : 'bg-emerald-500') 
-                                                    : 'bg-transparent'}`} 
-                                            />
-                                        ))}
-                                    </div>
-                                </div>
-
-                                <div>
-                                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5 uppercase">ยืนยันรหัสผ่านใหม่</label>
-                                    <input 
-                                        type="password"
-                                        value={confirmPassword}
-                                        onChange={(e) => setConfirmPassword(e.target.value)}
-                                        onPaste={(e) => {
-                                            e.preventDefault();
-                                            showToast({ type: 'info', title: 'ห้ามวาง', message: 'กรุณาพิมพ์ยืนยันรหัสผ่านด้วยตนเอง' });
-                                        }}
-                                        className={`w-full rounded-xl border px-4 py-2.5 text-sm outline-none focus:ring-2 dark:bg-slate-900 dark:text-white transition
-                                            ${confirmPassword && newPassword !== confirmPassword ? 'border-rose-300 focus:ring-rose-200' : 'border-slate-200 dark:border-slate-600 focus:ring-sky-500'}
-                                        `}
-                                        placeholder="Confirm New Password"
-                                    />
-                                    {confirmPassword && newPassword !== confirmPassword && (
-                                        <div className="text-xs text-rose-500 mt-1 font-bold"><i className="fa-solid fa-triangle-exclamation mr-1"></i> รหัสผ่านไม่ตรงกัน</div>
-                                    )}
-                                </div>
-
-                                <div className="pt-4">
-                                    <button 
-                                        onClick={handleChangePassword}
-                                        disabled={passLoading || !newPassword || newPassword !== confirmPassword || strength < 2}
-                                        className="px-6 py-2.5 rounded-xl bg-emerald-600 text-white font-bold hover:bg-emerald-700 transition shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                                    >
-                                        {passLoading ? <i className="fa-solid fa-spinner animate-spin"></i> : <i className="fa-solid fa-check"></i>}
-                                        ยืนยันการเปลี่ยนรหัสผ่าน
-                                    </button>
                                 </div>
                             </div>
                         </div>

@@ -2,7 +2,7 @@
 import React, { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { BUDGET_YEAR } from "./constants";
 import { AppSettings, Submission, ToastMessage, UserProfile, VisitorStats } from "./types";
-import { apiListSubmissions, loadSettings, getCurrentUser, logoutUser, apiGetUserProfile, subscribeToVisitorPresence, apiGetVisitorStats, apiRecordVisit } from "./services/apiService";
+import { apiListSubmissions, loadSettings, getCurrentUser, logoutUser, apiGetUserProfile, subscribeToVisitorPresence, subscribeToStatsUpdates, apiGetVisitorStats, apiRecordVisit } from "./services/apiService";
 
 import Registration from "./components/Registration";
 import History from "./components/History";
@@ -127,14 +127,22 @@ export default function App() {
 
   // --- Visitor Stats & Logging Logic ---
   useEffect(() => {
+      // 1. Presence (Who is online right now)
       const unsubscribePresence = subscribeToVisitorPresence((count) => {
           setVisitorStats(prev => ({ ...prev, online: count }));
       });
 
+      // 2. Fetch Initial Aggregated Stats (Total, Week, etc)
       apiGetVisitorStats().then(data => {
           setVisitorStats(prev => ({ ...prev, ...data }));
       });
 
+      // 3. Realtime Stats Updates (Listen for new logs)
+      const unsubscribeStats = subscribeToStatsUpdates((newStats) => {
+          setVisitorStats(prev => ({ ...prev, ...newStats }));
+      });
+
+      // 4. Record Visit (Once per session)
       const hasRecorded = sessionStorage.getItem('svk_visit_recorded');
       if (!hasRecorded) {
           let clientId = localStorage.getItem('svk_client_id');
@@ -148,6 +156,7 @@ export default function App() {
 
       return () => {
           unsubscribePresence();
+          unsubscribeStats();
       };
   }, []);
 
@@ -438,7 +447,14 @@ export default function App() {
                              <div className={`text-sm font-bold ${darkMode ? 'text-slate-200' : 'text-slate-800'}`}>
                                  {currentUser.firstName} {currentUser.lastName}
                              </div>
-                             <div className="text-[10px] text-slate-500 font-medium">{currentUser.position || 'สมาชิกทั่วไป'}</div>
+                             <div className="text-[10px] text-slate-500 font-medium">
+                                 {currentUser.position || 'สมาชิกทั่วไป'}
+                                 {currentUser.level && (
+                                     <span className="ml-1.5 text-indigo-600 dark:text-indigo-400 font-bold">
+                                         {currentUser.level}
+                                     </span>
+                                 )}
+                             </div>
                          </div>
 
                          {/* Dropdown Icon */}
@@ -650,7 +666,6 @@ export default function App() {
       </button>
 
       {/* Footer */}
-      {/* ... (Footer remains same) ... */}
       <footer className={`mt-20 pt-16 pb-8 border-t border-slate-200 dark:border-slate-800 transition-colors duration-300 ${darkMode ? 'bg-slate-950 text-slate-400' : 'bg-slate-900 text-slate-300'}`}>
           <div className="max-w-7xl mx-auto px-6">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-12 mb-12">

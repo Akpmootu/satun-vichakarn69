@@ -1,7 +1,10 @@
+
 import React, { useState, useEffect } from 'react';
-import { UserProfile } from '../types';
+import { UserProfile, Education } from '../types';
 import { apiRegisterUser, apiLoginUser } from '../services/apiService';
-import { HEALTH_POSITIONS, JOB_LEVELS } from '../constants';
+import { HEALTH_POSITIONS, JOB_LEVELS, EDUCATION_LEVELS } from '../constants';
+import OrgAutocomplete from './ui/OrgAutocomplete';
+import UniversityAutocomplete from './ui/UniversityAutocomplete';
 
 interface UserAuthModalProps {
   isOpen: boolean;
@@ -24,15 +27,30 @@ const UserAuthModal: React.FC<UserAuthModalProps> = ({ isOpen, onClose, onSucces
     firstName: "", lastName: "", email: "", phone: "", organization: "", 
     position: "", positionCustom: "", level: ""
   });
+  
+  // Education State for Registration (Highest Degree)
+  const [eduForm, setEduForm] = useState<Education>({
+      id: 'primary',
+      degree: '',
+      major: '',
+      institution: '',
+      year: ''
+  });
+
   const [regPassword, setRegPassword] = useState("");
   const [regConfirmPassword, setRegConfirmPassword] = useState("");
   const [showRegPass, setShowRegPass] = useState(false);
+
+  // Years for dropdown (Current year back 50 years)
+  const currentYear = new Date().getFullYear() + 543;
+  const yearOptions = Array.from({length: 50}, (_, i) => currentYear - i);
 
   // Reset when closed
   useEffect(() => {
       if (!isOpen) {
           setLoginEmail(""); setLoginPassword("");
           setRegForm({ firstName: "", lastName: "", email: "", phone: "", organization: "", position: "", positionCustom: "", level: "" });
+          setEduForm({ id: 'primary', degree: '', major: '', institution: '', year: '' });
           setRegPassword(""); setRegConfirmPassword("");
           setLoading(false);
       }
@@ -87,8 +105,8 @@ const UserAuthModal: React.FC<UserAuthModalProps> = ({ isOpen, onClose, onSucces
 
   const handleRegister = async () => {
       // 1. Basic Validation
-      if (!regForm.firstName || !regForm.email || !regPassword) {
-          showToast({ type: 'error', title: 'ข้อมูลไม่ครบ', message: 'กรุณากรอกข้อมูลสำคัญและรหัสผ่าน' });
+      if (!regForm.firstName || !regForm.lastName || !regForm.email || !regForm.phone || !regForm.organization || !regPassword) {
+          showToast({ type: 'error', title: 'ข้อมูลไม่ครบ', message: 'กรุณากรอกข้อมูลส่วนตัวให้ครบถ้วน' });
           return;
       }
       
@@ -97,12 +115,18 @@ const UserAuthModal: React.FC<UserAuthModalProps> = ({ isOpen, onClose, onSucces
       if (regForm.position === 'อื่นๆ' && regForm.positionCustom) {
           finalPosition = regForm.positionCustom;
       }
-      if (!finalPosition) {
-          showToast({ type: 'error', title: 'ระบุตำแหน่ง', message: 'กรุณาเลือกหรือระบุตำแหน่ง' });
+      if (!finalPosition || !regForm.level) {
+          showToast({ type: 'error', title: 'ข้อมูลงานไม่ครบ', message: 'กรุณาระบุตำแหน่งและระดับ' });
           return;
       }
 
-      // 3. Password Validation
+      // 3. Education Validation
+      if (!eduForm.degree || !eduForm.institution || !eduForm.year || !eduForm.major) {
+          showToast({ type: 'error', title: 'ข้อมูลการศึกษาไม่ครบ', message: 'กรุณากรอกประวัติการศึกษา (วุฒิสูงสุด)' });
+          return;
+      }
+
+      // 4. Password Validation
       if (regPassword.length < 6) {
           showToast({ type: 'error', title: 'รหัสผ่านสั้นเกินไป', message: 'รหัสผ่านต้องมีความยาวอย่างน้อย 6 ตัวอักษร' });
           return;
@@ -115,7 +139,7 @@ const UserAuthModal: React.FC<UserAuthModalProps> = ({ isOpen, onClose, onSucces
       setLoading(true);
       try {
           const newUser: UserProfile = {
-              id: Date.now().toString(), // Temp ID, will be replaced by Supabase Auth ID
+              id: Date.now().toString(), // Temp ID
               role: 'user',
               firstName: regForm.firstName,
               lastName: regForm.lastName,
@@ -123,9 +147,10 @@ const UserAuthModal: React.FC<UserAuthModalProps> = ({ isOpen, onClose, onSucces
               phone: regForm.phone,
               organization: regForm.organization,
               position: finalPosition,
-              level: regForm.level
+              level: regForm.level,
+              educationHistory: [eduForm] // Save initial education
           };
-          // Pass password to API
+          
           const user = await apiRegisterUser(newUser, regPassword);
           showToast({ type: 'success', title: 'ลงทะเบียนสำเร็จ', message: 'ยินดีต้อนรับสมาชิกใหม่' });
           onSuccess(user);
@@ -140,7 +165,7 @@ const UserAuthModal: React.FC<UserAuthModalProps> = ({ isOpen, onClose, onSucces
     <div className="fixed inset-0 z-[110] flex items-center justify-center px-4 animate-fade-in">
       <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={onClose} />
       
-      <div className="relative bg-white dark:bg-slate-900 rounded-3xl shadow-2xl max-w-lg w-full overflow-hidden flex flex-col max-h-[90vh] animate-bounce-in ring-1 ring-slate-200 dark:ring-slate-700">
+      <div className="relative bg-white dark:bg-slate-900 rounded-3xl shadow-2xl max-w-xl w-full overflow-hidden flex flex-col max-h-[95vh] animate-bounce-in ring-1 ring-slate-200 dark:ring-slate-700">
         
         {/* Header Tabs */}
         <div className="flex border-b border-slate-100 dark:border-slate-800 shrink-0">
@@ -148,19 +173,20 @@ const UserAuthModal: React.FC<UserAuthModalProps> = ({ isOpen, onClose, onSucces
                 onClick={() => setMode('login')}
                 className={`flex-1 py-4 text-sm font-bold transition ${mode === 'login' ? 'text-sky-600 bg-sky-50 dark:bg-sky-900/20 border-b-2 border-sky-600' : 'text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800'}`}
             >
-                เข้าสู่ระบบ
+                <i className="fa-solid fa-right-to-bracket mr-2"></i> เข้าสู่ระบบ
             </button>
             <button 
                 onClick={() => setMode('register')}
                 className={`flex-1 py-4 text-sm font-bold transition ${mode === 'register' ? 'text-sky-600 bg-sky-50 dark:bg-sky-900/20 border-b-2 border-sky-600' : 'text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800'}`}
             >
-                ลงทะเบียนใหม่
+                <i className="fa-solid fa-user-plus mr-2"></i> ลงทะเบียนใหม่
             </button>
         </div>
 
         <div className="p-6 md:p-8 overflow-y-auto custom-scrollbar flex-1">
             {mode === 'login' ? (
                 <div className="space-y-4">
+                    {/* ... Login Content (Unchanged) ... */}
                     <div className="text-center mb-6">
                         <div className="h-16 w-16 bg-sky-100 dark:bg-sky-900/50 text-sky-600 dark:text-sky-400 rounded-full mx-auto flex items-center justify-center text-2xl mb-3">
                             <i className="fa-solid fa-lock"></i>
@@ -213,154 +239,251 @@ const UserAuthModal: React.FC<UserAuthModalProps> = ({ isOpen, onClose, onSucces
                     </button>
                 </div>
             ) : (
-                <div className="space-y-4">
+                <div className="space-y-6">
                      <div className="text-center mb-4">
-                        <h3 className="text-lg font-black text-slate-900 dark:text-white">ลงทะเบียนสมาชิกใหม่</h3>
+                        <h3 className="text-lg font-black text-slate-900 dark:text-white flex items-center justify-center gap-2">
+                            <i className="fa-solid fa-id-card text-sky-500"></i> ลงทะเบียนสมาชิกใหม่
+                        </h3>
+                        <p className="text-xs text-slate-500">กรุณากรอกข้อมูลให้ครบถ้วนเพื่อสิทธิประโยชน์ของท่าน</p>
                     </div>
                     
-                    <div className="grid grid-cols-2 gap-3">
-                        <div>
-                            <label className="text-xs font-bold text-slate-700 dark:text-slate-300">ชื่อ</label>
-                            <input 
-                                value={regForm.firstName}
-                                onChange={(e) => setRegForm({...regForm, firstName: e.target.value})}
-                                className="w-full rounded-xl border border-slate-200 dark:border-slate-700 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-sky-200 dark:bg-slate-800 dark:text-white" 
-                            />
+                    {/* SECTION 1: Personal Info (Highest Z-Index if overlapped by above, but actually we want descending) */}
+                    {/* We use descending z-index so that Section 1 overflows into Section 2, Section 2 into 3 etc. */}
+                    
+                    <div className="relative p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 z-40">
+                        {/* Watermark Container */}
+                        <div className="absolute inset-0 overflow-hidden rounded-2xl pointer-events-none">
+                            <i className="fa-solid fa-user-check absolute -bottom-2 -right-2 text-8xl text-slate-200 dark:text-slate-700 opacity-20 transform -rotate-12"></i>
                         </div>
-                        <div>
-                            <label className="text-xs font-bold text-slate-700 dark:text-slate-300">นามสกุล</label>
-                            <input 
-                                value={regForm.lastName}
-                                onChange={(e) => setRegForm({...regForm, lastName: e.target.value})}
-                                className="w-full rounded-xl border border-slate-200 dark:border-slate-700 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-sky-200 dark:bg-slate-800 dark:text-white" 
-                            />
-                        </div>
-                    </div>
-
-                    <div>
-                        <label className="text-xs font-bold text-slate-700 dark:text-slate-300">อีเมล (สำหรับล็อกอิน)</label>
-                        <input 
-                            type="email"
-                            value={regForm.email}
-                            onChange={(e) => setRegForm({...regForm, email: e.target.value})}
-                            className="w-full rounded-xl border border-slate-200 dark:border-slate-700 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-sky-200 dark:bg-slate-800 dark:text-white"
-                            placeholder="example@mail.com"
-                        />
-                    </div>
-
-                    {/* Password Section */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        <div className="relative">
-                            <label className="text-xs font-bold text-slate-700 dark:text-slate-300">กำหนดรหัสผ่าน</label>
-                            <div className="relative">
+                        <h4 className="text-sm font-bold text-slate-800 dark:text-white mb-3 flex items-center gap-2 relative z-10">
+                            <i className="fa-solid fa-user-tag text-sky-500"></i> ข้อมูลส่วนตัว
+                        </h4>
+                        
+                        <div className="grid grid-cols-2 gap-3 relative z-10">
+                            <div>
+                                <label className="text-xs font-bold text-slate-700 dark:text-slate-300">ชื่อ <span className="text-rose-500">*</span></label>
                                 <input 
-                                    type={showRegPass ? "text" : "password"}
-                                    value={regPassword}
-                                    onChange={(e) => setRegPassword(e.target.value)}
-                                    className="w-full rounded-xl border border-slate-200 dark:border-slate-700 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-sky-200 dark:bg-slate-800 dark:text-white pr-8"
-                                    placeholder="รหัสผ่าน"
+                                    value={regForm.firstName}
+                                    onChange={(e) => setRegForm({...regForm, firstName: e.target.value})}
+                                    className="w-full rounded-xl border border-slate-200 dark:border-slate-700 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-sky-200 dark:bg-slate-800 dark:text-white" 
                                 />
-                                <button
-                                    type="button"
-                                    onClick={() => setShowRegPass(!showRegPass)}
-                                    className="absolute right-2 top-2.5 text-slate-400 hover:text-slate-600 text-xs"
+                            </div>
+                            <div>
+                                <label className="text-xs font-bold text-slate-700 dark:text-slate-300">นามสกุล <span className="text-rose-500">*</span></label>
+                                <input 
+                                    value={regForm.lastName}
+                                    onChange={(e) => setRegForm({...regForm, lastName: e.target.value})}
+                                    className="w-full rounded-xl border border-slate-200 dark:border-slate-700 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-sky-200 dark:bg-slate-800 dark:text-white" 
+                                />
+                            </div>
+                        </div>
+                        <div className="mt-3 relative z-10">
+                            <label className="text-xs font-bold text-slate-700 dark:text-slate-300">เบอร์โทรศัพท์ <span className="text-rose-500">*</span></label>
+                            <input 
+                                value={regForm.phone}
+                                onChange={(e) => setRegForm({...regForm, phone: e.target.value})}
+                                className="w-full rounded-xl border border-slate-200 dark:border-slate-700 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-sky-200 dark:bg-slate-800 dark:text-white"
+                                placeholder="0XX-XXX-XXXX"
+                            />
+                        </div>
+                    </div>
+
+                    {/* SECTION 2: Work Info (Contains Dropdown - Needs to float over Section 3) -> Z-30 */}
+                    <div className="relative p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 z-30">
+                        {/* Watermark Container */}
+                        <div className="absolute inset-0 overflow-hidden rounded-2xl pointer-events-none">
+                            <i className="fa-solid fa-briefcase absolute -bottom-2 -right-2 text-8xl text-slate-200 dark:text-slate-700 opacity-20 transform -rotate-12"></i>
+                        </div>
+                        <h4 className="text-sm font-bold text-slate-800 dark:text-white mb-3 flex items-center gap-2 relative z-10">
+                            <i className="fa-solid fa-building text-amber-500"></i> ข้อมูลการทำงาน
+                        </h4>
+
+                        <div className="space-y-3 relative z-10">
+                            <div>
+                                <label className="text-xs font-bold text-slate-700 dark:text-slate-300">สังกัด/หน่วยงาน <span className="text-rose-500">*</span></label>
+                                <OrgAutocomplete 
+                                    value={regForm.organization}
+                                    onChange={(val) => setRegForm({...regForm, organization: val})}
+                                    placeholder="พิมพ์ชื่อ รพ., รพ.สต. หรือ สสอ."
+                                    className="w-full rounded-xl border border-slate-200 dark:border-slate-700 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-sky-200 dark:bg-slate-800 dark:text-white"
+                                />
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label className="text-xs font-bold text-slate-700 dark:text-slate-300">ตำแหน่ง <span className="text-rose-500">*</span></label>
+                                    <select 
+                                        value={regForm.position}
+                                        onChange={(e) => setRegForm({...regForm, position: e.target.value})}
+                                        className="w-full rounded-xl border border-slate-200 dark:border-slate-700 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-sky-200 dark:bg-slate-800 dark:text-white cursor-pointer" 
+                                    >
+                                        <option value="">-- เลือก --</option>
+                                        {HEALTH_POSITIONS.map((p) => (
+                                            <option key={p} value={p}>{p}</option>
+                                        ))}
+                                        <option value="อื่นๆ">อื่นๆ</option>
+                                    </select>
+                                    {regForm.position === 'อื่นๆ' && (
+                                        <input 
+                                            value={regForm.positionCustom}
+                                            onChange={(e) => setRegForm({...regForm, positionCustom: e.target.value})}
+                                            placeholder="ระบุตำแหน่ง"
+                                            className="w-full mt-2 rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none dark:bg-slate-800 dark:text-white"
+                                        />
+                                    )}
+                                </div>
+                                <div>
+                                    <label className="text-xs font-bold text-slate-700 dark:text-slate-300">ระดับ <span className="text-rose-500">*</span></label>
+                                    <select 
+                                        value={regForm.level}
+                                        onChange={(e) => setRegForm({...regForm, level: e.target.value})}
+                                        className="w-full rounded-xl border border-slate-200 dark:border-slate-700 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-sky-200 dark:bg-slate-800 dark:text-white cursor-pointer" 
+                                    >
+                                        <option value="">-- เลือก --</option>
+                                        {JOB_LEVELS.map((l) => (
+                                            <option key={l} value={l}>{l}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* SECTION 3: Education Info (Contains Dropdown - Needs to float over Section 4) -> Z-20 */}
+                    <div className="relative p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 z-20">
+                        {/* Watermark Container */}
+                        <div className="absolute inset-0 overflow-hidden rounded-2xl pointer-events-none">
+                            <i className="fa-solid fa-graduation-cap absolute -bottom-2 -right-2 text-8xl text-slate-200 dark:text-slate-700 opacity-20 transform -rotate-12"></i>
+                        </div>
+                        <h4 className="text-sm font-bold text-slate-800 dark:text-white mb-3 flex items-center gap-2 relative z-10">
+                            <i className="fa-solid fa-user-graduate text-indigo-500"></i> ประวัติการศึกษา (วุฒิสูงสุด)
+                        </h4>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 relative z-10">
+                            <div className="md:col-span-1">
+                                <label className="text-xs font-bold text-slate-700 dark:text-slate-300">ระดับการศึกษา <span className="text-rose-500">*</span></label>
+                                <select
+                                    value={eduForm.degree}
+                                    onChange={(e) => setEduForm({...eduForm, degree: e.target.value})}
+                                    className="w-full rounded-xl border border-slate-200 dark:border-slate-700 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-200 dark:bg-slate-800 dark:text-white cursor-pointer"
                                 >
-                                    <i className={`fa-solid ${showRegPass ? 'fa-eye-slash' : 'fa-eye'}`}></i>
-                                </button>
+                                    <option value="">-- เลือกวุฒิ --</option>
+                                    {EDUCATION_LEVELS.map((l) => (
+                                        <option key={l} value={l}>{l}</option>
+                                    ))}
+                                </select>
                             </div>
-                        </div>
-                        <div>
-                            <label className="text-xs font-bold text-slate-700 dark:text-slate-300">ยืนยันรหัสผ่าน</label>
-                            <input 
-                                type="password"
-                                value={regConfirmPassword}
-                                onChange={(e) => setRegConfirmPassword(e.target.value)}
-                                className={`w-full rounded-xl border px-3 py-2 text-sm outline-none focus:ring-2 dark:bg-slate-800 dark:text-white transition ${regConfirmPassword && regPassword !== regConfirmPassword ? 'border-rose-300 focus:ring-rose-200' : 'border-slate-200 dark:border-slate-700 focus:ring-sky-200'}`}
-                                placeholder="ยืนยันอีกครั้ง"
-                            />
-                        </div>
-                    </div>
-
-                    {/* Password Strength Meter */}
-                    {regPassword && (
-                        <div className="space-y-1">
-                            <div className="flex justify-between text-[10px] text-slate-500">
-                                <span>ความปลอดภัย: <span className={`${passScore <= 1 ? 'text-rose-500' : passScore <= 3 ? 'text-amber-500' : 'text-emerald-500'} font-bold`}>{getStrengthLabel(passScore)}</span></span>
-                            </div>
-                            <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
-                                <div 
-                                    className={`h-full transition-all duration-300 ${getStrengthColor(passScore)}`} 
-                                    style={{ width: `${(passScore / 4) * 100}%` }}
-                                ></div>
-                            </div>
-                            <p className="text-[10px] text-slate-400">* ควรมีความยาว 8 ตัวอักษรขึ้นไป มีตัวเลขและอักษรพิเศษ</p>
-                        </div>
-                    )}
-
-                     <div>
-                        <label className="text-xs font-bold text-slate-700 dark:text-slate-300">เบอร์โทรศัพท์</label>
-                        <input 
-                            value={regForm.phone}
-                            onChange={(e) => setRegForm({...regForm, phone: e.target.value})}
-                            className="w-full rounded-xl border border-slate-200 dark:border-slate-700 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-sky-200 dark:bg-slate-800 dark:text-white"
-                        />
-                    </div>
-                    
-                    <div>
-                        <label className="text-xs font-bold text-slate-700 dark:text-slate-300">สังกัด/หน่วยงาน</label>
-                        <input 
-                            value={regForm.organization}
-                            onChange={(e) => setRegForm({...regForm, organization: e.target.value})}
-                            className="w-full rounded-xl border border-slate-200 dark:border-slate-700 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-sky-200 dark:bg-slate-800 dark:text-white"
-                            placeholder="เช่น รพ.สต. ..."
-                        />
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-3">
-                        <div>
-                            <label className="text-xs font-bold text-slate-700 dark:text-slate-300">ตำแหน่ง</label>
-                            <select 
-                                value={regForm.position}
-                                onChange={(e) => setRegForm({...regForm, position: e.target.value})}
-                                className="w-full rounded-xl border border-slate-200 dark:border-slate-700 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-sky-200 dark:bg-slate-800 dark:text-white" 
-                            >
-                                <option value="">-- เลือกตำแหน่ง --</option>
-                                {HEALTH_POSITIONS.map((p) => (
-                                    <option key={p} value={p}>{p}</option>
-                                ))}
-                                <option value="อื่นๆ">อื่นๆ (ระบุเอง)</option>
-                            </select>
-                            
-                            {regForm.position === 'อื่นๆ' && (
+                            <div className="md:col-span-1">
+                                <label className="text-xs font-bold text-slate-700 dark:text-slate-300">สาขาวิชา <span className="text-rose-500">*</span></label>
                                 <input 
-                                    value={regForm.positionCustom}
-                                    onChange={(e) => setRegForm({...regForm, positionCustom: e.target.value})}
-                                    placeholder="ระบุตำแหน่งของท่าน"
-                                    className="w-full mt-2 rounded-xl border border-slate-200 dark:border-slate-700 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-sky-200 dark:bg-slate-800 dark:text-white animate-fade-in"
+                                    value={eduForm.major}
+                                    onChange={(e) => setEduForm({...eduForm, major: e.target.value})}
+                                    className="w-full rounded-xl border border-slate-200 dark:border-slate-700 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-200 dark:bg-slate-800 dark:text-white"
+                                    placeholder="เช่น สาธารณสุขศาสตร์"
                                 />
-                            )}
+                            </div>
+                            <div className="md:col-span-2">
+                                <label className="text-xs font-bold text-slate-700 dark:text-slate-300">สถาบันการศึกษา <span className="text-rose-500">*</span></label>
+                                <UniversityAutocomplete 
+                                    value={eduForm.institution}
+                                    onChange={(val) => setEduForm({...eduForm, institution: val})}
+                                    className="w-full rounded-xl border border-slate-200 dark:border-slate-700 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-200 dark:bg-slate-800 dark:text-white"
+                                />
+                            </div>
+                            <div className="md:col-span-1">
+                                <label className="text-xs font-bold text-slate-700 dark:text-slate-300">ปีที่จบ (พ.ศ.) <span className="text-rose-500">*</span></label>
+                                <select
+                                    value={eduForm.year}
+                                    onChange={(e) => setEduForm({...eduForm, year: e.target.value})}
+                                    className="w-full rounded-xl border border-slate-200 dark:border-slate-700 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-200 dark:bg-slate-800 dark:text-white cursor-pointer"
+                                >
+                                    <option value="">-- ปีที่จบ --</option>
+                                    {yearOptions.map(y => (
+                                        <option key={y} value={y}>{y}</option>
+                                    ))}
+                                </select>
+                            </div>
                         </div>
-                        <div>
-                            <label className="text-xs font-bold text-slate-700 dark:text-slate-300">ระดับ</label>
-                            <select 
-                                value={regForm.level}
-                                onChange={(e) => setRegForm({...regForm, level: e.target.value})}
-                                className="w-full rounded-xl border border-slate-200 dark:border-slate-700 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-sky-200 dark:bg-slate-800 dark:text-white" 
-                            >
-                                <option value="">-- เลือกระดับ --</option>
-                                {JOB_LEVELS.map((l) => (
-                                    <option key={l} value={l}>{l}</option>
-                                ))}
-                            </select>
+                    </div>
+
+                    {/* SECTION 4: Account Info -> Z-10 */}
+                    <div className="relative p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 z-10">
+                        {/* Watermark Container */}
+                        <div className="absolute inset-0 overflow-hidden rounded-2xl pointer-events-none">
+                            <i className="fa-solid fa-lock absolute -bottom-2 -right-2 text-8xl text-slate-200 dark:text-slate-700 opacity-20 transform -rotate-12"></i>
+                        </div>
+                        <h4 className="text-sm font-bold text-slate-800 dark:text-white mb-3 flex items-center gap-2 relative z-10">
+                            <i className="fa-solid fa-shield-halved text-emerald-500"></i> ข้อมูลบัญชีผู้ใช้
+                        </h4>
+                        
+                        <div className="space-y-3 relative z-10">
+                            {/* ... Account Inputs ... */}
+                            <div>
+                                <label className="text-xs font-bold text-slate-700 dark:text-slate-300">อีเมล (ใช้เป็น Username) <span className="text-rose-500">*</span></label>
+                                <input 
+                                    type="email"
+                                    value={regForm.email}
+                                    onChange={(e) => setRegForm({...regForm, email: e.target.value})}
+                                    className="w-full rounded-xl border border-slate-200 dark:border-slate-700 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-emerald-200 dark:bg-slate-800 dark:text-white"
+                                    placeholder="example@mail.com"
+                                />
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                <div className="relative">
+                                    <label className="text-xs font-bold text-slate-700 dark:text-slate-300">รหัสผ่าน <span className="text-rose-500">*</span></label>
+                                    <div className="relative">
+                                        <input 
+                                            type={showRegPass ? "text" : "password"}
+                                            value={regPassword}
+                                            onChange={(e) => setRegPassword(e.target.value)}
+                                            className="w-full rounded-xl border border-slate-200 dark:border-slate-700 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-emerald-200 dark:bg-slate-800 dark:text-white pr-8"
+                                            placeholder="รหัสผ่าน"
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowRegPass(!showRegPass)}
+                                            className="absolute right-2 top-2.5 text-slate-400 hover:text-slate-600 text-xs"
+                                        >
+                                            <i className={`fa-solid ${showRegPass ? 'fa-eye-slash' : 'fa-eye'}`}></i>
+                                        </button>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className="text-xs font-bold text-slate-700 dark:text-slate-300">ยืนยันรหัสผ่าน <span className="text-rose-500">*</span></label>
+                                    <input 
+                                        type="password"
+                                        value={regConfirmPassword}
+                                        onChange={(e) => setRegConfirmPassword(e.target.value)}
+                                        className={`w-full rounded-xl border px-3 py-2 text-sm outline-none focus:ring-2 dark:bg-slate-800 dark:text-white transition ${regConfirmPassword && regPassword !== regConfirmPassword ? 'border-rose-300 focus:ring-rose-200' : 'border-slate-200 dark:border-slate-700 focus:ring-emerald-200'}`}
+                                        placeholder="ยืนยันอีกครั้ง"
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Password Strength Meter */}
+                            {regPassword && (
+                                <div className="space-y-1">
+                                    <div className="flex justify-between text-[10px] text-slate-500">
+                                        <span>ความปลอดภัย: <span className={`${passScore <= 1 ? 'text-rose-500' : passScore <= 3 ? 'text-amber-500' : 'text-emerald-500'} font-bold`}>{getStrengthLabel(passScore)}</span></span>
+                                    </div>
+                                    <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+                                        <div 
+                                            className={`h-full transition-all duration-300 ${getStrengthColor(passScore)}`} 
+                                            style={{ width: `${(passScore / 4) * 100}%` }}
+                                        ></div>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     </div>
 
                     <button 
                         onClick={handleRegister}
                         disabled={loading}
-                        className="w-full py-3 rounded-xl bg-sky-600 text-white font-bold hover:bg-sky-700 transition shadow-lg shadow-sky-200 mt-4 disabled:opacity-50"
+                        className="w-full py-3 rounded-xl bg-sky-600 text-white font-bold hover:bg-sky-700 transition shadow-lg shadow-sky-200 mt-4 disabled:opacity-50 flex items-center justify-center gap-2"
                     >
-                        {loading ? <i className="fa-solid fa-spinner animate-spin"></i> : 'ยืนยันการลงทะเบียน'}
+                        {loading ? <i className="fa-solid fa-spinner animate-spin"></i> : <><i className="fa-solid fa-check-circle"></i> ยืนยันการลงทะเบียน</>}
                     </button>
                 </div>
             )}

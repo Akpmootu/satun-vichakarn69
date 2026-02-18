@@ -116,3 +116,12 @@ export interface VisitorStats {
   year: number;
   total: number;
 }
+
+export interface HealthOrg {
+  code: string;
+  name: string;
+  type: string;
+  district: string;
+  subDistrict: string;
+  moo?: string;
+}

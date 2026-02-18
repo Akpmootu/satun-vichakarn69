@@ -4,6 +4,7 @@ import { BRANCHES, BUDGET_YEAR, WORK_TYPES, HEALTH_POSITIONS, JOB_LEVELS } from 
 import { AppSettings, Submission, UserProfile, SubmissionStatus, CoAuthor } from '../types';
 import { apiCreateSubmission, apiUpdateSubmission, nowISO } from '../services/apiService';
 import Badge from './ui/Badge';
+import OrgAutocomplete from './ui/OrgAutocomplete';
 
 // Declare Swal globally since it's loaded via CDN
 declare const Swal: any;
@@ -80,7 +81,7 @@ const BranchSelector: React.FC<{
     }, [isOpen]);
 
     return (
-        <div className="relative" ref={dropdownRef}>
+        <div className={`relative ${isOpen ? 'z-[100]' : 'z-0'}`} ref={dropdownRef}>
             <div className="relative">
                 <i className="fa-solid fa-sitemap absolute left-4 top-3.5 text-slate-400 z-10"></i>
                 <button
@@ -98,7 +99,7 @@ const BranchSelector: React.FC<{
             </div>
 
             {isOpen && (
-                <div className="absolute z-50 w-full mt-2 bg-white dark:bg-slate-800 rounded-xl shadow-2xl ring-1 ring-slate-200 dark:ring-slate-700 animate-fade-in origin-top">
+                <div className="absolute z-[100] w-full mt-2 bg-white dark:bg-slate-800 rounded-xl shadow-2xl ring-1 ring-slate-200 dark:ring-slate-700 animate-fade-in origin-top">
                     <div className="p-2 border-b border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 sticky top-0 rounded-t-xl">
                         <div className="relative">
                             <i className="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-slate-400 text-xs"></i>
@@ -447,16 +448,21 @@ const Registration: React.FC<RegistrationProps> = ({ settings, onSuccess, showTo
         {/* Form Content */}
         <div className={`space-y-6 transition-opacity duration-300 print:hidden ${!isProfileComplete ? 'opacity-50 pointer-events-none grayscale' : ''}`}>
             
-            {/* --- SECTION 1: WORK INFO --- */}
-            <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm ring-1 ring-slate-200 dark:ring-slate-700">
-                <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800 rounded-t-2xl">
+            {/* --- SECTION 1: WORK INFO (Contains Branch Dropdown - Z-30) --- */}
+            <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm ring-1 ring-slate-200 dark:ring-slate-700 relative z-30">
+                {/* Watermark Container */}
+                <div className="absolute inset-0 overflow-hidden rounded-2xl pointer-events-none">
+                    <i className="fa-solid fa-briefcase absolute -bottom-4 -right-4 text-9xl text-slate-100 dark:text-slate-700/50 opacity-50 transform -rotate-12 z-0"></i>
+                </div>
+                
+                <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800 rounded-t-2xl relative z-10">
                     <h3 className="font-bold text-slate-900 dark:text-white flex items-center gap-2">
                         <span className="flex items-center justify-center w-6 h-6 rounded-md bg-sky-500 text-white text-xs">1</span>
                         <i className="fa-solid fa-briefcase text-sky-500"></i>
                         ข้อมูลผลงาน (Work Information)
                     </h3>
                 </div>
-                <div className="p-6 space-y-6">
+                <div className="p-6 space-y-6 relative z-10">
                     {/* New Field: Work Title */}
                     <div>
                         <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-1">
@@ -581,16 +587,21 @@ const Registration: React.FC<RegistrationProps> = ({ settings, onSuccess, showTo
                 </div>
             </div>
 
-            {/* --- SECTION 1.5: OFFICIAL DOC INFO (New Section) --- */}
-            <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm ring-1 ring-slate-200 dark:ring-slate-700">
-                <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800 rounded-t-2xl">
+            {/* --- SECTION 1.5: OFFICIAL DOC INFO (New Section - Z-20) --- */}
+            <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm ring-1 ring-slate-200 dark:ring-slate-700 relative z-20">
+                {/* Watermark Container */}
+                <div className="absolute inset-0 overflow-hidden rounded-2xl pointer-events-none">
+                    <i className="fa-solid fa-file-contract absolute -bottom-4 -right-4 text-9xl text-slate-100 dark:text-slate-700/50 opacity-50 transform -rotate-12 z-0"></i>
+                </div>
+
+                <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800 rounded-t-2xl relative z-10">
                     <h3 className="font-bold text-slate-900 dark:text-white flex items-center gap-2">
                         <span className="flex items-center justify-center w-6 h-6 rounded-md bg-amber-500 text-white text-xs">2</span>
                         <i className="fa-solid fa-file-contract text-amber-500"></i>
                         ข้อมูลสำหรับออกหนังสือราชการ (Official Doc Info)
                     </h3>
                 </div>
-                <div className="p-6 space-y-6">
+                <div className="p-6 space-y-6 relative z-10">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                         <div>
                             <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 uppercase">เลขที่หนังสือส่ง (ถ้ามี)</label>
@@ -677,10 +688,10 @@ const Registration: React.FC<RegistrationProps> = ({ settings, onSuccess, showTo
                                             <option value="">-- ตำแหน่ง --</option>
                                             {HEALTH_POSITIONS.map(p => <option key={p} value={p}>{p}</option>)}
                                         </select>
-                                        <input 
-                                            value={ca.organization} 
-                                            onChange={e => updateCoAuthor(ca.id, 'organization', e.target.value)}
-                                            placeholder="หน่วยงาน" 
+                                        <OrgAutocomplete 
+                                            value={ca.organization}
+                                            onChange={(val) => updateCoAuthor(ca.id, 'organization', val)}
+                                            placeholder="หน่วยงาน"
                                             className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-2 text-sm focus:border-sky-500 outline-none"
                                         />
                                         <input 
@@ -711,16 +722,21 @@ const Registration: React.FC<RegistrationProps> = ({ settings, onSuccess, showTo
                 </div>
             </div>
 
-            {/* --- SECTION 2: ATTACHMENTS (Updated Number to 3) --- */}
-            <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm ring-1 ring-slate-200 dark:ring-slate-700 overflow-hidden">
-                <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800">
+            {/* --- SECTION 2: ATTACHMENTS (Updated Number to 3 - Z-10) --- */}
+            <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm ring-1 ring-slate-200 dark:ring-slate-700 relative z-10">
+                {/* Watermark Container */}
+                <div className="absolute inset-0 overflow-hidden rounded-2xl pointer-events-none">
+                    <i className="fa-solid fa-paperclip absolute -bottom-4 -right-4 text-9xl text-slate-100 dark:text-slate-700/50 opacity-50 transform -rotate-12 z-0"></i>
+                </div>
+
+                <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800 relative z-10 rounded-t-2xl">
                     <h3 className="font-bold text-slate-900 dark:text-white flex items-center gap-2">
                         <span className="flex items-center justify-center w-6 h-6 rounded-md bg-indigo-500 text-white text-xs">3</span>
                         <i className="fa-solid fa-paperclip text-indigo-500"></i>
                         ไฟล์แนบผลงาน (Attachments)
                     </h3>
                 </div>
-                <div className="p-6">
+                <div className="p-6 relative z-10">
                     <div className="flex justify-between items-end mb-2">
                         <label className="block text-sm font-bold text-slate-700 dark:text-slate-300">อัปโหลดเอกสาร</label>
                         <span className="text-xs text-slate-400">อนุญาตสูงสุด 5 ไฟล์ (รวมไม่เกิน 10MB)</span>

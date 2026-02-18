@@ -1,5 +1,5 @@
 
-import { BranchOption, WorkTypeOption, NewsItem } from './types';
+import { BranchOption, WorkTypeOption, NewsItem, HealthOrg } from './types';
 
 export const APP_NAME = "SKMS";
 export const BUDGET_YEAR = 2569;
@@ -108,4 +108,103 @@ export const JOB_LEVELS = [
   "ปฏิบัติการ", "ชำนาญการ", "ชำนาญการพิเศษ", "เชี่ยวชาญ",
   "ปฏิบัติงาน", "ชำนาญงาน", "อาวุโส", "ทักษะพิเศษ",
   "พนักงานกระทรวงสาธารณสุข", "ลูกจ้างชั่วคราว", "พกส.", "อื่นๆ"
+];
+
+// --- Education Data ---
+export const EDUCATION_LEVELS = [
+    "ต่ำกว่าปริญญาตรี",
+    "อนุปริญญา / ปวส.",
+    "ปริญญาตรี",
+    "ปริญญาโท",
+    "ปริญญาเอก",
+    "ประกาศนียบัตรเฉพาะทาง",
+    "อื่นๆ"
+];
+
+export const THAI_UNIVERSITIES = [
+    "จุฬาลงกรณ์มหาวิทยาลัย", "มหาวิทยาลัยมหิดล", "มหาวิทยาลัยเกษตรศาสตร์", "มหาวิทยาลัยเชียงใหม่", 
+    "มหาวิทยาลัยสงขลานครินทร์", "มหาวิทยาลัยขอนแก่น", "มหาวิทยาลัยธรรมศาสตร์", "มหาวิทยาลัยศิลปากร",
+    "มหาวิทยาลัยศรีนครินทรวิโรฒ", "มหาวิทยาลัยบูรพา", "มหาวิทยาลัยนเรศวร", "มหาวิทยาลัยแม่ฟ้าหลวง",
+    "มหาวิทยาลัยวลัยลักษณ์", "มหาวิทยาลัยทักษิณ", "มหาวิทยาลัยราชภัฏสงขลา", "มหาวิทยาลัยราชภัฏนครศรีธรรมราช",
+    "มหาวิทยาลัยราชภัฏภูเก็ต", "มหาวิทยาลัยราชภัฏยะลา", "มหาวิทยาลัยราชภัฏสุราษฎร์ธานี",
+    "มหาวิทยาลัยรามคำแหง", "มหาวิทยาลัยสุโขทัยธรรมาธิราช", "สถาบันพระบรมราชชนก", "วิทยาลัยพยาบาลบรมราชชนนี",
+    "มหาวิทยาลัยเทคโนโลยีราชมงคลศรีวิชัย", "วิทยาลัยการสาธารณสุขสิรินธร"
+];
+
+// --- Satun Health Organizations Data ---
+export const SATUN_HEALTH_ORGS: HealthOrg[] = [
+  { code: "00070", name: "สำนักงานสาธารณสุขจังหวัดสตูล", type: "สสจ.", district: "เมืองสตูล", subDistrict: "พิมาน" },
+  { code: "10746", name: "โรงพยาบาลสตูล", type: "โรงพยาบาลทั่วไป", district: "เมืองสตูล", subDistrict: "พิมาน" },
+  { code: "11402", name: "โรงพยาบาลควนโดน", type: "โรงพยาบาลชุมชน", district: "ควนโดน", subDistrict: "ควนสตอ" },
+  { code: "11403", name: "โรงพยาบาลควนกาหลง", type: "โรงพยาบาลชุมชน", district: "ควนกาหลง", subDistrict: "ควนกาหลง" },
+  { code: "11404", name: "โรงพยาบาลท่าแพ", type: "โรงพยาบาลชุมชน", district: "ท่าแพ", subDistrict: "ท่าแพ" },
+  { code: "11405", name: "โรงพยาบาลละงู", type: "โรงพยาบาลชุมชน", district: "ละงู", subDistrict: "กำแพง" },
+  { code: "11406", name: "โรงพยาบาลทุ่งหว้า", type: "โรงพยาบาลชุมชน", district: "ทุ่งหว้า", subDistrict: "ทุ่งหว้า" },
+  { code: "28786", name: "โรงพยาบาลมะนัง", type: "โรงพยาบาลชุมชน", district: "มะนัง", subDistrict: "ปาล์มพัฒนา" },
+  { code: "00872", name: "สำนักงานสาธารณสุขอำเภอเมืองสตูล", type: "สสอ.", district: "เมืองสตูล", subDistrict: "คลองขุด" },
+  { code: "00873", name: "สำนักงานสาธารณสุขอำเภอควนโดน", type: "สสอ.", district: "ควนโดน", subDistrict: "ควนโดน" },
+  { code: "00874", name: "สำนักงานสาธารณสุขอำเภอควนกาหลง", type: "สสอ.", district: "ควนกาหลง", subDistrict: "ควนกาหลง" },
+  { code: "00875", name: "สำนักงานสาธารณสุขอำเภอท่าแพ", type: "สสอ.", district: "ท่าแพ", subDistrict: "ท่าแพ" },
+  { code: "00876", name: "สำนักงานสาธารณสุขอำเภอละงู", type: "สสอ.", district: "ละงู", subDistrict: "กำแพง" },
+  { code: "00877", name: "สำนักงานสาธารณสุขอำเภอทุ่งหว้า", type: "สสอ.", district: "ทุ่งหว้า", subDistrict: "ทุ่งหว้า" },
+  { code: "00878", name: "สำนักงานสาธารณสุขอำเภอมะนัง", type: "สสอ.", district: "มะนัง", subDistrict: "นิคมพัฒนา" },
+  { code: "77654", name: "รพ.สต.คลองขุด (สาขา)", type: "รพ.สต.", district: "เมืองสตูล", subDistrict: "คลองขุด", moo: "4" },
+  { code: "09604", name: "รพ.สต.คลองขุด", type: "รพ.สต.", district: "เมืองสตูล", subDistrict: "คลองขุด", moo: "2" },
+  { code: "09605", name: "รพ.สต.ควนขัน", type: "รพ.สต.", district: "เมืองสตูล", subDistrict: "ควนขัน", moo: "3" },
+  { code: "09606", name: "รพ.สต.บ้านควน", type: "รพ.สต.", district: "เมืองสตูล", subDistrict: "บ้านควน", moo: "3" },
+  { code: "09607", name: "รพ.สต.บ้านควน (หมู่ 4)", type: "รพ.สต.", district: "เมืองสตูล", subDistrict: "บ้านควน", moo: "4" },
+  { code: "09608", name: "รพ.สต.บ้านฉลุง", type: "รพ.สต.", district: "เมืองสตูล", subDistrict: "ฉลุง", moo: "2" },
+  { code: "09609", name: "รพ.สต.บ้านทุ่ง", type: "รพ.สต.", district: "เมืองสตูล", subDistrict: "ฉลุง", moo: "8" },
+  { code: "09610", name: "รพ.สต.บ้านตันหยงกลิง", type: "รพ.สต.", district: "เมืองสตูล", subDistrict: "เกาะสาหร่าย", moo: "3" },
+  { code: "09611", name: "รพ.สต.เกาะสาหร่าย", type: "รพ.สต.", district: "เมืองสตูล", subDistrict: "เกาะสาหร่าย", moo: "5" },
+  { code: "09612", name: "รพ.สต.เกาะหลีเป๊ะ", type: "รพ.สต.", district: "เมืองสตูล", subDistrict: "เกาะสาหร่าย", moo: "7" },
+  { code: "09613", name: "รพ.สต.ตันหยงโป", type: "รพ.สต.", district: "เมืองสตูล", subDistrict: "ตันหยงโป", moo: "1" },
+  { code: "09614", name: "รพ.สต.เจ๊ะบิลัง", type: "รพ.สต.", district: "เมืองสตูล", subDistrict: "เจ๊ะบิลัง", moo: "2" },
+  { code: "09615", name: "รพ.สต.บ้านปาเต๊ะ", type: "รพ.สต.", district: "เมืองสตูล", subDistrict: "เจ๊ะบิลัง", moo: "6" },
+  { code: "09616", name: "รพ.สต.ตำมะลัง", type: "รพ.สต.", district: "เมืองสตูล", subDistrict: "ตำมะลัง", moo: "3" },
+  { code: "09617", name: "รพ.สต.บ้านเกาะยาว", type: "รพ.สต.", district: "เมืองสตูล", subDistrict: "ปูยู", moo: "1" },
+  { code: "09618", name: "รพ.สต.ปูยู", type: "รพ.สต.", district: "เมืองสตูล", subDistrict: "ปูยู", moo: "2" },
+  { code: "09619", name: "รพ.สต.บ้านใหม่", type: "รพ.สต.", district: "เมืองสตูล", subDistrict: "ควนโพธิ์", moo: "5" },
+  { code: "09620", name: "รพ.สต.บ้านวังพะเนียด", type: "รพ.สต.", district: "เมืองสตูล", subDistrict: "เกตรี", moo: "5" },
+  { code: "09621", name: "รพ.สต.ควนโดน", type: "รพ.สต.", district: "ควนโดน", subDistrict: "ควนโดน", moo: "1" },
+  { code: "09622", name: "รพ.สต.บ้านกุบังปะโหลด", type: "รพ.สต.", district: "ควนโดน", subDistrict: "ควนสตอ", moo: "2" },
+  { code: "09623", name: "รพ.สต.ย่านซื่อ", type: "รพ.สต.", district: "ควนโดน", subDistrict: "ย่านซื่อ", moo: "4" },
+  { code: "09624", name: "รพ.สต.บ้านวังประจัน", type: "รพ.สต.", district: "ควนโดน", subDistrict: "วังประจัน", moo: "3" },
+  { code: "09625", name: "รพ.สต.ควนกาหลง", type: "รพ.สต.", district: "ควนกาหลง", subDistrict: "ควนกาหลง", moo: "1" },
+  { code: "09626", name: "รพ.สต.บ้านควนบ่อทอง", type: "รพ.สต.", district: "ควนกาหลง", subDistrict: "ทุ่งนุ้ย", moo: "1" },
+  { code: "09627", name: "รพ.สต.ทุ่งนุ้ย", type: "รพ.สต.", district: "ควนกาหลง", subDistrict: "ทุ่งนุ้ย", moo: "11" },
+  { code: "09628", name: "รพ.สต.บ้านผัง 34", type: "รพ.สต.", district: "ควนกาหลง", subDistrict: "อุใดเจริญ", moo: "2" },
+  { code: "09629", name: "รพ.สต.อุใดเจริญ", type: "รพ.สต.", district: "ควนกาหลง", subDistrict: "อุใดเจริญ", moo: "1" },
+  { code: "14096", name: "รพ.สต.บ้านกะทูน-พิปูนล้นเกล้า", type: "รพ.สต.", district: "ควนกาหลง", subDistrict: "ควนกาหลง", moo: "9" },
+  { code: "14097", name: "รพ.สต.บ้านเหนือคลอง", type: "รพ.สต.", district: "ควนกาหลง", subDistrict: "ควนกาหลง", moo: "8" },
+  { code: "09630", name: "รพ.สต.แป-ระ", type: "รพ.สต.", district: "ท่าแพ", subDistrict: "แป-ระ", moo: "1" },
+  { code: "09631", name: "รพ.สต.สาคร", type: "รพ.สต.", district: "ท่าแพ", subDistrict: "สาคร", moo: "2" },
+  { code: "09632", name: "รพ.สต.บ้านทางยาง", type: "รพ.สต.", district: "ท่าแพ", subDistrict: "สาคร", moo: "7" },
+  { code: "09633", name: "รพ.สต.บ้านแป-ระใต้", type: "รพ.สต.", district: "ท่าแพ", subDistrict: "ท่าเรือ", moo: "4" },
+  { code: "14098", name: "รพ.สต.ท่าเรือ", type: "รพ.สต.", district: "ท่าแพ", subDistrict: "ท่าเรือ", moo: "5" },
+  { code: "24058", name: "ศูนย์สุขภาพชุมชนตำบลท่าแพ", type: "ศสม.", district: "ท่าแพ", subDistrict: "ท่าแพ", moo: "0" },
+  { code: "09634", name: "รพ.สต.ละงู", type: "รพ.สต.", district: "ละงู", subDistrict: "ละงู", moo: "2" },
+  { code: "09635", name: "รพ.สต.บ้านห้วยไทร", type: "รพ.สต.", district: "ละงู", subDistrict: "ละงู", moo: "10" },
+  { code: "09636", name: "รพ.สต.บ้านในเมือง", type: "รพ.สต.", district: "ละงู", subDistrict: "ละงู", moo: "12" },
+  { code: "09637", name: "รพ.สต.เขาขาว", type: "รพ.สต.", district: "ละงู", subDistrict: "เขาขาว", moo: "5" },
+  { code: "09638", name: "รพ.สต.บ้านบ่อเจ็ดลูก", type: "รพ.สต.", district: "ละงู", subDistrict: "ปากน้ำ", moo: "1" },
+  { code: "09639", name: "รพ.สต.ปากน้ำ", type: "รพ.สต.", district: "ละงู", subDistrict: "ปากน้ำ", moo: "4" },
+  { code: "09640", name: "รพ.สต.บ้านทุ่งไหม้", type: "รพ.สต.", district: "ละงู", subDistrict: "น้ำผุด", moo: "1" },
+  { code: "09641", name: "รพ.สต.น้ำผุด", type: "รพ.สต.", district: "ละงู", subDistrict: "น้ำผุด", moo: "5" },
+  { code: "09642", name: "รพ.สต.แหลมสน", type: "รพ.สต.", district: "ละงู", subDistrict: "แหลมสน", moo: "3" },
+  { code: "22015", name: "รพ.สต.บ้านตันหยงละไน้", type: "รพ.สต.", district: "ละงู", subDistrict: "แหลมสน", moo: "1" },
+  { code: "77707", name: "ศูนย์สุขภาพชุมชนกำแพง", type: "ศสม.", district: "ละงู", subDistrict: "กำแพง", moo: "3" },
+  { code: "09643", name: "รพ.สต.บ้านนาทอน", type: "รพ.สต.", district: "ทุ่งหว้า", subDistrict: "นาทอน", moo: "2" },
+  { code: "09644", name: "รพ.สต.บ้านวังตง", type: "รพ.สต.", district: "ทุ่งหว้า", subDistrict: "นาทอน", moo: "4" },
+  { code: "09645", name: "รพ.สต.ขอนคลาน", type: "รพ.สต.", district: "ทุ่งหว้า", subDistrict: "ขอนคลาน", moo: "3" },
+  { code: "09646", name: "รพ.สต.ทุ่งบุหลัง", type: "รพ.สต.", district: "ทุ่งหว้า", subDistrict: "ทุ่งบุหลัง", moo: "5" },
+  { code: "09647", name: "รพ.สต.บ้านทุ่งดินลุ่ม", type: "รพ.สต.", district: "ทุ่งหว้า", subDistrict: "ป่าแก่บ่อหิน", moo: "5" },
+  { code: "09648", name: "รพ.สต.บ้านเขาแดง", type: "รพ.สต.", district: "ทุ่งหว้า", subDistrict: "ป่าแก่บ่อหิน", moo: "7" },
+  { code: "14715", name: "รพ.สต.บ้านคีรีวง", type: "รพ.สต.", district: "ทุ่งหว้า", subDistrict: "ทุ่งหว้า", moo: "10" },
+  { code: "09649", name: "รพ.สต.ปาล์มพัฒนา", type: "รพ.สต.", district: "มะนัง", subDistrict: "ปาล์มพัฒนา", moo: "8" },
+  { code: "09650", name: "รพ.สต.บ้านมะนัง", type: "รพ.สต.", district: "มะนัง", subDistrict: "ปาล์มพัฒนา", moo: "5" },
+  { code: "09651", name: "รพ.สต.บ้านผัง 50", type: "รพ.สต.", district: "มะนัง", subDistrict: "นิคมพัฒนา", moo: "5" },
+  { code: "09652", name: "สถานีอนามัยเฉลิมพระเกียรติ 60 พรรษาฯ", type: "สอน.", district: "มะนัง", subDistrict: "นิคมพัฒนา", moo: "7" },
+  { code: "24672", name: "ศูนย์สุขภาพชุมชนศรีพิมาน", type: "ศสม.", district: "เมืองสตูล", subDistrict: "พิมาน", moo: "0" },
+  { code: "77708", name: "ศูนย์สุขภาพชุมชนพิมาน", type: "ศสม.", district: "เมืองสตูล", subDistrict: "พิมาน", moo: "0" }
 ];
