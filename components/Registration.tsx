@@ -25,6 +25,12 @@ interface Attachment {
     size?: number; // Size in bytes
 }
 
+// --- Helper: Convert Arabic to Thai Numerals ---
+const toThaiNum = (num: number | string | undefined | null): string => {
+    if (num === undefined || num === null) return "";
+    return num.toString().replace(/\d/g, (d) => "๐๑๒๓๔๕๖๗๘๙"[parseInt(d)]);
+};
+
 // --- Helper: Convert Date to Thai Official Format (เลขไทย) ---
 const toThaiDate = (date: Date = new Date()) => {
     const months = [
@@ -35,15 +41,8 @@ const toThaiDate = (date: Date = new Date()) => {
     const month = months[date.getMonth()];
     const year = date.getFullYear() + 543;
     
-    // Convert to Thai numerals function
-    const toThaiNum = (num: number | string) => {
-        return num.toString().replace(/\d/g, (d) => "๐๑๒๓๔๕๖๗๘๙"[parseInt(d)]);
-    };
-
     return `${toThaiNum(day)} ${month} ${toThaiNum(year)}`;
 };
-
-const toThaiNumString = (str: string) => str.replace(/\d/g, (d) => "๐๑๒๓๔๕๖๗๘๙"[parseInt(d)]);
 
 // --- Branch Group Data for Combobox ---
 const BRANCH_GROUPS = [
@@ -179,12 +178,10 @@ const Registration: React.FC<RegistrationProps> = ({ settings, onSuccess, showTo
   // Initialize Data
   useEffect(() => {
     if (editingSubmission) {
-        // Attempt to parse extra data from description or a metadata field if available
-        // For now, mapping basic fields. In a real DB, these would be separate columns.
         setForm({
             workType: editingSubmission.workType,
             branchId: String(editingSubmission.branchId),
-            title: editingSubmission.fileName || "", // Using fileName as Title temporarily or add title to Submission type
+            title: editingSubmission.fileName || "",
             bookNo: "",
             coAuthor: "",
             bossName: "",
@@ -235,7 +232,7 @@ const Registration: React.FC<RegistrationProps> = ({ settings, onSuccess, showTo
     });
   };
 
-  // --- Handlers (File, DragDrop, Links) Same as before ---
+  // --- Handlers (File, DragDrop, Links) ---
   const handleFile = (file: File) => {
       if (attachments.length >= 5) { showToast({ type: "error", title: "ครบจำนวนแล้ว", message: "อนุญาตให้อัปโหลดได้สูงสุด 5 ไฟล์" }); return; }
       if (attachments.some(att => att.name === file.name)) { showToast({ type: "error", title: "ไฟล์ซ้ำ", message: "มีไฟล์นี้อยู่ในรายการแล้ว" }); return; }
@@ -272,7 +269,6 @@ const Registration: React.FC<RegistrationProps> = ({ settings, onSuccess, showTo
   const submit = async (mode: 'draft' | 'submit') => {
     if (mode === 'submit' && !validateForm()) { showToast({ type: "error", title: "ข้อมูลไม่ครบถ้วน", message: "กรุณากรอกข้อมูลให้ครบถ้วน" }); return; }
     
-    // ... (Confirmation Swal Logic) ...
     const confirmText = mode === 'submit' ? (editingSubmission ? 'ยืนยันการแก้ไขและส่งผลงาน?' : 'ยืนยันการส่งผลงาน?') : 'บันทึกแบบร่างไว้ทำต่อภายหลัง?';
     const result = await Swal.fire({ title: confirmText, text: mode === 'submit' ? 'กรุณาตรวจสอบความถูกต้องของข้อมูล' : '', icon: 'question', showCancelButton: true, confirmButtonColor: mode === 'submit' ? '#0f172a' : '#64748b', confirmButtonText: mode === 'submit' ? 'ยืนยันส่งผลงาน' : 'บันทึกร่าง', cancelButtonText: 'ยกเลิก', customClass: { popup: 'rounded-3xl' } });
     if (!result.isConfirmed) return;
@@ -292,7 +288,7 @@ const Registration: React.FC<RegistrationProps> = ({ settings, onSuccess, showTo
         phone: currentUser.phone || "",
         workType: form.workType,
         branchId: Number(form.branchId),
-        fileName: form.title, // Save title to fileName field for now
+        fileName: form.title, 
         fileUrl: filePayload, 
         status: nextStatus,
       };
@@ -315,7 +311,6 @@ const Registration: React.FC<RegistrationProps> = ({ settings, onSuccess, showTo
   };
 
   const handlePrint = () => {
-      // Validate minimally before print
       if (!form.title) {
           showToast({ type: 'error', title: 'ข้อมูลไม่ครบ', message: 'กรุณากรอกชื่อเรื่องผลงานก่อนพิมพ์เอกสาร' });
           return;
@@ -327,153 +322,303 @@ const Registration: React.FC<RegistrationProps> = ({ settings, onSuccess, showTo
     <div className="max-w-4xl mx-auto pb-12 fade-in">
         
         {/* --- PRINTABLE SECTION (HIDDEN ON SCREEN) --- */}
-        <div className="hidden print:block font-sarabun text-black bg-white print-container">
-            {/* Styles for print inside the component for convenience, or add to global css */}
+        <div className="hidden print:block bg-white print-container">
+            {/* Styles for print inside the component */}
             <style>{`
+                @import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@400;700&display=swap');
+                
                 @media print {
-                    @page { size: A4; margin: 2.5cm 2cm 2cm 2cm; }
+                    @page { 
+                        size: A4; 
+                        margin: 2.5cm 2cm 2cm 3cm; /* Top, Right, Bottom, Left */
+                    }
                     body * { visibility: hidden; }
                     .print-container, .print-container * { visibility: visible; }
-                    .print-container { position: absolute; left: 0; top: 0; width: 100%; }
-                    .page-break { page-break-after: always; }
-                    
-                    /* Custom Thai Font sim */
-                    @font-face {
-                        font-family: 'THSarabunNew';
-                        src: url('https://cdn.jsdelivr.net/npm/thaifonts-sarabun@1.0.0/assets/fonts/THSarabunNew.ttf') format('truetype');
+                    .print-container { 
+                        position: absolute; 
+                        left: 0; 
+                        top: 0; 
+                        width: 100%; 
+                        font-family: 'TH SarabunIT๙', 'THSarabunNew', 'Sarabun', sans-serif;
+                        font-size: 16pt;
+                        line-height: 1.4;
+                        color: black;
                     }
-                    .font-sarabun { font-family: 'THSarabunNew', 'Sarabun', sans-serif; font-size: 16pt; line-height: 1.4; }
-                    .book-header { display: flex; justify-content: space-between; align-items: flex-start; }
-                    .garuda { width: 3cm; height: auto; display: block; margin: 0 auto; margin-bottom: 10px; }
-                    .indent { text-indent: 2.5cm; }
-                    .dotted-line { border-bottom: 1px dotted #333; display: inline-block; min-width: 100px; text-align: center; }
-                    .signature-area { margin-top: 50px; display: flex; flex-direction: column; align-items: flex-end; }
-                    .signature-box { text-align: center; min-width: 250px; }
+                    .page-break { page-break-after: always; min-height: 90vh; position: relative; }
+                    .garuda { width: 3cm; height: auto; display: block; margin: 0 auto; }
+                    .doc-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; }
+                    .indent-1 { text-indent: 2.5cm; }
+                    .indent-2 { margin-left: 2cm; }
+                    .indent-3 { margin-left: 3cm; }
+                    .signature-box { margin-top: 30px; text-align: center; float: right; width: 8cm; }
+                    .signature-row { display: flex; justify-content: space-between; margin-top: 30px; }
+                    .signature-center { text-align: center; }
+                    .dotted { border-bottom: 1px dotted #000; display: inline-block; min-width: 50px; text-align: center; }
+                    .checkbox { display: inline-block; width: 14px; height: 14px; border: 1px solid #000; margin-right: 5px; position: relative; top: 2px; }
+                    .bold { font-weight: bold; }
+                    .text-justify { text-align: justify; }
+                    .center { text-align: center; }
+                    .right { text-align: right; }
                 }
             `}</style>
 
-            {/* PAGE 1: COVER LETTER */}
+            {/* PAGE 1: COVER LETTER (บันทึกข้อความ) */}
             <div className="page-break">
                 <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/c/c9/Thai_Government_Garuda_Emblem_%28Version_2%29.svg/1200px-Thai_Government_Garuda_Emblem_%28Version_2%29.svg.png" className="garuda" alt="Garuda" />
                 
-                <div className="book-header">
-                    <div>ที่ สต {form.bookNo || "...................."}</div>
-                    <div className="text-right">
-                        {currentUser.organization}<br/>
-                        จ.สตูล ๙๑๐๐๐
+                <div className="doc-header" style={{ marginTop: '10px' }}>
+                    <div>ที่ สต {toThaiNum(form.bookNo || "....................")}</div>
+                    <div className="right">
+                        {toThaiNum(currentUser.organization)}<br/>
+                        ........................................
                     </div>
                 </div>
 
-                <div className="text-center mt-4 mb-4 font-bold">
+                <div className="center bold" style={{ margin: '10px 0' }}>
                     {toThaiDate()}
                 </div>
 
                 <div>
-                    <div className="mb-2"><b>เรื่อง</b> ขอส่งบทความเพื่อเผยแพร่ทางเว็บไซต์สำนักงานสาธารณสุขจังหวัดสตูล</div>
-                    <div className="mb-2"><b>เรียน</b> นายแพทย์สาธารณสุขจังหวัดสตูล</div>
-                    <div className="mb-4 flex items-start">
-                        <b className="whitespace-nowrap mr-2">สิ่งที่ส่งมาด้วย</b>
+                    <div><span className="bold">เรื่อง</span> ขอส่งบทความเพื่อเผยแพร่ทางเว็บไซต์สำนักงานสาธารณสุขจังหวัดสตูล</div>
+                    <div><span className="bold">เรียน</span> นายแพทย์สาธารณสุขจังหวัดสตูล</div>
+                    <div style={{ display: 'flex', alignItems: 'flex-start' }}>
+                        <div className="bold" style={{ minWidth: '80px' }}>สิ่งที่ส่งมาด้วย</div>
                         <div>
-                            ๑. หนังสือรับรองบทความก่อนจะลงเผยแพร่ทางเว็บไซต์ จำนวน ๑ ฉบับ<br/>
-                            ๒. ประวัติผู้เขียน จำนวน ๑ ฉบับ<br/>
-                            ๓. หนังสือรับรองจากคณะกรรมการจริยธรรมงานวิจัย จำนวน ๑ ฉบับ<br/>
-                            ๔. หนังสือรับรองผลงานวิชาการ จำนวน ๑ ฉบับ<br/>
-                            ๕. บทความ จำนวน ๖ ชุด
+                            {toThaiNum(1)}. หนังสือรับรองบทความก่อนจะลงเผยแพร่ทางเว็บไซต์ จำนวน {toThaiNum(1)} ฉบับ<br/>
+                            {toThaiNum(2)}. ประวัติผู้เขียน จำนวน {toThaiNum(1)} ฉบับ<br/>
+                            {toThaiNum(3)}. หนังสือรับรองจากคณะกรรมการจริยธรรมงานวิจัย จำนวน {toThaiNum(1)} ฉบับ<br/>
+                            {toThaiNum(4)}. หนังสือรับรองผลงานวิชาการ จำนวน {toThaiNum(1)} ฉบับ<br/>
+                            {toThaiNum(5)}. บทความ จำนวน {toThaiNum(6)} ชุด
                         </div>
                     </div>
                 </div>
 
-                <div className="indent text-justify mb-2">
-                    ด้วย {currentUser.firstName} {currentUser.lastName} ตำแหน่ง {currentUser.position}
-                    สังกัด {currentUser.organization} มีความประสงค์ขอส่งบทความเพื่อเผยแพร่ในเว็บไซต์สำนักงานสาธารณสุขจังหวัดสตูลในประเภท
-                    {WORK_TYPES.find(w => w.id === form.workType)?.label} เรื่อง "{form.title}"
+                <div className="indent-1 text-justify" style={{ marginTop: '10px' }}>
+                    ด้วย {toThaiNum(currentUser.firstName)} {toThaiNum(currentUser.lastName)} ตำแหน่ง {toThaiNum(currentUser.position)}
+                    สังกัด {toThaiNum(currentUser.organization)}
+                    มีความประสงค์ขอส่งบทความเพื่อเผยแพร่ในเว็บไซต์สำนักงานสาธารณสุขจังหวัดสตูลในประเภท
+                    {WORK_TYPES.find(w => w.id === form.workType)?.label} เรื่อง “{toThaiNum(form.title)}”
                 </div>
-                <div className="indent text-justify mb-4">
-                    {currentUser.organization} ขอส่งบทความและเอกสารที่เกี่ยวข้องเพื่อเสนอคณะทำงานพิจารณาบทความที่ลงเผยแพร่ในเว็บไซต์สำนักงานสาธารณสุขจังหวัดสตูล รายละเอียดปรากฏตามสิ่งที่ส่งมาด้วย
+                
+                <div className="indent-1 text-justify" style={{ marginTop: '10px' }}>
+                    โรงพยาบาล / สำนักงานสาธารณสุขอำเภอ {toThaiNum(currentUser.organization)} ขอส่งบทความและเอกสาร
+                    ที่เกี่ยวข้องเพื่อเสนอคณะทำงานพิจารณาบทความที่ลงเผยแพร่ในเว็บไซต์สำนักงานสาธารณสุขจังหวัดสตูล
+                    รายละเอียดปรากฏตามสิ่งที่ส่งมาด้วย
                 </div>
-                <div className="indent mb-12">
+                
+                <div className="indent-1" style={{ marginTop: '20px' }}>
                     จึงเรียนมาเพื่อโปรดพิจารณาดำเนินการต่อไป
                 </div>
 
-                <div className="signature-area">
-                    <div className="signature-box">
-                        <div>ขอแสดงความนับถือ</div>
-                        <br/><br/>
-                        <div>(.......................................................)</div>
-                        <div>ตำแหน่ง.......................................................</div>
-                    </div>
+                <div className="signature-box">
+                    ขอแสดงความนับถือ
+                    <br/><br/><br/>
+                    (.......................................................)<br/>
+                    ตำแหน่ง.......................................................
                 </div>
 
-                <div className="mt-20 text-sm">
+                <div style={{ position: 'absolute', bottom: 0, left: 0, fontSize: '14pt' }}>
                     กลุ่มงาน....................<br/>
-                    โทร. {toThaiNumString(currentUser.phone || "....................")}<br/>
+                    โทร. {toThaiNum(currentUser.phone || "....................")}<br/>
+                    โทรสาร .....................
                 </div>
             </div>
 
-            {/* PAGE 2: CERTIFICATION */}
-            <div className="page-break pt-12">
-                <div className="text-center font-bold text-lg mb-8">หนังสือรับรองบทความก่อนจะลงเผยแพร่ทางเว็บไซต์</div>
+            {/* PAGE 2: CERTIFICATION (หนังสือรับรองบทความ) */}
+            <div className="page-break">
+                <div className="center bold" style={{ fontSize: '20pt', marginTop: '20px', marginBottom: '20px' }}>
+                    หนังสือรับรองบทความก่อนจะลงเผยแพร่ทางเว็บไซต์
+                </div>
                 
-                <div className="text-right mb-6">
-                    ตามที่ {currentUser.firstName} {currentUser.lastName} ตำแหน่ง {currentUser.position}<br/>
-                    สังกัด {currentUser.organization}
+                <div className="right">
+                    ตามที่ นาย/นาง/นางสาว {toThaiNum(currentUser.firstName)} {toThaiNum(currentUser.lastName)}................................ตำแหน่ง/ระดับ {toThaiNum(currentUser.position)}................................<br/>
+                    สังกัด {toThaiNum(currentUser.organization)}.......................................................................................................................
                 </div>
 
-                <div className="indent text-justify mb-4">
-                    ได้ส่งบทความ {WORK_TYPES.find(w => w.id === form.workType)?.label} เรื่อง "{form.title}" เพื่อเผยแพร่ทางเว็บไซต์สำนักงานสาธารณสุขจังหวัดสตูล ทั้งนี้ ข้าพเจ้าและผู้เขียนร่วม (ถ้ามี) ขอรับรองว่า
+                <div className="indent-1 text-justify" style={{ marginTop: '10px' }}>
+                    ได้ส่งบทความรายงานการวิจัย / บทความวิชาการ / รายงานกรณีศึกษา เรื่อง “{toThaiNum(form.title)}”
+                    เพื่อเผยแพร่ทางเว็บไซต์สำนักงานสาธารณสุขจังหวัดสตูล ทั้งนี้ ข้าพเจ้าและผู้เขียนร่วม (ถ้ามี) ขอรับรองว่า
                 </div>
 
-                <ol className="list-decimal pl-10 space-y-2 mb-6 text-justify">
-                    <li>เป็นบทความของบุคลากรในสังกัดของสำนักงานสาธารณสุขจังหวัดสตูล</li>
-                    <li>บทความ ไม่มีการละเมิดลิขสิทธิ์ทางปัญญาของผู้อื่น ไม่ลอกเลียนหรือคัดลอกมาจากที่ใด</li>
-                    <li>บทความ ไม่ใช่ผลงานวิจัยหรือวิทยานิพนธ์ที่เป็นส่วนหนึ่งของการศึกษาเพื่อขอรับปริญญา หรือประกาศนียบัตร หรือเป็นส่วนหนึ่งของการฝึกอบรม</li>
-                    <li>บทความ ไม่เคยเผยแพร่หรือตีพิมพ์ที่ใดมาก่อน</li>
-                    <li>รายงานการวิจัย ต้องผ่านการรับรองจริยธรรมการวิจัยในมนุษย์</li>
-                </ol>
-
-                <div className="indent text-justify mb-4">
-                    และร่วมยอมรับหลักเกณฑ์การพิจารณาต้นฉบับ ทั้งยินยอมให้คณะทำงานพิจารณาบทความที่ลงเผยแพร่ทางเว็บไซต์สำนักงานสาธารณสุขจังหวัดสตูล มีสิทธิพิจารณาและตรวจแก้ต้นฉบับได้ตามที่เห็นสมควร
+                <div style={{ marginLeft: '1.5cm' }}>
+                    <div>{toThaiNum(1)}. เป็นบทความของบุคลากรในสังกัดของสำนักงานสาธารณสุขจังหวัดสตูล</div>
+                    <div>{toThaiNum(2)}. บทความ ไม่มีการละเมิดลิขสิทธิ์ทางปัญญาของผู้อื่น ไม่ลอกเลียนหรือคัดลอกมาจากที่ใด</div>
+                    <div>{toThaiNum(3)}. บทความ ไม่ใช่ผลงานวิจัยหรือวิทยานิพนธ์ที่เป็นส่วนหนึ่งของการศึกษาเพื่อขอรับปริญญา
+                    หรือประกาศนียบัตร หรือเป็นส่วนหนึ่งของการฝึกอบรม</div>
+                    <div>{toThaiNum(4)}. บทความ ไม่เคยเผยแพร่หรือตีพิมพ์ที่ใดมาก่อน</div>
+                    <div>{toThaiNum(5)}. รายงานการวิจัย ต้องผ่านการรับรองจริยธรรมการวิจัยในมนุษย์</div>
                 </div>
 
-                <div className="indent text-justify mb-8">
-                    หากคณะกรรมการฯ ตรวจพบว่า คำรับรองดังกล่าวไม่เป็นความจริง ทางคณะกรรมการฯ มีสิทธิ์ยกเลิกบทความของผู้เขียนออกจากเว็บไซต์สำนักงานสาธารณสุขจังหวัดสตูลทันทีโดยไม่ต้องแจ้งให้ผู้เขียนทราบล่วงหน้า
+                <div className="indent-1 text-justify" style={{ marginTop: '10px' }}>
+                    และร่วมยอมรับหลักเกณฑ์การพิจารณาต้นฉบับ ทั้งยินยอมให้คณะทำงานพิจารณาบทความที่ลงเผยแพร่ทาง
+                    เว็บไซต์สำนักงานสาธารณสุขจังหวัดสตูล มีสิทธิพิจารณาและตรวจแก้ต้นฉบับได้ตามที่เห็นสมควร หากมีการ
+                    ฟ้องร้องเรื่องการละเมิดลิขสิทธิ์เกี่ยวกับภาพ กราฟ ข้อความส่วนใดส่วนหนึ่ง และ/หรือข้อคิดเห็นที่ปรากฏ
+                    ในบทความ ข้าพเจ้าและผู้เขียนร่วม ยินยอมรับผิดชอบแต่เพียงฝ่ายเดียว
                 </div>
 
-                <div className="flex justify-between items-start mt-8 px-8">
-                    <div className="text-center">
-                        <div>ลงนามผู้เขียนหลัก</div>
+                <div className="indent-1 text-justify" style={{ marginTop: '10px' }}>
+                    หากคณะกรรมการฯ ตรวจพบว่า คำรับรองดังกล่าวไม่เป็นความจริง ทางคณะกรรมการฯ
+                    มีสิทธิ์ยกเลิกบทความของผู้เขียนออกจากเว็บไซต์สำนักงานสาธารณสุขจังหวัดสตูลทันทีได้โดยไม่ต้องแจ้งให้
+                    ผู้เขียนทราบล่วงหน้า และผู้เขียนทุกท่านขอรับรองและยินยอมปฏิบัติตามข้อตกลงดังกล่าว พร้อมทั้งลงนาม
+                    รับรองไว้ที่ข้างท้ายของหนังสือรับรองฉบับนี้
+                </div>
+
+                <div className="signature-row">
+                    <div className="signature-center" style={{ width: '45%' }}>
+                        ลงนามผู้เขียนหลัก (ชื่อที่ {toThaiNum(1)})
                         <br/><br/>
-                        <div className="border-b border-dotted border-black w-40 mx-auto mb-2"></div>
-                        <div>({currentUser.firstName} {currentUser.lastName})</div>
+                        .....................................................<br/>
+                        ({toThaiNum(currentUser.firstName)} {toThaiNum(currentUser.lastName)})<br/>
+                        ........../...................../..............
                     </div>
                     {form.coAuthor && (
-                        <div className="text-center">
-                            <div>ลงนามผู้เขียนร่วม</div>
+                        <div className="signature-center" style={{ width: '45%' }}>
+                            ลงนามผู้เขียนร่วม (ชื่อที่ {toThaiNum(2)})
                             <br/><br/>
-                            <div className="border-b border-dotted border-black w-40 mx-auto mb-2"></div>
-                            <div>({form.coAuthor})</div>
+                            .....................................................<br/>
+                            ({toThaiNum(form.coAuthor)})<br/>
+                            ........../...................../..............
                         </div>
                     )}
                 </div>
 
-                <div className="mt-12">
-                    <b>ความเห็นของผู้บังคับบัญชา</b>
-                    <div className="mt-2 ml-4">
-                        <div className="flex items-center gap-2 mb-2">
-                            <div className="w-4 h-4 border border-black"></div> เห็นชอบส่งบทความเพื่อเผยแพร่
+                <div style={{ marginTop: '30px' }}>
+                    <div className="bold">ความเห็นของผู้บังคับบัญชา</div>
+                    <div style={{ marginLeft: '1cm', marginTop: '5px' }}>
+                        <div style={{ marginBottom: '5px' }}>
+                            <span style={{ fontSize: '20px' }}>&#9744;</span> เห็นชอบส่งบทความเพื่อเผยแพร่ในเว็บไซต์สำนักงานสาธารณสุขจังหวัดสตูล
                         </div>
-                        <div className="flex items-center gap-2">
-                            <div className="w-4 h-4 border border-black"></div> ไม่เห็นชอบ
+                        <div>
+                            <span style={{ fontSize: '20px' }}>&#9744;</span> ไม่เห็นชอบให้ส่งบทความเพื่อเผยแพร่ในเว็บไซต์สำนักงานสาธารณสุขจังหวัดสตูล
                         </div>
                     </div>
                     
-                    <div className="signature-area mt-4">
-                        <div className="signature-box">
-                            <br/><br/>
-                            <div>( {form.bossName || "......................................................."} )</div>
-                            <div>{form.bossPosition}</div>
-                        </div>
+                    <div className="signature-box" style={{ marginTop: '20px' }}>
+                        .....................................................<br/>
+                        ( {toThaiNum(form.bossName) || "....................................................."} )<br/>
+                        ผอ.รพช./สสอ./หน.กลุ่มงานฯ<br/>
+                        ........../...................../..............
                     </div>
+                </div>
+            </div>
+
+            {/* PAGE 3: PROFILE (แบบฟอร์มประวัติผู้เขียน) */}
+            <div className="page-break">
+                <div className="center bold" style={{ fontSize: '20pt', marginTop: '20px', marginBottom: '30px' }}>
+                    แบบฟอร์มประวัติผู้เขียน
+                </div>
+
+                <div style={{ marginBottom: '15px' }}>
+                    <span className="bold">ชื่อ-สกุล ผู้เขียนหลัก (ชื่อที่ {toThaiNum(1)})</span> {toThaiNum(currentUser.firstName)} {toThaiNum(currentUser.lastName)}..........................................................................................................................
+                </div>
+                <div style={{ marginBottom: '15px' }}>
+                    <span className="bold">สถานที่ปฏิบัติงานปัจจุบัน</span> {toThaiNum(currentUser.organization)}................................................................................................... ...............................
+                </div>
+                <div style={{ marginBottom: '15px' }}>
+                    <span className="bold">สถานที่ติดต่อได้สะดวก</span> {toThaiNum(currentUser.organization)}.............................................................................. .........................................................
+                </div>
+                <div style={{ marginBottom: '15px' }}>
+                    <span className="bold">เบอร์โทรศัพท์</span> {toThaiNum(currentUser.phone)}.......................................................... <span className="bold">E-mail</span> {currentUser.email}....................................................................................
+                </div>
+                <div style={{ marginBottom: '30px' }}>
+                    <span className="bold">ประวัติการศึกษา (ตั้งแต่ปริญญาตรีจนถึงการศึกษาสูงสุด ระบุสาขาที่จบ)</span><br/>
+                    ........................................................................................................................................................................................................<br/>
+                    ........................................................................................................................................................................................................
+                </div>
+
+                {/* Co-Author Section */}
+                <div style={{ marginBottom: '15px' }}>
+                    <span className="bold">ชื่อ-สกุล ผู้เขียนหลัก (ชื่อที่ {toThaiNum(2)})</span> {toThaiNum(form.coAuthor) || ".........................................................................................................................."}
+                </div>
+                <div style={{ marginBottom: '15px' }}>
+                    <span className="bold">สถานที่ปฏิบัติงานปัจจุบัน</span> ................................................................................................... ...............................
+                </div>
+                <div style={{ marginBottom: '15px' }}>
+                    <span className="bold">สถานที่ติดต่อได้สะดวก</span> .............................................................................. .........................................................
+                </div>
+                <div style={{ marginBottom: '15px' }}>
+                    <span className="bold">เบอร์โทรศัพท์</span> .......................................................... <span className="bold">E-mail</span> ........................................................................................................
+                </div>
+                <div style={{ marginBottom: '15px' }}>
+                    <span className="bold">ประวัติการศึกษา (ตั้งแต่ปริญญาตรีจนถึงการศึกษาสูงสุด ระบุสาขาที่จบ)</span><br/>
+                    ........................................................................................................................................................................................................<br/>
+                    ........................................................................................................................................................................................................
+                </div>
+            </div>
+
+            {/* PAGE 4: ACADEMIC CERT (หนังสือรับรองผลงานวิชาการ) */}
+            <div className="page-break">
+                <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/c/c9/Thai_Government_Garuda_Emblem_%28Version_2%29.svg/1200px-Thai_Government_Garuda_Emblem_%28Version_2%29.svg.png" className="garuda" alt="Garuda" />
+                
+                <div className="doc-header" style={{ marginTop: '10px' }}>
+                    <div>ที่ สต {toThaiNum(form.bookNo || "....................")}</div>
+                    <div className="right">
+                        (ส่วนราชการ.......<br/>
+                        ........................................<br/>
+                        ........................................
+                    </div>
+                </div>
+
+                <div className="center bold" style={{ fontSize: '20pt', margin: '20px 0' }}>
+                    หนังสือรับรองผลงานวิชาการ
+                </div>
+
+                <div className="indent-1">
+                    หนังสือรับรองฉบับนี้ให้ไว้เพื่อรับรองว่า นาย/นาง/นางสาว {toThaiNum(currentUser.firstName)} {toThaiNum(currentUser.lastName)}................................................
+                </div>
+                <div>
+                    ได้จัดทำผลงานวิชาการ เรื่อง {toThaiNum(form.title)}.....................................................................................................................................
+                </div>
+                <div>
+                    ................................................................................................................................................................................................................
+                </div>
+                <div>
+                    เพื่อขอประเมินแต่งตั้งให้ดำรงตำแหน่ง............................................................ ตำแหน่งเลขที่..............................
+                </div>
+                <div>
+                    ส่วนราชการ..................................................................................................................................................................
+                </div>
+                <div className="text-justify">
+                    โดยผลงานวิชาการของข้าราชการเผยแพร่ทาง Website ของสำนักงานสาธารณสุขจังหวัดสตูล 
+                    เมื่อวันที่……..........................….. โดยสามารถสืบค้นได้จาก https://www.satunhealth.go.th และผลงาน
+                    วิชาการดังกล่าวไม่ใช่ผลงานวิจัยหรือวิทยานิพนธ์ ที่เป็นส่วนหนึ่งของการศึกษาเพื่อขอรับปริญญาหรือ
+                    ประกาศนียบัตร หรือเป็นส่วนหนึ่งของการฝึกอบรม
+                </div>
+
+                <div style={{ marginTop: '20px' }}>
+                    <div className="bold">{toThaiNum(1)}. คำรับรองของผู้ขอรับการประเมิน</div>
+                    <div className="signature-box" style={{ float: 'none', marginLeft: 'auto', marginRight: '0' }}>
+                        ลงชื่อ.............................................................<br/>
+                        ({toThaiNum(currentUser.firstName)} {toThaiNum(currentUser.lastName)})<br/>
+                        ตำแหน่ง {toThaiNum(currentUser.position)}<br/>
+                        วันที่....................................................... .........
+                    </div>
+                </div>
+
+                <div style={{ marginTop: '10px' }}>
+                    <div className="bold">{toThaiNum(2)}. คำรับรองของผู้บังคับบัญชาที่ควบคุมดูแลการปฏิบัติงาน</div>
+                    <div style={{ marginLeft: '1cm' }}>ความเห็น................................................................................................................................................................</div>
+                    <div className="signature-box" style={{ float: 'none', marginLeft: 'auto', marginRight: '0' }}>
+                        ลงชื่อ.............................................................<br/>
+                        (.............................................................)<br/>
+                        ตำแหน่ง.........................................................<br/>
+                        วันที่....................................................... .........
+                    </div>
+                </div>
+
+                <div style={{ marginTop: '10px' }}>
+                    <div className="bold">{toThaiNum(3)}. คำรับรองของผู้บังคับบัญชาเหนือขึ้นไป {toThaiNum(1)} ระดับ</div>
+                    <div style={{ marginLeft: '1cm' }}>ความเห็น................................................................................................................................................................</div>
+                    <div className="signature-box" style={{ float: 'none', marginLeft: 'auto', marginRight: '0' }}>
+                        ลงชื่อ.............................................................<br/>
+                        (.............................................................)<br/>
+                        ตำแหน่ง.........................................................<br/>
+                        วันที่....................................................... .........
+                    </div>
+                </div>
+
+                <div style={{ marginTop: '20px', fontSize: '14pt' }}>
+                    *หมายเหตุ : ลงนามรับรองผลงาน โดยผู้บังคับบัญชา {toThaiNum(2)} คน {toThaiNum(2)} ระดับ
                 </div>
             </div>
         </div>
