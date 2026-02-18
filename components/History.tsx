@@ -3,7 +3,7 @@ import React, { useMemo, useState, useEffect } from 'react';
 import { Submission, AppSettings, SubmissionStatus } from '../types';
 import { BRANCHES, WORK_TYPES } from '../constants';
 import Badge from './ui/Badge';
-import { apiUpdateSubmission, apiDeleteSubmission } from '../services/apiService';
+import { apiDeleteSubmission } from '../services/apiService'; // Keep import but might not use for delete action anymore
 
 // Declare Swal globally since it's loaded via CDN
 declare const Swal: any;
@@ -18,42 +18,99 @@ interface HistoryProps {
 }
 
 // Configuration for all possible statuses
-const STATUS_CONFIG: Record<SubmissionStatus, { label: string; tone: any; icon: string; desc: string; hintColor: string }> = {
+const STATUS_CONFIG: Record<SubmissionStatus, { label: string; tone: any; icon: string; desc: string; step: number; colorClass: string }> = {
   draft: { 
       label: 'ฉบับร่าง', 
       tone: 'amber', 
       icon: 'fa-pen-ruler', 
-      desc: 'ยังไม่ส่ง',
-      hintColor: 'text-amber-600'
+      desc: 'รอการยืนยัน',
+      step: 1,
+      colorClass: 'text-amber-500 bg-amber-500'
   },
   submitted: { 
       label: 'ส่งแล้ว', 
       tone: 'navy', 
       icon: 'fa-paper-plane', 
-      desc: 'รอการพิจารณา',
-      hintColor: 'text-indigo-600'
+      desc: 'รอเจ้าหน้าที่รับเรื่อง',
+      step: 2,
+      colorClass: 'text-sky-500 bg-sky-500'
   },
   reviewed: { 
-      label: 'รอแก้ไข / ตรวจสอบ', 
+      label: 'กำลังตรวจสอบ', 
       tone: 'indigo', 
-      icon: 'fa-file-pen', 
-      desc: 'กรรมการแจ้งแก้ไข',
-      hintColor: 'text-indigo-600'
+      icon: 'fa-magnifying-glass-chart', 
+      desc: 'อยู่ระหว่างการพิจารณา',
+      step: 3,
+      colorClass: 'text-indigo-500 bg-indigo-500'
   },
   accepted: { 
       label: 'ผ่านการคัดเลือก', 
       tone: 'green', 
-      icon: 'fa-circle-check', 
-      desc: 'ได้รับคัดเลือก',
-      hintColor: 'text-emerald-600'
+      icon: 'fa-trophy', 
+      desc: 'ประกาศผลสำเร็จ',
+      step: 4,
+      colorClass: 'text-emerald-500 bg-emerald-500'
   },
   rejected: { 
       label: 'ไม่ผ่านการคัดเลือก', 
       tone: 'red', 
       icon: 'fa-circle-xmark', 
-      desc: 'ไม่ผ่านเกณฑ์',
-      hintColor: 'text-rose-600'
+      desc: 'สิ้นสุดกระบวนการ',
+      step: 4,
+      colorClass: 'text-rose-500 bg-rose-500'
   },
+};
+
+// Sub-component: Visual Status Stepper
+const StatusStepper: React.FC<{ currentStatus: SubmissionStatus }> = ({ currentStatus }) => {
+    const config = STATUS_CONFIG[currentStatus] || STATUS_CONFIG['draft'];
+    const currentStep = config.step;
+    
+    const steps = [
+        { id: 1, label: 'ร่างผลงาน', icon: 'fa-pen' },
+        { id: 2, label: 'ส่งระบบ', icon: 'fa-cloud-arrow-up' },
+        { id: 3, label: 'ตรวจสอบ', icon: 'fa-magnifying-glass' },
+        { id: 4, label: 'ประกาศผล', icon: 'fa-flag-checkered' },
+    ];
+
+    return (
+        <div className="w-full mb-6 px-2">
+            <div className="relative flex items-center justify-between">
+                {/* Connecting Line Background */}
+                <div className="absolute left-0 top-1/2 -translate-y-1/2 w-full h-1 bg-slate-100 dark:bg-slate-700 rounded-full -z-10"></div>
+                
+                {/* Connecting Line Progress */}
+                <div 
+                    className={`absolute left-0 top-1/2 -translate-y-1/2 h-1 rounded-full -z-10 transition-all duration-1000 ease-out bg-gradient-to-r ${currentStatus === 'rejected' ? 'from-slate-300 to-rose-400' : 'from-sky-400 to-emerald-400'}`}
+                    style={{ width: `${((currentStep - 1) / (steps.length - 1)) * 100}%` }}
+                ></div>
+
+                {steps.map((step) => {
+                    const isActive = step.id <= currentStep;
+                    const isCurrent = step.id === currentStep;
+                    
+                    let activeColor = "bg-emerald-500 border-emerald-500 text-white";
+                    if (currentStatus === 'rejected' && step.id === 4) activeColor = "bg-rose-500 border-rose-500 text-white";
+                    else if (step.id === currentStep && currentStatus !== 'accepted' && currentStatus !== 'rejected') activeColor = "bg-sky-500 border-sky-500 text-white shadow-lg shadow-sky-200";
+
+                    return (
+                        <div key={step.id} className="flex flex-col items-center group relative">
+                            <div 
+                                className={`w-8 h-8 rounded-full border-2 flex items-center justify-center text-xs transition-all duration-500 z-10
+                                    ${isActive ? activeColor : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-600 text-slate-400'}
+                                `}
+                            >
+                                <i className={`fa-solid ${step.icon}`}></i>
+                            </div>
+                            <div className={`text-[10px] font-bold mt-2 absolute top-8 whitespace-nowrap transition-colors ${isCurrent ? 'text-slate-800 dark:text-white scale-110' : 'text-slate-400'}`}>
+                                {step.label}
+                            </div>
+                        </div>
+                    );
+                })}
+            </div>
+        </div>
+    );
 };
 
 const History: React.FC<HistoryProps> = ({ submissions, loading, refreshList, settings, showToast, onEdit }) => {
@@ -67,6 +124,7 @@ const History: React.FC<HistoryProps> = ({ submissions, loading, refreshList, se
   });
 
   const [sortOption, setSortOption] = useState("updated_desc"); // Default sort
+  const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
 
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
@@ -87,11 +145,18 @@ const History: React.FC<HistoryProps> = ({ submissions, loading, refreshList, se
     if (Number.isNaN(d.getTime())) return "-";
     return d.toLocaleString("th-TH", {
       year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
+      month: "short",
+      day: "numeric",
       hour: "2-digit",
       minute: "2-digit",
     });
+  };
+
+  const toggleExpand = (id: string) => {
+      const newSet = new Set(expandedItems);
+      if (newSet.has(id)) newSet.delete(id);
+      else newSet.add(id);
+      setExpandedItems(newSet);
   };
 
   const parseAttachments = (fileUrl?: string) => {
@@ -100,7 +165,6 @@ const History: React.FC<HistoryProps> = ({ submissions, loading, refreshList, se
         if (fileUrl.startsWith('[')) {
             return JSON.parse(fileUrl);
         }
-        // Legacy single file support
         return [{ type: 'file', value: fileUrl, name: 'ไฟล์แนบ' }];
     } catch (e) {
         return [];
@@ -153,7 +217,6 @@ const History: React.FC<HistoryProps> = ({ submissions, loading, refreshList, se
       return okType && okBranch && okStatus && okQ && okDate;
     });
 
-    // Sort Logic
     return result.sort((a, b) => {
         switch (sortOption) {
             case "created_desc": return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
@@ -166,7 +229,6 @@ const History: React.FC<HistoryProps> = ({ submissions, loading, refreshList, se
     });
   }, [submissions, filter, sortOption]);
 
-  // Pagination Logic
   const totalItems = filtered.length;
   const totalPages = Math.ceil(totalItems / itemsPerPage);
   const paginatedItems = filtered.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
@@ -174,96 +236,49 @@ const History: React.FC<HistoryProps> = ({ submissions, loading, refreshList, se
   const getPageNumbers = () => {
     const pages = [];
     const maxVisibleButtons = 5;
-    
     if (totalPages <= maxVisibleButtons) {
         for (let i = 1; i <= totalPages; i++) pages.push(i);
     } else {
         pages.push(1);
         let start = Math.max(2, currentPage - 1);
         let end = Math.min(totalPages - 1, currentPage + 1);
-
         if (currentPage <= 3) end = Math.min(totalPages - 1, 4);
         if (currentPage >= totalPages - 2) start = Math.max(2, totalPages - 3);
-
         if (start > 2) pages.push('...');
         for (let i = start; i <= end; i++) pages.push(i);
         if (end < totalPages - 1) pages.push('...');
-        
         pages.push(totalPages);
     }
     return pages;
   };
 
   const resetFilters = () => {
-      setFilter({
-        q: "",
-        workType: "all",
-        branchId: "all",
-        status: "all",
-        startDate: "",
-        endDate: "",
-      });
+      setFilter({ q: "", workType: "all", branchId: "all", status: "all", startDate: "", endDate: "" });
       setSortOption("updated_desc");
   };
 
-  const handleDelete = async (s: Submission) => {
-     const result = await Swal.fire({
-        title: 'ยืนยันการลบ?',
+  // --- CHANGED: Delete Logic to Show Contact Info ---
+  const handleDeleteRequest = async (s: Submission) => {
+     await Swal.fire({
+        title: 'ต้องการลบข้อมูล?',
         html: `
-            <div class="text-slate-600 text-sm">
-                คุณต้องการลบผลงานของ <b>"${s.firstName} ${s.lastName}"</b> ใช่หรือไม่?<br/>
-                <span class="text-rose-500 font-bold mt-2 block"><i class="fa-solid fa-triangle-exclamation"></i> การกระทำนี้ไม่สามารถย้อนกลับได้</span>
+            <div class="text-left text-sm text-slate-600 space-y-4">
+                <p>หากท่านต้องการลบผลงานออกจากระบบ กรุณาติดต่อเจ้าหน้าที่เพื่อดำเนินการ:</p>
+                <div class="bg-slate-100 p-4 rounded-xl border border-slate-200 text-center">
+                    <strong class="block text-slate-800 text-lg mb-1">ผู้จัดการข้อมูล (Data Manager)</strong>
+                    <span class="block text-slate-500 mb-2">กลุ่มงานทรัพยากรบุคคล สำนักงานสาธารณสุขจังหวัดสตูล</span>
+                    <a href="tel:0888888888" class="inline-flex items-center gap-2 px-4 py-2 bg-emerald-500 text-white rounded-lg font-bold hover:bg-emerald-600 transition shadow-md">
+                        <i class="fa-solid fa-phone"></i> 088-888-8888
+                    </a>
+                </div>
+                <p class="text-xs text-rose-500">* การลบข้อมูลจะต้องผ่านการตรวจสอบเพื่อป้องกันความผิดพลาด</p>
             </div>
         `,
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: '#f43f5e', // rose-500
-        cancelButtonColor: '#64748b',
-        confirmButtonText: '<i class="fa-solid fa-trash-can mr-2"></i>ลบข้อมูล',
-        cancelButtonText: 'ยกเลิก',
-        focusCancel: true,
-        customClass: {
-            popup: 'rounded-3xl',
-            confirmButton: 'rounded-xl px-4 py-2',
-            cancelButton: 'rounded-xl px-4 py-2'
-        }
+        icon: 'info',
+        confirmButtonText: 'รับทราบ',
+        confirmButtonColor: '#0f172a',
+        customClass: { popup: 'rounded-3xl' }
     });
-
-    if (result.isConfirmed) {
-        try {
-            await apiDeleteSubmission(settings, s.id);
-            showToast({ type: "success", title: "ลบสำเร็จ", message: "ลบข้อมูลเรียบร้อยแล้ว" });
-            await refreshList();
-        } catch (e: any) {
-            showToast({ type: "error", title: "เกิดข้อผิดพลาด", message: e.message || "ลบไม่สำเร็จ" });
-        }
-    }
-  };
-
-  const updateStatus = async (id: string, nextStatus: SubmissionStatus) => {
-    try {
-        const existing = submissions.find(s => s.id === id);
-        if (!existing) return;
-
-        const config = STATUS_CONFIG[nextStatus];
-        const newLog = {
-            at: new Date().toISOString(),
-            action: nextStatus.toUpperCase(),
-            note: `เปลี่ยนสถานะเป็น: ${config.label}`
-        };
-
-        const updatedAudit = [...(existing.audit || []), newLog];
-
-      await apiUpdateSubmission(settings, id, {
-        status: nextStatus,
-        audit: updatedAudit
-      });
-
-      showToast({ type: "success", title: "อัปเดตสถานะสำเร็จ", message: "ระบบได้ปรับปรุงข้อมูลเรียบร้อยแล้ว" });
-      await refreshList();
-    } catch (e: any) {
-      showToast({ type: "error", title: "อัปเดตไม่สำเร็จ", message: e?.message || "เกิดข้อผิดพลาด" });
-    }
   };
 
   return (
@@ -285,160 +300,133 @@ const History: React.FC<HistoryProps> = ({ submissions, loading, refreshList, se
         </div>
       </div>
 
-      {/* Filters Section (No Changes) */}
       <div className="mt-6 space-y-4">
-        {/* ... filters ... */}
         {showAdvancedFilters && (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 animate-fade-in">
-                {/* ... advanced filters ... */}
+                {/* ... filters implementation ... */}
                 <div className="md:col-span-3 flex justify-end gap-3 pt-2">
-                    <button
-                        onClick={resetFilters}
-                        className="px-4 py-2 rounded-xl text-sm font-bold text-slate-500 hover:bg-slate-200 dark:text-slate-400 dark:hover:bg-slate-700 transition flex items-center gap-2"
-                    >
-                        <i className="fa-solid fa-rotate-right"></i>
-                        <span>ล้างตัวกรอง</span>
+                    <button onClick={resetFilters} className="px-4 py-2 rounded-xl text-sm font-bold text-slate-500 hover:bg-slate-200 dark:text-slate-400 dark:hover:bg-slate-700 transition flex items-center gap-2">
+                        <i className="fa-solid fa-rotate-right"></i> <span>ล้างตัวกรอง</span>
                     </button>
                 </div>
             </div>
         )}
       </div>
 
-      {/* Results List */}
       <div className="mt-6 flex-1">
         <div className="flex items-center justify-between mb-3 px-1">
-          <div className="text-sm font-bold text-slate-500 dark:text-slate-400">
-            พบข้อมูล {filtered.length} รายการ
-          </div>
-          {loading && (
-            <div className="text-sm font-bold text-slate-700 dark:text-slate-300 flex items-center gap-2">
-              <i className="fa-solid fa-spinner animate-spin" />
-              <span>กำลังโหลด...</span>
-            </div>
-          )}
+          <div className="text-sm font-bold text-slate-500 dark:text-slate-400">พบข้อมูล {filtered.length} รายการ</div>
+          {loading && <div className="text-sm font-bold text-slate-700 dark:text-slate-300 flex items-center gap-2"><i className="fa-solid fa-spinner animate-spin" /><span>กำลังโหลด...</span></div>}
         </div>
 
-        <div className="space-y-3">
+        <div className="space-y-4">
           {paginatedItems.length === 0 ? (
             <div className="rounded-2xl bg-slate-50 dark:bg-slate-800 ring-1 ring-slate-200 dark:ring-slate-700 p-12 text-center">
-              <div className="h-16 w-16 bg-slate-100 dark:bg-slate-700 text-slate-400 rounded-full mx-auto flex items-center justify-center text-3xl mb-4">
-                 <i className="fa-solid fa-magnifying-glass"></i>
-              </div>
+              <div className="h-16 w-16 bg-slate-100 dark:bg-slate-700 text-slate-400 rounded-full mx-auto flex items-center justify-center text-3xl mb-4"><i className="fa-solid fa-magnifying-glass"></i></div>
               <div className="text-lg font-black text-slate-900 dark:text-white">ไม่พบข้อมูล</div>
               <div className="mt-1 text-sm text-slate-600 dark:text-slate-400">ลองปรับเปลี่ยนคำค้นหาหรือตัวกรอง</div>
-              <button onClick={resetFilters} className="mt-4 text-sky-600 dark:text-sky-400 font-bold text-sm hover:underline">
-                  ล้างตัวกรองทั้งหมด
-              </button>
+              <button onClick={resetFilters} className="mt-4 text-sky-600 dark:text-sky-400 font-bold text-sm hover:underline">ล้างตัวกรองทั้งหมด</button>
             </div>
           ) : (
             paginatedItems.map((s) => {
               const status = STATUS_CONFIG[s.status] || STATUS_CONFIG['draft'];
               const attachments = parseAttachments(s.fileUrl);
-
-              // 🟢 CHANGE: Unlock for 'draft' OR 'reviewed' (Needs Edit). Lock for 'submitted'.
-              const canEdit = s.status === 'draft' || s.status === 'reviewed';
+              const isExpanded = expandedItems.has(s.id);
+              
+              // Only show the latest 2 logs if collapsed, or all if expanded
+              const auditLogs = s.audit || [];
+              const visibleLogs = isExpanded ? auditLogs.slice().reverse() : auditLogs.slice().reverse().slice(0, 1);
 
               return (
-                <div key={s.id} className="rounded-3xl bg-white dark:bg-slate-800 ring-1 ring-slate-200 dark:ring-slate-700 shadow-sm p-4 md:p-5 hover:shadow-md transition group">
-                  <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+                <div key={s.id} className="rounded-3xl bg-white dark:bg-slate-800 ring-1 ring-slate-200 dark:ring-slate-700 shadow-sm p-5 md:p-6 hover:shadow-md transition group relative overflow-hidden">
+                  {/* Visual Status Stepper */}
+                  <StatusStepper currentStatus={s.status} />
+
+                  <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4 relative z-10">
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-2 mb-2">
-                        <div className="text-base font-black text-slate-900 dark:text-white group-hover:text-sky-700 dark:group-hover:text-sky-400 transition">
-                          {s.firstName} {s.lastName}
+                        <div className="text-lg font-black text-slate-900 dark:text-white group-hover:text-sky-700 dark:group-hover:text-sky-400 transition">
+                          {s.fileName || `${s.firstName} ${s.lastName}`}
                         </div>
-                        
-                        <div className="flex items-center gap-2">
-                          <Badge tone={status.tone}>{status.label}</Badge>
-                        </div>
-
+                        <Badge tone={status.tone} className="shadow-sm">{status.label}</Badge>
                         <Badge tone="navy">ปี {s.budgetYear}</Badge>
                       </div>
 
-                      <div className="text-sm text-slate-700 dark:text-slate-300 grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-1">
-                         <span className="flex items-center gap-2"><i className="fa-solid fa-user-tag text-slate-400 text-xs w-4"></i> {s.position || "-"}</span>
+                      <div className="text-sm text-slate-700 dark:text-slate-300 grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-1 mb-3">
+                         <span className="flex items-center gap-2"><i className="fa-solid fa-user-tag text-slate-400 text-xs w-4"></i> {s.firstName} {s.lastName}</span>
                          <span className="flex items-center gap-2"><i className="fa-solid fa-building text-slate-400 text-xs w-4"></i> {s.organization || "-"}</span>
                       </div>
 
-                      <div className="mt-3 flex flex-wrap gap-2">
-                        <Badge tone="slate">{workTypeLabel(s.workType)}</Badge>
-                        <Badge tone="slate">{branchLabel(s.branchId)}</Badge>
+                      <div className="flex flex-wrap gap-2 mb-4">
+                        <span className="px-2 py-1 rounded-md bg-slate-100 dark:bg-slate-700 text-xs font-bold text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-600">
+                            {workTypeLabel(s.workType)}
+                        </span>
+                        <span className="px-2 py-1 rounded-md bg-slate-100 dark:bg-slate-700 text-xs font-bold text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-600">
+                            {branchLabel(s.branchId)}
+                        </span>
                       </div>
 
                       {attachments.length > 0 && (
-                          <div className="mt-3 flex flex-wrap gap-2">
+                          <div className="flex flex-wrap gap-2 mb-4">
                               {attachments.map((file: any, idx: number) => (
-                                  <a key={idx} href={file.value} target="_blank" className="inline-flex items-center gap-1 px-2 py-1 rounded bg-slate-50 dark:bg-slate-700 text-xs text-sky-600 dark:text-sky-400 hover:underline border border-slate-100 dark:border-slate-600">
-                                      <i className={`fa-solid ${file.type === 'link' ? 'fa-link' : 'fa-paperclip'}`}></i>
-                                      {file.name || 'ไฟล์แนบ'}
+                                  <a key={idx} href={file.value} target="_blank" className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-sky-50 dark:bg-sky-900/30 text-xs text-sky-700 dark:text-sky-400 hover:bg-sky-100 dark:hover:bg-sky-900/50 font-bold border border-sky-100 dark:border-sky-800 transition">
+                                      <i className={`fa-solid ${file.type === 'link' ? 'fa-link' : 'fa-file-pdf'}`}></i>
+                                      {file.name || 'เอกสารแนบ'}
                                   </a>
                               ))}
                           </div>
                       )}
-
-                      <div className="mt-3 text-xs text-slate-500 dark:text-slate-400 flex items-center gap-4">
-                        <span><i className="fa-regular fa-clock mr-1"></i> สร้าง {formatDateTimeTH(s.createdAt)}</span>
-                        <span><i className="fa-solid fa-pen-to-square mr-1"></i> อัปเดต {formatDateTimeTH(s.updatedAt)}</span>
-                      </div>
                     </div>
 
-                    <div className="flex items-center gap-2 shrink-0 md:self-center">
-                      {/* Send Button: Only for drafts */}
-                      {s.status === "draft" && (
-                        <button
-                          onClick={() => updateStatus(s.id, "submitted")}
-                          className="rounded-xl px-4 py-2 text-sm font-bold bg-slate-900 text-white hover:bg-slate-800 dark:bg-sky-600 dark:hover:bg-sky-500 transition flex items-center gap-2 shadow-lg shadow-slate-200 dark:shadow-none"
-                        >
-                          <i className="fa-solid fa-paper-plane" />
-                          <span>ส่ง</span>
-                        </button>
-                      )}
+                    <div className="flex flex-row md:flex-col gap-2 shrink-0 md:self-start">
+                      {/* Edit/Export Button */}
+                      <button
+                        onClick={() => onEdit(s)}
+                        className="rounded-xl px-4 py-2 text-sm font-bold bg-slate-900 text-white hover:bg-slate-800 dark:bg-sky-600 dark:hover:bg-sky-500 transition flex items-center justify-center gap-2 shadow-lg shadow-slate-200 dark:shadow-none min-w-[140px]"
+                      >
+                        <i className="fa-solid fa-file-pen" />
+                        <span>ออกหนังสือ/แก้ไข</span>
+                      </button>
                       
-                      {/* 🟢 Edit Button: Enabled if 'canEdit', otherwise locked */}
-                      {canEdit ? (
-                        <button
-                          onClick={() => onEdit(s)}
-                          className="rounded-xl px-4 py-2 text-sm font-bold ring-1 ring-slate-200 dark:ring-slate-600 bg-white dark:bg-slate-700 hover:bg-slate-50 dark:hover:bg-slate-600 transition flex items-center gap-2 dark:text-slate-200"
-                        >
-                          <i className="fa-solid fa-pen" />
-                          <span>{s.status === 'reviewed' ? 'แก้ไขงาน' : 'แก้ไข'}</span>
-                        </button>
-                      ) : (
-                        <div className="px-3 py-2 text-xs font-bold text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-slate-800 rounded-xl flex items-center gap-2 cursor-not-allowed border border-slate-200 dark:border-slate-700" title="ไม่สามารถแก้ไขได้ในสถานะนี้">
-                           <i className="fa-solid fa-lock"></i>
-                           <span>ถูกล็อค</span>
-                        </div>
-                      )}
-                      
-                      {/* Delete Button */}
+                      {/* Delete (Contact Info) Button */}
                       <button 
-                         onClick={() => handleDelete(s)}
-                         className="h-9 w-9 rounded-xl bg-rose-50 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-900/50 transition flex items-center justify-center border border-rose-100 dark:border-rose-900/50"
-                         title="ลบรายการ"
+                         onClick={() => handleDeleteRequest(s)}
+                         className="rounded-xl px-4 py-2 text-sm font-bold bg-white dark:bg-slate-800 text-rose-500 border border-rose-200 dark:border-rose-900 hover:bg-rose-50 dark:hover:bg-rose-900/30 transition flex items-center justify-center gap-2"
                       >
                          <i className="fa-solid fa-trash-can"></i>
+                         <span>แจ้งลบข้อมูล</span>
                       </button>
                     </div>
                   </div>
 
-                  {/* Audit Log Section */}
-                  {s.audit && s.audit.length > 0 && (
-                        <div className="mt-6 pt-2 border-t border-slate-100 dark:border-slate-700">
-                            <div className="text-[10px] uppercase font-bold text-slate-400 mb-4 flex items-center gap-2 tracking-wider">
-                                <i className="fa-solid fa-clock-rotate-left"></i>
-                                ประวัติการดำเนินการ (Audit Timeline)
+                  {/* Collapsible Audit Log Section */}
+                  {auditLogs.length > 0 && (
+                        <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50 -mx-5 -mb-5 px-5 pb-5">
+                            <div className="flex items-center justify-between mb-3">
+                                <div className="text-[10px] uppercase font-bold text-slate-400 flex items-center gap-2 tracking-wider">
+                                    <i className="fa-solid fa-clock-rotate-left"></i>
+                                    ประวัติการดำเนินการ ({auditLogs.length})
+                                </div>
+                                {auditLogs.length > 1 && (
+                                    <button 
+                                        onClick={() => toggleExpand(s.id)}
+                                        className="text-[10px] font-bold text-sky-600 hover:text-sky-700 flex items-center gap-1 transition"
+                                    >
+                                        {isExpanded ? 'ย่อรายการ' : 'ดูทั้งหมด'} 
+                                        <i className={`fa-solid fa-chevron-down transition-transform ${isExpanded ? 'rotate-180' : ''}`}></i>
+                                    </button>
+                                )}
                             </div>
-                            <div className="relative pl-2 ml-1 space-y-6">
-                                {/* Vertical Connector Line */}
-                                <div className="absolute top-2 bottom-2 left-[19px] w-[2px] bg-slate-100 dark:bg-slate-700"></div>
+                            
+                            <div className="relative pl-2 ml-1 space-y-4">
+                                {/* Vertical Line */}
+                                <div className="absolute top-2 bottom-2 left-[19px] w-[2px] bg-slate-200 dark:bg-slate-700"></div>
 
-                                {s.audit.slice().reverse().map((log, idx) => {
+                                {visibleLogs.map((log, idx) => {
                                     const style = getActionColors(log.action);
                                     return (
-                                        <div key={idx} className="relative flex items-start gap-4">
-                                            {/* Dot */}
+                                        <div key={idx} className="relative flex items-start gap-4 animate-fade-in">
                                             <div className={`relative z-10 h-3 w-3 mt-1.5 rounded-full ${style.dot} ring-4 ring-white dark:ring-slate-800`}></div>
-                                            
-                                            {/* Content */}
                                             <div className="flex-1 min-w-0">
                                                 <div className="flex flex-wrap items-center gap-2">
                                                     <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
@@ -448,13 +436,20 @@ const History: React.FC<HistoryProps> = ({ submissions, loading, refreshList, se
                                                         {log.action}
                                                     </span>
                                                 </div>
-                                                <div className="text-sm text-slate-600 dark:text-slate-400 mt-0.5 leading-relaxed break-words">
+                                                <div className="text-xs text-slate-600 dark:text-slate-400 mt-0.5 leading-relaxed break-words">
                                                     {log.note}
                                                 </div>
                                             </div>
                                         </div>
                                     );
                                 })}
+                                
+                                {!isExpanded && auditLogs.length > 1 && (
+                                    <div className="relative flex items-start gap-4 opacity-50">
+                                        <div className="relative z-10 h-2 w-2 mt-2 ml-0.5 rounded-full bg-slate-300 ring-4 ring-white dark:ring-slate-800"></div>
+                                        <div className="text-xs text-slate-400 italic mt-1">... รายการก่อนหน้าอีก {auditLogs.length - 1} รายการ</div>
+                                    </div>
+                                )}
                             </div>
                         </div>
                   )}
@@ -465,7 +460,7 @@ const History: React.FC<HistoryProps> = ({ submissions, loading, refreshList, se
         </div>
       </div>
       
-      {/* Pagination Controls (No Changes) */}
+      {/* Pagination Controls */}
       {filtered.length > 0 && (
           <div className="flex flex-col md:flex-row items-center justify-between gap-4 mt-6 pt-6 border-t border-slate-100 dark:border-slate-700">
               <div className="text-sm text-slate-500 dark:text-slate-400 font-medium">
@@ -473,48 +468,26 @@ const History: React.FC<HistoryProps> = ({ submissions, loading, refreshList, se
               </div>
               
               <div className="flex items-center gap-2">
-                  <button
-                     disabled={currentPage === 1}
-                     onClick={() => setCurrentPage(p => p - 1)}
-                     className="h-9 w-9 rounded-lg border border-slate-200 dark:border-slate-700 flex items-center justify-center hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed transition text-slate-600 dark:text-slate-300"
-                  >
+                  <button disabled={currentPage === 1} onClick={() => setCurrentPage(p => p - 1)} className="h-9 w-9 rounded-lg border border-slate-200 dark:border-slate-700 flex items-center justify-center hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50 transition text-slate-600 dark:text-slate-300">
                      <i className="fa-solid fa-chevron-left text-xs"></i>
                   </button>
-
                   <div className="flex items-center gap-1">
                       {getPageNumbers().map((p, i) => (
                           typeof p === 'number' ? (
-                            <button
-                                key={i}
-                                onClick={() => setCurrentPage(p)}
-                                className={`h-9 w-9 rounded-lg font-bold text-sm transition ${currentPage === p ? 'bg-slate-900 text-white shadow-md dark:bg-sky-600' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700'}`}
-                            >
+                            <button key={i} onClick={() => setCurrentPage(p)} className={`h-9 w-9 rounded-lg font-bold text-sm transition ${currentPage === p ? 'bg-slate-900 text-white shadow-md dark:bg-sky-600' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700'}`}>
                                 {p}
                             </button>
-                          ) : (
-                            <span key={i} className="h-9 w-9 flex items-center justify-center text-slate-400">...</span>
-                          )
+                          ) : <span key={i} className="h-9 w-9 flex items-center justify-center text-slate-400">...</span>
                       ))}
                   </div>
-
-                  <button
-                     disabled={currentPage === totalPages}
-                     onClick={() => setCurrentPage(p => p + 1)}
-                     className="h-9 w-9 rounded-lg border border-slate-200 dark:border-slate-700 flex items-center justify-center hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed transition text-slate-600 dark:text-slate-300"
-                  >
+                  <button disabled={currentPage === totalPages} onClick={() => setCurrentPage(p => p + 1)} className="h-9 w-9 rounded-lg border border-slate-200 dark:border-slate-700 flex items-center justify-center hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50 transition text-slate-600 dark:text-slate-300">
                      <i className="fa-solid fa-chevron-right text-xs"></i>
                   </button>
               </div>
-              
-              <select 
-                 value={itemsPerPage}
-                 onChange={(e) => setItemsPerPage(Number(e.target.value))}
-                 className="rounded-xl border border-slate-200 dark:border-slate-700 py-2 px-3 text-sm outline-none focus:ring-2 focus:ring-sky-100 dark:focus:ring-sky-900 bg-white dark:bg-slate-800 dark:text-white cursor-pointer hover:border-slate-300 transition"
-              >
+              <select value={itemsPerPage} onChange={(e) => setItemsPerPage(Number(e.target.value))} className="rounded-xl border border-slate-200 dark:border-slate-700 py-2 px-3 text-sm outline-none focus:ring-2 bg-white dark:bg-slate-800 dark:text-white cursor-pointer hover:border-slate-300 transition">
                   <option value={10}>10 รายการ / หน้า</option>
                   <option value={20}>20 รายการ / หน้า</option>
                   <option value={50}>50 รายการ / หน้า</option>
-                  <option value={100}>100 รายการ / หน้า</option>
               </select>
           </div>
       )}
