@@ -318,6 +318,13 @@ const Registration: React.FC<RegistrationProps> = ({ settings, onSuccess, showTo
       window.print();
   };
 
+  // Helper for Print Fill
+  const Fill = ({ t, w }: { t: any, w?: string }) => (
+    <span className="print-fill" style={{ minWidth: w }}>
+        {t || "\u00A0"}
+    </span>
+  );
+
   return (
     <div className="max-w-4xl mx-auto pb-12 fade-in">
         
@@ -353,8 +360,16 @@ const Registration: React.FC<RegistrationProps> = ({ settings, onSuccess, showTo
                     .signature-box { margin-top: 30px; text-align: center; float: right; width: 8cm; }
                     .signature-row { display: flex; justify-content: space-between; margin-top: 30px; }
                     .signature-center { text-align: center; }
-                    .dotted { border-bottom: 1px dotted #000; display: inline-block; min-width: 50px; text-align: center; }
-                    .checkbox { display: inline-block; width: 14px; height: 14px; border: 1px solid #000; margin-right: 5px; position: relative; top: 2px; }
+                    /* Updated Fill Style */
+                    .print-fill {
+                        border-bottom: 1px dotted #000;
+                        display: inline-block;
+                        text-align: center;
+                        padding: 0 4px;
+                        line-height: 1.2;
+                        position: relative;
+                        /* top: 1px; */ 
+                    }
                     .bold { font-weight: bold; }
                     .text-justify { text-align: justify; }
                     .center { text-align: center; }
@@ -364,18 +379,19 @@ const Registration: React.FC<RegistrationProps> = ({ settings, onSuccess, showTo
 
             {/* PAGE 1: COVER LETTER (บันทึกข้อความ) */}
             <div className="page-break">
-                <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/c/c9/Thai_Government_Garuda_Emblem_%28Version_2%29.svg/1200px-Thai_Government_Garuda_Emblem_%28Version_2%29.svg.png" className="garuda" alt="Garuda" />
+                {/* Garuda Image Updated */}
+                <img src="/pic/garuda.png" className="garuda" alt="Garuda" />
                 
                 <div className="doc-header" style={{ marginTop: '10px' }}>
-                    <div>ที่ สต {toThaiNum(form.bookNo || "....................")}</div>
+                    <div>ที่ สต <Fill t={toThaiNum(form.bookNo)} w="4cm" /></div>
                     <div className="right">
-                        {toThaiNum(currentUser.organization)}<br/>
+                        <Fill t={toThaiNum(currentUser.organization)} w="6cm" /><br/>
                         ........................................
                     </div>
                 </div>
 
                 <div className="center bold" style={{ margin: '10px 0' }}>
-                    {toThaiDate()}
+                    <Fill t={toThaiDate()} w="5cm" />
                 </div>
 
                 <div>
@@ -394,14 +410,14 @@ const Registration: React.FC<RegistrationProps> = ({ settings, onSuccess, showTo
                 </div>
 
                 <div className="indent-1 text-justify" style={{ marginTop: '10px' }}>
-                    ด้วย {toThaiNum(currentUser.firstName)} {toThaiNum(currentUser.lastName)} ตำแหน่ง {toThaiNum(currentUser.position)}
-                    สังกัด {toThaiNum(currentUser.organization)}
+                    ด้วย <Fill t={`${toThaiNum(currentUser.firstName)} ${toThaiNum(currentUser.lastName)}`} w="6cm" /> ตำแหน่ง <Fill t={toThaiNum(currentUser.position)} w="5cm" />
+                    สังกัด <Fill t={toThaiNum(currentUser.organization)} w="6cm" />
                     มีความประสงค์ขอส่งบทความเพื่อเผยแพร่ในเว็บไซต์สำนักงานสาธารณสุขจังหวัดสตูลในประเภท
-                    {WORK_TYPES.find(w => w.id === form.workType)?.label} เรื่อง “{toThaiNum(form.title)}”
+                    {WORK_TYPES.find(w => w.id === form.workType)?.label} เรื่อง “<Fill t={toThaiNum(form.title)} w="8cm" />”
                 </div>
                 
                 <div className="indent-1 text-justify" style={{ marginTop: '10px' }}>
-                    โรงพยาบาล / สำนักงานสาธารณสุขอำเภอ {toThaiNum(currentUser.organization)} ขอส่งบทความและเอกสาร
+                    โรงพยาบาล / สำนักงานสาธารณสุขอำเภอ <Fill t={toThaiNum(currentUser.organization)} w="5cm" /> ขอส่งบทความและเอกสาร
                     ที่เกี่ยวข้องเพื่อเสนอคณะทำงานพิจารณาบทความที่ลงเผยแพร่ในเว็บไซต์สำนักงานสาธารณสุขจังหวัดสตูล
                     รายละเอียดปรากฏตามสิ่งที่ส่งมาด้วย
                 </div>
@@ -413,13 +429,13 @@ const Registration: React.FC<RegistrationProps> = ({ settings, onSuccess, showTo
                 <div className="signature-box">
                     ขอแสดงความนับถือ
                     <br/><br/><br/>
-                    (.......................................................)<br/>
-                    ตำแหน่ง.......................................................
+                    (<Fill t="............................................................" w="5cm" />)<br/>
+                    ตำแหน่ง <Fill t="................................................" w="5cm" />
                 </div>
 
                 <div style={{ position: 'absolute', bottom: 0, left: 0, fontSize: '14pt' }}>
                     กลุ่มงาน....................<br/>
-                    โทร. {toThaiNum(currentUser.phone || "....................")}<br/>
+                    โทร. <Fill t={toThaiNum(currentUser.phone)} w="4cm" /><br/>
                     โทรสาร .....................
                 </div>
             </div>
@@ -431,12 +447,12 @@ const Registration: React.FC<RegistrationProps> = ({ settings, onSuccess, showTo
                 </div>
                 
                 <div className="right">
-                    ตามที่ นาย/นาง/นางสาว {toThaiNum(currentUser.firstName)} {toThaiNum(currentUser.lastName)}................................ตำแหน่ง/ระดับ {toThaiNum(currentUser.position)}................................<br/>
-                    สังกัด {toThaiNum(currentUser.organization)}.......................................................................................................................
+                    ตามที่ นาย/นาง/นางสาว <Fill t={`${toThaiNum(currentUser.firstName)} ${toThaiNum(currentUser.lastName)}`} w="5cm" /> ตำแหน่ง/ระดับ <Fill t={toThaiNum(currentUser.position)} w="4cm" /> <br/>
+                    สังกัด <Fill t={toThaiNum(currentUser.organization)} w="8cm" />
                 </div>
 
                 <div className="indent-1 text-justify" style={{ marginTop: '10px' }}>
-                    ได้ส่งบทความรายงานการวิจัย / บทความวิชาการ / รายงานกรณีศึกษา เรื่อง “{toThaiNum(form.title)}”
+                    ได้ส่งบทความรายงานการวิจัย / บทความวิชาการ / รายงานกรณีศึกษา เรื่อง “<Fill t={toThaiNum(form.title)} w="8cm" />”
                     เพื่อเผยแพร่ทางเว็บไซต์สำนักงานสาธารณสุขจังหวัดสตูล ทั้งนี้ ข้าพเจ้าและผู้เขียนร่วม (ถ้ามี) ขอรับรองว่า
                 </div>
 
@@ -468,7 +484,7 @@ const Registration: React.FC<RegistrationProps> = ({ settings, onSuccess, showTo
                         ลงนามผู้เขียนหลัก (ชื่อที่ {toThaiNum(1)})
                         <br/><br/>
                         .....................................................<br/>
-                        ({toThaiNum(currentUser.firstName)} {toThaiNum(currentUser.lastName)})<br/>
+                        (<Fill t={`${toThaiNum(currentUser.firstName)} ${toThaiNum(currentUser.lastName)}`} w="5cm" />)<br/>
                         ........../...................../..............
                     </div>
                     {form.coAuthor && (
@@ -476,7 +492,7 @@ const Registration: React.FC<RegistrationProps> = ({ settings, onSuccess, showTo
                             ลงนามผู้เขียนร่วม (ชื่อที่ {toThaiNum(2)})
                             <br/><br/>
                             .....................................................<br/>
-                            ({toThaiNum(form.coAuthor)})<br/>
+                            (<Fill t={toThaiNum(form.coAuthor)} w="5cm" />)<br/>
                             ........../...................../..............
                         </div>
                     )}
@@ -495,8 +511,8 @@ const Registration: React.FC<RegistrationProps> = ({ settings, onSuccess, showTo
                     
                     <div className="signature-box" style={{ marginTop: '20px' }}>
                         .....................................................<br/>
-                        ( {toThaiNum(form.bossName) || "....................................................."} )<br/>
-                        ผอ.รพช./สสอ./หน.กลุ่มงานฯ<br/>
+                        ( <Fill t={toThaiNum(form.bossName)} w="5cm" /> )<br/>
+                        <Fill t={form.bossPosition || "ผอ.รพช./สสอ./หน.กลุ่มงานฯ"} w="5cm" /><br/>
                         ........../...................../..............
                     </div>
                 </div>
@@ -509,49 +525,50 @@ const Registration: React.FC<RegistrationProps> = ({ settings, onSuccess, showTo
                 </div>
 
                 <div style={{ marginBottom: '15px' }}>
-                    <span className="bold">ชื่อ-สกุล ผู้เขียนหลัก (ชื่อที่ {toThaiNum(1)})</span> {toThaiNum(currentUser.firstName)} {toThaiNum(currentUser.lastName)}..........................................................................................................................
+                    <span className="bold">ชื่อ-สกุล ผู้เขียนหลัก (ชื่อที่ {toThaiNum(1)})</span> <Fill t={`${toThaiNum(currentUser.firstName)} ${toThaiNum(currentUser.lastName)}`} w="10cm" />
                 </div>
                 <div style={{ marginBottom: '15px' }}>
-                    <span className="bold">สถานที่ปฏิบัติงานปัจจุบัน</span> {toThaiNum(currentUser.organization)}................................................................................................... ...............................
+                    <span className="bold">สถานที่ปฏิบัติงานปัจจุบัน</span> <Fill t={toThaiNum(currentUser.organization)} w="12cm" />
                 </div>
                 <div style={{ marginBottom: '15px' }}>
-                    <span className="bold">สถานที่ติดต่อได้สะดวก</span> {toThaiNum(currentUser.organization)}.............................................................................. .........................................................
+                    <span className="bold">สถานที่ติดต่อได้สะดวก</span> <Fill t={toThaiNum(currentUser.organization)} w="12cm" />
                 </div>
                 <div style={{ marginBottom: '15px' }}>
-                    <span className="bold">เบอร์โทรศัพท์</span> {toThaiNum(currentUser.phone)}.......................................................... <span className="bold">E-mail</span> {currentUser.email}....................................................................................
+                    <span className="bold">เบอร์โทรศัพท์</span> <Fill t={toThaiNum(currentUser.phone)} w="5cm" /> <span className="bold">E-mail</span> <Fill t={currentUser.email} w="6cm" />
                 </div>
                 <div style={{ marginBottom: '30px' }}>
                     <span className="bold">ประวัติการศึกษา (ตั้งแต่ปริญญาตรีจนถึงการศึกษาสูงสุด ระบุสาขาที่จบ)</span><br/>
-                    ........................................................................................................................................................................................................<br/>
-                    ........................................................................................................................................................................................................
+                    <div style={{ borderBottom: '1px dotted #000', height: '1.5em', marginTop: '10px' }}></div>
+                    <div style={{ borderBottom: '1px dotted #000', height: '1.5em', marginTop: '10px' }}></div>
                 </div>
 
                 {/* Co-Author Section */}
                 <div style={{ marginBottom: '15px' }}>
-                    <span className="bold">ชื่อ-สกุล ผู้เขียนหลัก (ชื่อที่ {toThaiNum(2)})</span> {toThaiNum(form.coAuthor) || ".........................................................................................................................."}
+                    <span className="bold">ชื่อ-สกุล ผู้เขียนหลัก (ชื่อที่ {toThaiNum(2)})</span> <Fill t={toThaiNum(form.coAuthor)} w="10cm" />
                 </div>
                 <div style={{ marginBottom: '15px' }}>
-                    <span className="bold">สถานที่ปฏิบัติงานปัจจุบัน</span> ................................................................................................... ...............................
+                    <span className="bold">สถานที่ปฏิบัติงานปัจจุบัน</span> <Fill t="" w="12cm" />
                 </div>
                 <div style={{ marginBottom: '15px' }}>
-                    <span className="bold">สถานที่ติดต่อได้สะดวก</span> .............................................................................. .........................................................
+                    <span className="bold">สถานที่ติดต่อได้สะดวก</span> <Fill t="" w="12cm" />
                 </div>
                 <div style={{ marginBottom: '15px' }}>
-                    <span className="bold">เบอร์โทรศัพท์</span> .......................................................... <span className="bold">E-mail</span> ........................................................................................................
+                    <span className="bold">เบอร์โทรศัพท์</span> <Fill t="" w="5cm" /> <span className="bold">E-mail</span> <Fill t="" w="6cm" />
                 </div>
                 <div style={{ marginBottom: '15px' }}>
                     <span className="bold">ประวัติการศึกษา (ตั้งแต่ปริญญาตรีจนถึงการศึกษาสูงสุด ระบุสาขาที่จบ)</span><br/>
-                    ........................................................................................................................................................................................................<br/>
-                    ........................................................................................................................................................................................................
+                    <div style={{ borderBottom: '1px dotted #000', height: '1.5em', marginTop: '10px' }}></div>
+                    <div style={{ borderBottom: '1px dotted #000', height: '1.5em', marginTop: '10px' }}></div>
                 </div>
             </div>
 
             {/* PAGE 4: ACADEMIC CERT (หนังสือรับรองผลงานวิชาการ) */}
             <div className="page-break">
-                <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/c/c9/Thai_Government_Garuda_Emblem_%28Version_2%29.svg/1200px-Thai_Government_Garuda_Emblem_%28Version_2%29.svg.png" className="garuda" alt="Garuda" />
+                {/* Garuda Image Updated */}
+                <img src="/pic/garuda.png" className="garuda" alt="Garuda" />
                 
                 <div className="doc-header" style={{ marginTop: '10px' }}>
-                    <div>ที่ สต {toThaiNum(form.bookNo || "....................")}</div>
+                    <div>ที่ สต <Fill t={toThaiNum(form.bookNo)} w="4cm" /></div>
                     <div className="right">
                         (ส่วนราชการ.......<br/>
                         ........................................<br/>
@@ -564,23 +581,23 @@ const Registration: React.FC<RegistrationProps> = ({ settings, onSuccess, showTo
                 </div>
 
                 <div className="indent-1">
-                    หนังสือรับรองฉบับนี้ให้ไว้เพื่อรับรองว่า นาย/นาง/นางสาว {toThaiNum(currentUser.firstName)} {toThaiNum(currentUser.lastName)}................................................
+                    หนังสือรับรองฉบับนี้ให้ไว้เพื่อรับรองว่า นาย/นาง/นางสาว <Fill t={`${toThaiNum(currentUser.firstName)} ${toThaiNum(currentUser.lastName)}`} w="8cm" />
                 </div>
                 <div>
-                    ได้จัดทำผลงานวิชาการ เรื่อง {toThaiNum(form.title)}.....................................................................................................................................
+                    ได้จัดทำผลงานวิชาการ เรื่อง <Fill t={toThaiNum(form.title)} w="12cm" />
                 </div>
                 <div>
-                    ................................................................................................................................................................................................................
+                    <Fill t="" w="100%" />
                 </div>
                 <div>
-                    เพื่อขอประเมินแต่งตั้งให้ดำรงตำแหน่ง............................................................ ตำแหน่งเลขที่..............................
+                    เพื่อขอประเมินแต่งตั้งให้ดำรงตำแหน่ง <Fill t="" w="6cm" /> ตำแหน่งเลขที่ <Fill t="" w="3cm" />
                 </div>
                 <div>
-                    ส่วนราชการ..................................................................................................................................................................
+                    ส่วนราชการ <Fill t="" w="12cm" />
                 </div>
                 <div className="text-justify">
                     โดยผลงานวิชาการของข้าราชการเผยแพร่ทาง Website ของสำนักงานสาธารณสุขจังหวัดสตูล 
-                    เมื่อวันที่……..........................….. โดยสามารถสืบค้นได้จาก https://www.satunhealth.go.th และผลงาน
+                    เมื่อวันที่ <Fill t="" w="3cm" /> โดยสามารถสืบค้นได้จาก https://www.satunhealth.go.th และผลงาน
                     วิชาการดังกล่าวไม่ใช่ผลงานวิจัยหรือวิทยานิพนธ์ ที่เป็นส่วนหนึ่งของการศึกษาเพื่อขอรับปริญญาหรือ
                     ประกาศนียบัตร หรือเป็นส่วนหนึ่งของการฝึกอบรม
                 </div>
@@ -589,8 +606,8 @@ const Registration: React.FC<RegistrationProps> = ({ settings, onSuccess, showTo
                     <div className="bold">{toThaiNum(1)}. คำรับรองของผู้ขอรับการประเมิน</div>
                     <div className="signature-box" style={{ float: 'none', marginLeft: 'auto', marginRight: '0' }}>
                         ลงชื่อ.............................................................<br/>
-                        ({toThaiNum(currentUser.firstName)} {toThaiNum(currentUser.lastName)})<br/>
-                        ตำแหน่ง {toThaiNum(currentUser.position)}<br/>
+                        (<Fill t={`${toThaiNum(currentUser.firstName)} ${toThaiNum(currentUser.lastName)}`} w="5cm" />)<br/>
+                        ตำแหน่ง <Fill t={toThaiNum(currentUser.position)} w="5cm" /><br/>
                         วันที่....................................................... .........
                     </div>
                 </div>
