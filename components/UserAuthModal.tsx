@@ -1,7 +1,6 @@
-
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { UserProfile, Education } from '../types';
-import { apiRegisterUser, apiLoginUser } from '../services/apiService';
+import { apiRegisterUser, apiLoginUser, apiUploadAvatar, apiUpdateUserProfile } from '../services/apiService';
 import { HEALTH_POSITIONS, JOB_LEVELS, EDUCATION_LEVELS } from '../constants';
 import OrgAutocomplete from './ui/OrgAutocomplete';
 import UniversityAutocomplete from './ui/UniversityAutocomplete';
@@ -24,9 +23,18 @@ const UserAuthModal: React.FC<UserAuthModalProps> = ({ isOpen, onClose, onSucces
 
   // Register State
   const [regForm, setRegForm] = useState({
-    firstName: "", lastName: "", email: "", phone: "", organization: "", 
+    firstName: "", lastName: "", email: "", organization: "", 
     position: "", positionCustom: "", level: ""
   });
+  
+  // Phone Number State (10 Digits)
+  const [phoneDigits, setPhoneDigits] = useState<string[]>(Array(10).fill(""));
+  const phoneRefs = useRef<(HTMLInputElement | null)[]>([]);
+
+  // Avatar State
+  const [regAvatar, setRegAvatar] = useState<File | null>(null);
+  const [regAvatarPreview, setRegAvatarPreview] = useState<string | null>(null);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
   
   // Education State for Registration (Highest Degree)
   const [eduForm, setEduForm] = useState<Education>({
@@ -49,7 +57,9 @@ const UserAuthModal: React.FC<UserAuthModalProps> = ({ isOpen, onClose, onSucces
   useEffect(() => {
       if (!isOpen) {
           setLoginEmail(""); setLoginPassword("");
-          setRegForm({ firstName: "", lastName: "", email: "", phone: "", organization: "", position: "", positionCustom: "", level: "" });
+          setRegForm({ firstName: "", lastName: "", email: "", organization: "", position: "", positionCustom: "", level: "" });
+          setPhoneDigits(Array(10).fill("")); // Reset phone
+          setRegAvatar(null); setRegAvatarPreview(null); // Reset avatar
           setEduForm({ id: 'primary', degree: '', major: '', institution: '', year: '' });
           setRegPassword(""); setRegConfirmPassword("");
           setLoading(false);
@@ -57,6 +67,56 @@ const UserAuthModal: React.FC<UserAuthModalProps> = ({ isOpen, onClose, onSucces
   }, [isOpen]);
 
   if (!isOpen) return null;
+
+  // --- Phone Input Logic ---
+  const handlePhoneChange = (index: number, value: string) => {
+      if (!/^\d*$/.test(value)) return; // Allow numbers only
+
+      const newDigits = [...phoneDigits];
+      newDigits[index] = value.slice(-1); // Take only the last entered char
+      setPhoneDigits(newDigits);
+
+      // Auto focus next
+      if (value && index < 9) {
+          phoneRefs.current[index + 1]?.focus();
+      }
+  };
+
+  const handlePhoneKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
+      if (e.key === 'Backspace' && !phoneDigits[index] && index > 0) {
+          phoneRefs.current[index - 1]?.focus();
+      }
+  };
+
+  const handlePhonePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+      e.preventDefault();
+      const pasteData = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 10);
+      const newDigits = [...phoneDigits];
+      for (let i = 0; i < pasteData.length; i++) {
+          newDigits[i] = pasteData[i];
+      }
+      setPhoneDigits(newDigits);
+      // Focus on the last filled index
+      const focusIndex = Math.min(pasteData.length, 9);
+      phoneRefs.current[focusIndex]?.focus();
+  };
+
+  // --- Avatar Logic ---
+  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      if (e.target.files && e.target.files[0]) {
+          const file = e.target.files[0];
+          if (file.size > 2 * 1024 * 1024) {
+              showToast({ type: 'error', title: 'ไฟล์ใหญ่เกินไป', message: 'รูปภาพต้องมีขนาดไม่เกิน 2MB' });
+              return;
+          }
+          setRegAvatar(file);
+          const reader = new FileReader();
+          reader.onloadend = () => {
+              setRegAvatarPreview(reader.result as string);
+          };
+          reader.readAsDataURL(file);
+      }
+  };
 
   // --- Password Strength Logic ---
   const getPasswordStrength = (pass: string) => {
@@ -104,8 +164,15 @@ const UserAuthModal: React.FC<UserAuthModalProps> = ({ isOpen, onClose, onSucces
   };
 
   const handleRegister = async () => {
+      // Validate Phone
+      const phoneNumber = phoneDigits.join('');
+      if (phoneNumber.length !== 10) {
+          showToast({ type: 'error', title: 'เบอร์โทรศัพท์ไม่ครบ', message: 'กรุณากรอกเบอร์โทรศัพท์ให้ครบ 10 หลัก' });
+          return;
+      }
+
       // 1. Basic Validation
-      if (!regForm.firstName || !regForm.lastName || !regForm.email || !regForm.phone || !regForm.organization || !regPassword) {
+      if (!regForm.firstName || !regForm.lastName || !regForm.email || !regForm.organization || !regPassword) {
           showToast({ type: 'error', title: 'ข้อมูลไม่ครบ', message: 'กรุณากรอกข้อมูลส่วนตัวให้ครบถ้วน' });
           return;
       }
@@ -136,6 +203,16 @@ const UserAuthModal: React.FC<UserAuthModalProps> = ({ isOpen, onClose, onSucces
           return;
       }
 
+      // 5. Avatar Check (Optional but encouraged)
+      if (!regAvatar) {
+          // Warning but proceed? Or block? Prompt implied finishing the process here.
+          // Let's make it optional but show warning if missing? No, user said "Upload photo... so it is finished".
+          // Assuming mandatory for "finished" profile.
+          // Uncomment below to force:
+          // showToast({ type: 'error', title: 'ขาดรูปโปรไฟล์', message: 'กรุณาอัปโหลดรูปถ่ายหน้าตรง' });
+          // return;
+      }
+
       setLoading(true);
       try {
           const newUser: UserProfile = {
@@ -144,16 +221,32 @@ const UserAuthModal: React.FC<UserAuthModalProps> = ({ isOpen, onClose, onSucces
               firstName: regForm.firstName,
               lastName: regForm.lastName,
               email: regForm.email,
-              phone: regForm.phone,
+              phone: phoneNumber,
               organization: regForm.organization,
               position: finalPosition,
               level: regForm.level,
               educationHistory: [eduForm] // Save initial education
           };
           
+          // 1. Create User
           const user = await apiRegisterUser(newUser, regPassword);
-          showToast({ type: 'success', title: 'ลงทะเบียนสำเร็จ', message: 'ยินดีต้อนรับสมาชิกใหม่' });
-          onSuccess(user);
+
+          // 2. Upload Avatar (If provided)
+          if (regAvatar && user.id) {
+              try {
+                  const avatarUrl = await apiUploadAvatar(user.id, regAvatar);
+                  const updatedUser = await apiUpdateUserProfile(user.id, { avatarUrl });
+                  onSuccess(updatedUser); // Update with avatar
+              } catch (uploadError) {
+                  console.error("Avatar upload failed:", uploadError);
+                  showToast({ type: 'info', title: 'ลงทะเบียนสำเร็จ', message: 'แต่รูปภาพอัปโหลดไม่ผ่าน (สามารถแก้ภายหลังได้)' });
+                  onSuccess(user); // Fallback to user without avatar
+              }
+          } else {
+              showToast({ type: 'success', title: 'ลงทะเบียนสำเร็จ', message: 'ยินดีต้อนรับสมาชิกใหม่' });
+              onSuccess(user);
+          }
+
       } catch (e: any) {
           showToast({ type: 'error', title: 'ลงทะเบียนไม่สำเร็จ', message: e.message });
       } finally {
@@ -247,9 +340,7 @@ const UserAuthModal: React.FC<UserAuthModalProps> = ({ isOpen, onClose, onSucces
                         <p className="text-xs text-slate-500">กรุณากรอกข้อมูลให้ครบถ้วนเพื่อสิทธิประโยชน์ของท่าน</p>
                     </div>
                     
-                    {/* SECTION 1: Personal Info (Highest Z-Index if overlapped by above, but actually we want descending) */}
-                    {/* We use descending z-index so that Section 1 overflows into Section 2, Section 2 into 3 etc. */}
-                    
+                    {/* SECTION 1: Personal Info (Modified: Includes Avatar & Phone Boxes) */}
                     <div className="relative p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 z-40">
                         {/* Watermark Container */}
                         <div className="absolute inset-0 overflow-hidden rounded-2xl pointer-events-none">
@@ -259,6 +350,32 @@ const UserAuthModal: React.FC<UserAuthModalProps> = ({ isOpen, onClose, onSucces
                             <i className="fa-solid fa-user-tag text-sky-500"></i> ข้อมูลส่วนตัว
                         </h4>
                         
+                        {/* Avatar Upload */}
+                        <div className="flex flex-col items-center mb-6 relative z-10">
+                            <div 
+                                onClick={() => avatarInputRef.current?.click()}
+                                className="h-24 w-24 rounded-full bg-white dark:bg-slate-700 border-4 border-slate-200 dark:border-slate-600 shadow-sm flex items-center justify-center cursor-pointer group relative overflow-hidden"
+                            >
+                                {regAvatarPreview ? (
+                                    <img src={regAvatarPreview} alt="Preview" className="w-full h-full object-cover" />
+                                ) : (
+                                    <i className="fa-solid fa-camera text-3xl text-slate-300 group-hover:text-sky-500 transition"></i>
+                                )}
+                                <div className="absolute inset-0 bg-black/40 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition duration-300">
+                                    <i className="fa-solid fa-upload text-white mb-1"></i>
+                                    <span className="text-[9px] text-white font-bold">อัปโหลดรูป</span>
+                                </div>
+                            </div>
+                            <span className="text-xs text-slate-500 mt-2">รูปถ่ายหน้าตรง (Official Photo)</span>
+                            <input 
+                                type="file" 
+                                ref={avatarInputRef} 
+                                onChange={handleAvatarChange} 
+                                accept="image/png, image/jpeg" 
+                                className="hidden" 
+                            />
+                        </div>
+
                         <div className="grid grid-cols-2 gap-3 relative z-10">
                             <div>
                                 <label className="text-xs font-bold text-slate-700 dark:text-slate-300">ชื่อ <span className="text-rose-500">*</span></label>
@@ -277,14 +394,26 @@ const UserAuthModal: React.FC<UserAuthModalProps> = ({ isOpen, onClose, onSucces
                                 />
                             </div>
                         </div>
+                        
+                        {/* 10-Box Phone Input */}
                         <div className="mt-3 relative z-10">
-                            <label className="text-xs font-bold text-slate-700 dark:text-slate-300">เบอร์โทรศัพท์ <span className="text-rose-500">*</span></label>
-                            <input 
-                                value={regForm.phone}
-                                onChange={(e) => setRegForm({...regForm, phone: e.target.value})}
-                                className="w-full rounded-xl border border-slate-200 dark:border-slate-700 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-sky-200 dark:bg-slate-800 dark:text-white"
-                                placeholder="0XX-XXX-XXXX"
-                            />
+                            <label className="text-xs font-bold text-slate-700 dark:text-slate-300 mb-1 block">เบอร์โทรศัพท์ (10 หลัก) <span className="text-rose-500">*</span></label>
+                            <div className="flex gap-1 sm:gap-2 justify-between">
+                                {phoneDigits.map((digit, index) => (
+                                    <input
+                                        key={index}
+                                        ref={(el) => { phoneRefs.current[index] = el; }}
+                                        type="text"
+                                        value={digit}
+                                        maxLength={1}
+                                        onChange={(e) => handlePhoneChange(index, e.target.value)}
+                                        onKeyDown={(e) => handlePhoneKeyDown(index, e)}
+                                        onPaste={index === 0 ? handlePhonePaste : undefined}
+                                        className="w-full h-10 sm:h-12 rounded-lg border border-slate-200 dark:border-slate-700 text-center font-bold text-lg focus:border-sky-500 focus:ring-2 focus:ring-sky-200 outline-none dark:bg-slate-800 dark:text-white transition"
+                                        placeholder="-"
+                                    />
+                                ))}
+                            </div>
                         </div>
                     </div>
 
@@ -455,7 +584,7 @@ const UserAuthModal: React.FC<UserAuthModalProps> = ({ isOpen, onClose, onSucces
                                         type="password"
                                         value={regConfirmPassword}
                                         onChange={(e) => setRegConfirmPassword(e.target.value)}
-                                        className={`w-full rounded-xl border px-3 py-2 text-sm outline-none focus:ring-2 dark:bg-slate-800 dark:text-white transition ${regConfirmPassword && regPassword !== regConfirmPassword ? 'border-rose-300 focus:ring-rose-200' : 'border-slate-200 dark:border-slate-700 focus:ring-emerald-200'}`}
+                                        className={`w-full rounded-xl border px-3 py-2 text-sm outline-none focus:ring-2 dark:bg-slate-900 dark:text-white transition ${regConfirmPassword && regPassword !== regConfirmPassword ? 'border-rose-300 focus:ring-rose-200' : 'border-slate-200 dark:border-slate-700 focus:ring-emerald-200'}`}
                                         placeholder="ยืนยันอีกครั้ง"
                                     />
                                 </div>

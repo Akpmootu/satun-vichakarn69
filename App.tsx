@@ -295,11 +295,12 @@ export default function App() {
       setIsMobileMenuOpen(false); // Close mobile menu
       setShowProfileMenu(false); // Close profile dropdown
       
+      // Increased delay to 2.5s (2500ms) as requested
       setTimeout(() => {
           setActiveTab(tabId);
           setIsPageLoading(false);
           window.scrollTo({ top: 0, behavior: 'smooth' });
-      }, 600);
+      }, 2500);
   };
 
   const handleEditSubmission = (submission: Submission) => {
@@ -308,7 +309,7 @@ export default function App() {
       setTimeout(() => {
           setActiveTab('register');
           setIsPageLoading(false);
-      }, 800);
+      }, 2500); // Also increase edit navigation delay
   };
 
   const handleUpdateUser = (updatedUser: UserProfile) => {
@@ -326,12 +327,12 @@ export default function App() {
       window.dispatchEvent(new CustomEvent('open-cookie-settings'));
   };
 
-  // --- Navigation Data Logic ---
+  // --- Navigation Data Logic (Reordered) ---
   const allTabs = [
     { id: "home", label: "หน้าหลัก", icon: "fa-house" },
-    { id: "register", label: "ลงทะเบียนส่งงาน", icon: "fa-pen-to-square" },
-    { id: "history", label: "ประวัติผลงาน", icon: "fa-clock-rotate-left" },
     { id: "analytics", label: "วิเคราะห์", icon: "fa-chart-pie" },
+    { id: "register", label: "ลงทะเบียนส่งผลงาน", icon: "fa-pen-to-square" },
+    { id: "history", label: "ประวัติผลงาน", icon: "fa-clock-rotate-left" },
     { id: "settings", label: "ตั้งค่าระบบ", icon: "fa-gear" },
   ];
 
@@ -704,9 +705,9 @@ export default function App() {
                       <ul className="space-y-3">
                           {[
                               { id: 'home', label: 'หน้าหลัก (KM Portal)', icon: 'fa-house' },
+                              { id: 'analytics', label: 'สรุปสถานการณ์', icon: 'fa-chart-pie' },
                               { id: 'register', label: 'นำเข้าองค์ความรู้', icon: 'fa-cloud-arrow-up' },
                               { id: 'history', label: 'คลังความรู้ (KM Bank)', icon: 'fa-book-open' },
-                              { id: 'analytics', label: 'สรุปสถานการณ์', icon: 'fa-chart-pie' },
                           ].map((item) => (
                               <li key={item.id}>
                                   <button 

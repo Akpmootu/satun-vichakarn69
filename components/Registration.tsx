@@ -181,11 +181,15 @@ const Registration: React.FC<RegistrationProps> = ({ settings, onSuccess, showTo
   
   const [coAuthors, setCoAuthors] = useState<CoAuthor[]>([]);
   const [attachments, setAttachments] = useState<Attachment[]>([]);
+  const [authorPhoto, setAuthorPhoto] = useState<string | null>(null); // New Official Photo State
+  
   const [linkInput, setLinkInput] = useState({ url: '', name: '' });
   const [isDragging, setIsDragging] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
+  
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const photoInputRef = useRef<HTMLInputElement>(null); // Ref for photo input
 
   // Initialize Data
   useEffect(() => {
@@ -201,6 +205,9 @@ const Registration: React.FC<RegistrationProps> = ({ settings, onSuccess, showTo
         
         // Co-Authors
         setCoAuthors(editingSubmission.coAuthors || []);
+        
+        // Author Photo
+        setAuthorPhoto(editingSubmission.authorPhoto || null);
 
         try {
             if (editingSubmission.fileUrl && editingSubmission.fileUrl.startsWith('[')) {
@@ -221,6 +228,7 @@ const Registration: React.FC<RegistrationProps> = ({ settings, onSuccess, showTo
         });
         setCoAuthors([]);
         setAttachments([]);
+        setAuthorPhoto(null);
     }
   }, [editingSubmission]);
 
@@ -257,6 +265,24 @@ const Registration: React.FC<RegistrationProps> = ({ settings, onSuccess, showTo
       setCoAuthors(coAuthors.map(c => c.id === id ? { ...c, [field]: value } : c));
   };
 
+  // --- Handlers (Author Photo) ---
+  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      if (file.size > 2 * 1024 * 1024) {
+          showToast({ type: "error", title: "ไฟล์ใหญ่เกินไป", message: "รูปภาพต้องมีขนาดไม่เกิน 2MB" });
+          return;
+      }
+      
+      const reader = new FileReader();
+      reader.onloadend = () => {
+          setAuthorPhoto(reader.result as string);
+          // Clear photo error if exists
+          setErrors(prev => { const next = {...prev}; delete next.authorPhoto; return next; });
+      };
+      reader.readAsDataURL(file);
+  };
+
   // --- Handlers (File, DragDrop, Links) ---
   const handleFile = (file: File) => {
       if (attachments.length >= 5) { showToast({ type: "error", title: "ครบจำนวนแล้ว", message: "อนุญาตให้อัปโหลดได้สูงสุด 5 ไฟล์" }); return; }
@@ -286,13 +312,14 @@ const Registration: React.FC<RegistrationProps> = ({ settings, onSuccess, showTo
     if (!form.workType) e.workType = "กรุณาเลือกประเภทผลงาน";
     if (!form.branchId) e.branchId = "กรุณาเลือกสาขา";
     if (!form.title) e.title = "กรุณาระบุชื่อเรื่องผลงาน";
+    if (!authorPhoto) e.authorPhoto = "กรุณาอัปโหลดรูปถ่ายทางการ"; // New Validation
     if (!isProfileComplete) { showToast({ type: 'error', title: 'ข้อมูลส่วนตัวไม่ครบ', message: 'กรุณาอัปเดตข้อมูลในหน้าโปรไฟล์ก่อนส่งผลงาน' }); return false; }
     setErrors(e);
     return Object.keys(e).length === 0;
   };
 
   const submit = async (mode: 'draft' | 'submit') => {
-    if (mode === 'submit' && !validateForm()) { showToast({ type: "error", title: "ข้อมูลไม่ครบถ้วน", message: "กรุณากรอกข้อมูลให้ครบถ้วน" }); return; }
+    if (mode === 'submit' && !validateForm()) { showToast({ type: "error", title: "ข้อมูลไม่ครบถ้วน", message: "กรุณากรอกข้อมูลและอัปโหลดรูปถ่ายให้ครบถ้วน" }); return; }
     
     const confirmText = mode === 'submit' ? (editingSubmission ? 'ยืนยันการแก้ไขและส่งผลงาน?' : 'ยืนยันการส่งผลงาน?') : 'บันทึกแบบร่างไว้ทำต่อภายหลัง?';
     const result = await Swal.fire({ title: confirmText, text: mode === 'submit' ? 'กรุณาตรวจสอบความถูกต้องของข้อมูล' : '', icon: 'question', showCancelButton: true, confirmButtonColor: mode === 'submit' ? '#0f172a' : '#64748b', confirmButtonText: mode === 'submit' ? 'ยืนยันส่งผลงาน' : 'บันทึกร่าง', cancelButtonText: 'ยกเลิก', customClass: { popup: 'rounded-3xl' } });
@@ -316,7 +343,8 @@ const Registration: React.FC<RegistrationProps> = ({ settings, onSuccess, showTo
         fileName: form.title, 
         fileUrl: filePayload, 
         status: nextStatus,
-        coAuthors: coAuthors // Pass JSON array
+        coAuthors: coAuthors, // Pass JSON array
+        authorPhoto: authorPhoto // Pass Photo Data
       };
 
       if (editingSubmission) {
@@ -335,6 +363,7 @@ const Registration: React.FC<RegistrationProps> = ({ settings, onSuccess, showTo
           setForm({ workType: "", branchId: "", title: "", bookNo: "", bossName: "", bossPosition: "ผู้อำนวยการโรงพยาบาล/สาธารณสุขอำเภอ" }); 
           setCoAuthors([]);
           setAttachments([]); 
+          setAuthorPhoto(null);
           setLinkInput({ url: '', name: '' }); 
       }
       onSuccess();
@@ -471,6 +500,52 @@ const Registration: React.FC<RegistrationProps> = ({ settings, onSuccess, showTo
                     </h3>
                 </div>
                 <div className="p-6 space-y-6 relative z-10">
+                    
+                    {/* NEW: Author Photo Upload (Mandatory) */}
+                    <div className="flex flex-col sm:flex-row gap-6 items-start p-4 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-700">
+                        <div className="shrink-0 flex flex-col items-center gap-2">
+                            <div className="w-32 h-40 bg-slate-200 dark:bg-slate-700 rounded-lg overflow-hidden border-2 border-dashed border-slate-300 dark:border-slate-600 flex items-center justify-center relative group">
+                                {authorPhoto ? (
+                                    <img src={authorPhoto} alt="Author" className="w-full h-full object-cover" />
+                                ) : (
+                                    <div className="text-center text-slate-400">
+                                        <i className="fa-solid fa-user text-3xl mb-1"></i>
+                                        <div className="text-[10px]">รูปถ่าย</div>
+                                    </div>
+                                )}
+                                <div 
+                                    className="absolute inset-0 bg-black/40 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition cursor-pointer"
+                                    onClick={() => photoInputRef.current?.click()}
+                                >
+                                    <i className="fa-solid fa-camera text-white text-2xl"></i>
+                                    <span className="text-[10px] text-white mt-1">เปลี่ยนรูป</span>
+                                </div>
+                            </div>
+                            <input 
+                                type="file" 
+                                ref={photoInputRef} 
+                                onChange={handlePhotoChange} 
+                                accept="image/png, image/jpeg" 
+                                className="hidden" 
+                            />
+                        </div>
+                        <div className="flex-1">
+                            <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-1">
+                                รูปถ่ายหน้าตรง (ชุดข้าราชการ/สุภาพ) <span className="text-rose-500">*</span>
+                            </label>
+                            <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">
+                                กรุณาอัปโหลดไฟล์รูปถ่ายทางการ (Official Photo) เพื่อใช้ในการประชาสัมพันธ์และทำทำเนียบผู้ส่งผลงาน (ขนาดไม่เกิน 2MB)
+                            </p>
+                            <button 
+                                onClick={() => photoInputRef.current?.click()}
+                                className={`px-4 py-2 rounded-lg text-xs font-bold transition flex items-center gap-2 ${errors.authorPhoto ? 'bg-rose-50 text-rose-600 border border-rose-200' : 'bg-white border border-slate-200 hover:bg-slate-50 text-slate-600'}`}
+                            >
+                                <i className="fa-solid fa-upload"></i> อัปโหลดรูปภาพ
+                            </button>
+                            {errors.authorPhoto && <p className="text-xs text-rose-500 mt-2 font-bold"><i className="fa-solid fa-circle-exclamation"></i> {errors.authorPhoto}</p>}
+                        </div>
+                    </div>
+
                     {/* New Field: Work Title */}
                     <div>
                         <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-1">

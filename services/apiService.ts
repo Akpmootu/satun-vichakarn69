@@ -23,7 +23,8 @@ const mapSubmissionFromDB = (data: any): Submission => ({
     createdAt: data.created_at,
     updatedAt: data.updated_at,
     audit: data.audit || [],
-    coAuthors: data.co_authors || [] // Map JSONB
+    coAuthors: data.co_authors || [], // Map JSONB
+    authorPhoto: data.author_photo || null // Map Author Photo
 });
 
 const mapProfileFromDB = (data: any): UserProfile => ({
@@ -270,7 +271,8 @@ export async function apiCreateSubmission(settings: AppSettings, payload: Submis
         file_name: payload.fileName,
         status: payload.status, 
         audit: payload.audit,
-        co_authors: payload.coAuthors || [] // JSONB
+        co_authors: payload.coAuthors || [], // JSONB
+        author_photo: payload.authorPhoto || null // New Field
     };
     const { data, error } = await supabase.from('submissions').insert([dbPayload]).select().single();
     if (error) throw new Error(error.message);
@@ -292,7 +294,8 @@ export async function apiUpdateSubmission(settings: AppSettings, id: string, pat
     if (patch.branchId) dbPatch.branch_id = patch.branchId;
     if (patch.fileUrl) dbPatch.file_url = patch.fileUrl;
     if (patch.fileName) dbPatch.file_name = patch.fileName;
-    if (patch.coAuthors) dbPatch.co_authors = patch.coAuthors; // Update Co-Authors
+    if (patch.coAuthors) dbPatch.co_authors = patch.coAuthors;
+    if (patch.authorPhoto) dbPatch.author_photo = patch.authorPhoto; // Update Photo
 
     const { data, error } = await supabase.from('submissions').update(dbPatch).eq('id', id).select().single();
     if (error) throw new Error(error.message);

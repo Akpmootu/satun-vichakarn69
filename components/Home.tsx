@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import { PR_NEWS } from '../constants';
 import { Submission, UserProfile } from '../types';
 import Timeline from './Timeline';
@@ -15,6 +15,14 @@ interface HomeProps {
 
 const Home: React.FC<HomeProps> = ({ onNavigate, currentUser, onLoginRequest, userSubmissions, showToast, onOpenNews }) => {
   
+  // Get latest submission photo if available
+  const displayPhoto = useMemo(() => {
+      if (!userSubmissions || userSubmissions.length === 0) return null;
+      // Sort by latest
+      const sorted = [...userSubmissions].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      return sorted[0].authorPhoto;
+  }, [userSubmissions]);
+
   const handleActionClick = (action: string) => {
     if (!currentUser) {
         onLoginRequest();
@@ -55,7 +63,25 @@ const Home: React.FC<HomeProps> = ({ onNavigate, currentUser, onLoginRequest, us
 
          <div className="relative z-10 px-6 max-w-4xl mx-auto">
              {currentUser ? (
-                 <>
+                 <div className="flex flex-col items-center">
+                    {/* Official Photo Display or Default Avatar */}
+                    <div className="mb-6 h-32 w-32 rounded-full border-4 border-white/20 shadow-2xl overflow-hidden bg-slate-800 relative group cursor-default">
+                        {displayPhoto ? (
+                            <img src={displayPhoto} alt="Author" className="w-full h-full object-cover transition transform group-hover:scale-110" />
+                        ) : currentUser.avatarUrl ? (
+                            <img src={currentUser.avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+                        ) : (
+                            <div className="w-full h-full flex items-center justify-center text-4xl font-bold text-slate-500 bg-slate-200">
+                                {currentUser.firstName.charAt(0)}
+                            </div>
+                        )}
+                        {displayPhoto && (
+                            <div className="absolute bottom-0 inset-x-0 bg-black/60 text-[10px] py-1 font-bold text-white uppercase tracking-wider backdrop-blur-sm">
+                                Official Photo
+                            </div>
+                        )}
+                    </div>
+
                     <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-emerald-500/10 text-emerald-300 border border-emerald-500/30 text-xs font-bold mb-6 backdrop-blur-sm">
                         <span className="relative flex h-2 w-2">
                           <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
@@ -85,7 +111,7 @@ const Home: React.FC<HomeProps> = ({ onNavigate, currentUser, onLoginRequest, us
                             ประวัติของฉัน
                         </button>
                     </div>
-                 </>
+                 </div>
              ) : (
                  <>
                     <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-sky-500/10 text-sky-300 border border-sky-500/30 text-xs font-bold mb-6 backdrop-blur-sm">
