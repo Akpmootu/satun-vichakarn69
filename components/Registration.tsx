@@ -737,29 +737,57 @@ const Registration: React.FC<RegistrationProps> = ({ settings, onSuccess, showTo
                         {errors.title && <p className="text-xs text-rose-500 mt-1 font-bold"><i className="fa-solid fa-circle-exclamation"></i> {errors.title}</p>}
                     </div>
 
-                    {/* Work Type Grid */}
+                    {/* Work Type Grid (New Design) */}
                     <div>
-                        <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-1">
+                        <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">
                             ประเภทผลงาน <span className="text-rose-500">*</span>
                         </label>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-2">
-                            {WORK_TYPES.map(t => (
-                                <button
-                                    key={t.id}
-                                    onClick={() => onChangeField("workType", t.id)}
-                                    className={`relative p-4 rounded-xl border text-left transition-all hover:shadow-md flex items-start gap-4 group ${form.workType === t.id ? 'bg-sky-50 border-sky-500 ring-1 ring-sky-500 z-10' : 'bg-white dark:bg-slate-700 border-slate-200 dark:border-slate-600 hover:border-sky-300'}`}
-                                >
-                                    <div className={`mt-1 h-5 w-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors ${form.workType === t.id ? 'border-sky-500 bg-sky-500' : 'border-slate-300 bg-transparent'}`}>
-                                        <div className={`h-2 w-2 rounded-full bg-white transition-transform ${form.workType === t.id ? 'scale-100' : 'scale-0'}`}></div>
-                                    </div>
-                                    <div className="flex-1">
-                                        <div className="flex items-center gap-2 mb-1">
-                                            <span className={`font-bold text-sm ${form.workType === t.id ? 'text-sky-800' : 'text-slate-800 dark:text-white'}`}>{t.label}</span>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
+                            {WORK_TYPES.map(t => {
+                                const isSelected = form.workType === t.id;
+                                return (
+                                    <button
+                                        key={t.id}
+                                        onClick={() => onChangeField("workType", t.id)}
+                                        type="button" 
+                                        className={`relative p-5 rounded-2xl border-2 text-left transition-all duration-200 hover:shadow-lg flex flex-col gap-3 group outline-none
+                                            ${isSelected 
+                                                ? 'bg-sky-50 dark:bg-sky-900/20 border-sky-500 shadow-sky-100 dark:shadow-none' 
+                                                : 'bg-white dark:bg-slate-800 border-slate-100 dark:border-slate-700 hover:border-sky-300 dark:hover:border-sky-700'
+                                            }
+                                        `}
+                                    >
+                                        <div className="flex items-start justify-between w-full">
+                                            {/* Icon Box */}
+                                            <div className={`h-12 w-12 rounded-xl flex items-center justify-center text-2xl transition-colors
+                                                ${isSelected ? 'bg-sky-500 text-white shadow-md' : 'bg-slate-100 dark:bg-slate-700 text-slate-400 group-hover:bg-sky-100 group-hover:text-sky-500'}
+                                            `}>
+                                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" d={t.icon} />
+                                                </svg>
+                                            </div>
+                                            
+                                            {/* Selection Indicator */}
+                                            {isSelected ? (
+                                                <div className="h-6 w-6 rounded-full bg-sky-500 text-white flex items-center justify-center text-xs animate-bounce-in shadow-sm">
+                                                    <i className="fa-solid fa-check"></i>
+                                                </div>
+                                            ) : (
+                                                <div className="h-6 w-6 rounded-full border-2 border-slate-200 dark:border-slate-600 group-hover:border-sky-300 transition-colors"></div>
+                                            )}
                                         </div>
-                                        <div className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">{t.description || 'ไม่มีคำอธิบายเพิ่มเติม'}</div>
-                                    </div>
-                                </button>
-                            ))}
+
+                                        <div>
+                                            <h4 className={`font-bold text-base mb-1 ${isSelected ? 'text-sky-700 dark:text-sky-300' : 'text-slate-800 dark:text-white'}`}>
+                                                {t.label}
+                                            </h4>
+                                            <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed font-medium">
+                                                {t.description}
+                                            </p>
+                                        </div>
+                                    </button>
+                                );
+                            })}
                         </div>
                         {errors.workType && <p className="text-xs text-rose-500 mt-1 font-bold"><i className="fa-solid fa-circle-exclamation"></i> {errors.workType}</p>}
                     </div>
