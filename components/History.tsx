@@ -285,7 +285,10 @@ const History: React.FC<HistoryProps> = ({ submissions, loading, refreshList, se
     <div className="rounded-3xl bg-white dark:bg-slate-900 ring-1 ring-slate-200 dark:ring-slate-700 shadow-sm p-5 md:p-6 fade-in min-h-[500px] flex flex-col">
       <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
         <div className="min-w-0">
-          <div className="text-lg md:text-xl font-black text-slate-900 dark:text-white">ประวัติการลงทะเบียน/ส่งผลงาน</div>
+          <div className="text-lg md:text-xl font-black text-slate-900 dark:text-white flex items-center gap-2">
+            <i className="fa-solid fa-clock-rotate-left text-sky-500"></i>
+            ประวัติการลงทะเบียน/ส่งผลงาน
+          </div>
           <div className="mt-1 text-sm text-slate-600 dark:text-slate-400">ติดตามสถานะและประวัติการส่งผลงาน</div>
         </div>
         
@@ -300,6 +303,7 @@ const History: React.FC<HistoryProps> = ({ submissions, loading, refreshList, se
         </div>
       </div>
 
+      {/* ... (Rest of History component remains same, just updated header icon) ... */}
       <div className="mt-6 space-y-4">
         {showAdvancedFilters && (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 animate-fade-in">
@@ -333,7 +337,6 @@ const History: React.FC<HistoryProps> = ({ submissions, loading, refreshList, se
               const attachments = parseAttachments(s.fileUrl);
               const isExpanded = expandedItems.has(s.id);
               
-              // Only show the latest 2 logs if collapsed, or all if expanded
               const auditLogs = s.audit || [];
               const visibleLogs = isExpanded ? auditLogs.slice().reverse() : auditLogs.slice().reverse().slice(0, 1);
 
@@ -379,7 +382,6 @@ const History: React.FC<HistoryProps> = ({ submissions, loading, refreshList, se
                     </div>
 
                     <div className="flex flex-row md:flex-col gap-2 shrink-0 md:self-start">
-                      {/* Edit/Export Button */}
                       <button
                         onClick={() => onEdit(s)}
                         className="rounded-xl px-4 py-2 text-sm font-bold bg-slate-900 text-white hover:bg-slate-800 dark:bg-sky-600 dark:hover:bg-sky-500 transition flex items-center justify-center gap-2 shadow-lg shadow-slate-200 dark:shadow-none min-w-[140px]"
@@ -388,7 +390,6 @@ const History: React.FC<HistoryProps> = ({ submissions, loading, refreshList, se
                         <span>ออกหนังสือ/แก้ไข</span>
                       </button>
                       
-                      {/* Delete (Contact Info) Button */}
                       <button 
                          onClick={() => handleDeleteRequest(s)}
                          className="rounded-xl px-4 py-2 text-sm font-bold bg-white dark:bg-slate-800 text-rose-500 border border-rose-200 dark:border-rose-900 hover:bg-rose-50 dark:hover:bg-rose-900/30 transition flex items-center justify-center gap-2"
@@ -399,7 +400,6 @@ const History: React.FC<HistoryProps> = ({ submissions, loading, refreshList, se
                     </div>
                   </div>
 
-                  {/* Collapsible Audit Log Section */}
                   {auditLogs.length > 0 && (
                         <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50 -mx-5 -mb-5 px-5 pb-5">
                             <div className="flex items-center justify-between mb-3">
@@ -419,7 +419,6 @@ const History: React.FC<HistoryProps> = ({ submissions, loading, refreshList, se
                             </div>
                             
                             <div className="relative pl-2 ml-1 space-y-4">
-                                {/* Vertical Line */}
                                 <div className="absolute top-2 bottom-2 left-[19px] w-[2px] bg-slate-200 dark:bg-slate-700"></div>
 
                                 {visibleLogs.map((log, idx) => {
@@ -460,7 +459,6 @@ const History: React.FC<HistoryProps> = ({ submissions, loading, refreshList, se
         </div>
       </div>
       
-      {/* Pagination Controls */}
       {filtered.length > 0 && (
           <div className="flex flex-col md:flex-row items-center justify-between gap-4 mt-6 pt-6 border-t border-slate-100 dark:border-slate-700">
               <div className="text-sm text-slate-500 dark:text-slate-400 font-medium">

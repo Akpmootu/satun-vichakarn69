@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { AppSettings } from '../types';
 import { saveSettings } from '../services/apiService';
@@ -20,7 +21,10 @@ const Settings: React.FC<SettingsProps> = ({ settings, onUpdate, showToast }) =>
 
   return (
     <div className="rounded-3xl bg-white ring-1 ring-slate-200 shadow-sm p-5 md:p-6 fade-in">
-       <div className="text-lg md:text-xl font-black text-slate-900 mb-6">ตั้งค่าการเชื่อมต่อ (System Configuration)</div>
+       <div className="text-lg md:text-xl font-black text-slate-900 mb-6 flex items-center gap-2">
+          <i className="fa-solid fa-sliders text-sky-600"></i>
+          ตั้งค่าการเชื่อมต่อ (System Configuration)
+       </div>
 
        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Mode Selection */}

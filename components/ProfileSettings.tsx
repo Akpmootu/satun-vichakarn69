@@ -156,7 +156,10 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({ currentUser, onUpdate
         <div className="max-w-6xl mx-auto pb-12 animate-fade-in">
             {/* Page Header */}
             <div className="mb-8">
-                <h1 className="text-2xl font-black text-slate-900 dark:text-white">ตั้งค่าบัญชีผู้ใช้</h1>
+                <h1 className="text-2xl font-black text-slate-900 dark:text-white flex items-center gap-2">
+                    <i className="fa-solid fa-id-card-clip text-sky-600"></i>
+                    ตั้งค่าบัญชีผู้ใช้
+                </h1>
                 <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">จัดการข้อมูลส่วนตัวและตั้งค่าความปลอดภัย</p>
             </div>
 
@@ -245,7 +248,9 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({ currentUser, onUpdate
                                         />
                                     </div>
                                     <div className="text-center sm:text-left flex-1">
-                                        <h3 className="text-lg font-bold text-slate-900 dark:text-white">รูปโปรไฟล์</h3>
+                                        <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2 justify-center sm:justify-start">
+                                            <i className="fa-solid fa-image text-sky-500"></i> รูปโปรไฟล์
+                                        </h3>
                                         <p className="text-sm text-slate-500 mb-4 max-w-sm">
                                             รองรับไฟล์ .jpg หรือ .png ขนาดไม่เกิน 2MB
                                         </p>
@@ -259,7 +264,9 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({ currentUser, onUpdate
                                     </div>
                                 </div>
 
-                                <h3 className="text-base font-bold text-slate-900 dark:text-white mb-4">ข้อมูลส่วนตัว</h3>
+                                <h3 className="text-base font-bold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
+                                    <i className="fa-solid fa-address-card text-sky-500"></i> ข้อมูลส่วนตัว
+                                </h3>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                                     <div>
                                         <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5 uppercase">ชื่อจริง</label>
@@ -282,7 +289,9 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({ currentUser, onUpdate
 
                             {/* Card 2: Contact & Work */}
                             <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm ring-1 ring-slate-200 dark:ring-slate-700 p-6 md:p-8">
-                                <h3 className="text-base font-bold text-slate-900 dark:text-white mb-4">การติดต่อและการทำงาน</h3>
+                                <h3 className="text-base font-bold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
+                                    <i className="fa-solid fa-briefcase text-sky-500"></i> การติดต่อและการทำงาน
+                                </h3>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                                     <div>
                                         <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5 uppercase">อีเมล</label>
@@ -452,7 +461,9 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({ currentUser, onUpdate
                     {/* --- SECURITY TAB --- */}
                     {activeTab === 'security' && (
                         <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm ring-1 ring-slate-200 dark:ring-slate-700 p-6 md:p-8 animate-fade-in">
-                            <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2">เปลี่ยนรหัสผ่าน</h3>
+                            <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2 flex items-center gap-2">
+                                <i className="fa-solid fa-key text-sky-500"></i> เปลี่ยนรหัสผ่าน
+                            </h3>
                             <p className="text-sm text-slate-500 mb-6">เพื่อความปลอดภัย กรุณาตั้งรหัสผ่านที่มีความยาวอย่างน้อย 8 ตัวอักษร</p>
 
                             <div className="max-w-md space-y-5">

@@ -1,3 +1,4 @@
+
 import React, { useMemo } from 'react';
 import { Submission } from '../types';
 import { BRANCHES, WORK_TYPES } from '../constants';
@@ -30,13 +31,16 @@ const StatCard: React.FC<StatCardProps> = ({ title, value, icon, hint, tone = 'b
   }
 
   return (
-    <div className={`rounded-2xl bg-white dark:bg-slate-800 ring-1 shadow-sm p-4 flex items-start justify-between hover:shadow-md transition ${getContainerClass(colors[tone])}`}>
-      <div>
+    <div className={`rounded-2xl bg-white dark:bg-slate-800 ring-1 shadow-sm p-4 flex items-start justify-between hover:shadow-md transition hover:-translate-y-1 duration-300 relative overflow-hidden group ${getContainerClass(colors[tone])}`}>
+      <div className="absolute right-0 top-0 opacity-0 group-hover:opacity-10 transition-opacity duration-500">
+          <i className={`fa-solid ${icon} text-6xl transform rotate-12 translate-x-2 -translate-y-2`}></i>
+      </div>
+      <div className="relative z-10">
         <div className="text-sm font-bold text-slate-500 dark:text-slate-400">{title}</div>
         <div className="text-3xl font-black text-slate-900 dark:text-white mt-2">{value}</div>
         {hint && <div className="text-xs text-slate-400 mt-1 font-medium">{hint}</div>}
       </div>
-      <div className={`h-12 w-12 rounded-2xl flex items-center justify-center text-xl shadow-sm ${getIconBg(colors[tone])}`}>
+      <div className={`h-12 w-12 rounded-2xl flex items-center justify-center text-xl shadow-sm relative z-10 ${getIconBg(colors[tone])}`}>
         <i className={`fa-solid ${icon}`} />
       </div>
     </div>
@@ -73,10 +77,18 @@ const Dashboard: React.FC<{ submissions: Submission[] }> = ({ submissions }) => 
   }, [submissions]);
 
   return (
-    <div className="space-y-6 fade-in pb-10">
-       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div className="space-y-6 fade-in pb-10 relative overflow-hidden">
+       {/* Global Watermark Background */}
+       <div className="absolute top-20 right-0 -z-10 opacity-5 pointer-events-none">
+           <i className="fa-solid fa-chart-line text-[400px] text-slate-400 dark:text-slate-600 transform -rotate-12 translate-x-20"></i>
+       </div>
+
+       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 relative z-10">
           <div>
-            <div className="text-xl md:text-2xl font-black text-slate-900 dark:text-white">Dashboard ภาพรวม</div>
+            <div className="text-xl md:text-2xl font-black text-slate-900 dark:text-white flex items-center gap-2">
+                <i className="fa-solid fa-chart-line text-sky-500"></i>
+                Dashboard ภาพรวม
+            </div>
             <div className="text-sm text-slate-500 dark:text-slate-400">สรุปสถานการณ์การส่งผลงานวิชาการประจำปี {new Date().getFullYear() + 543}</div>
           </div>
           <div className="text-right hidden md:block">
@@ -85,8 +97,7 @@ const Dashboard: React.FC<{ submissions: Submission[] }> = ({ submissions }) => 
           </div>
        </div>
 
-       {/* Top Stats Grid */}
-       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 relative z-10 animate-fade-in">
           <StatCard 
             title="ทั้งหมด" 
             value={stats.total} 
@@ -117,16 +128,16 @@ const Dashboard: React.FC<{ submissions: Submission[] }> = ({ submissions }) => 
           />
        </div>
 
-       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Status Breakdown (New Card) */}
-          <div className="rounded-3xl bg-white dark:bg-slate-800 ring-1 ring-slate-200 dark:ring-slate-700 shadow-sm p-6 flex flex-col">
+       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 relative z-10 animate-fade-in" style={{ animationDelay: '0.1s' }}>
+          {/* Status Breakdown */}
+          <div className="rounded-3xl bg-white dark:bg-slate-800 ring-1 ring-slate-200 dark:ring-slate-700 shadow-sm p-6 flex flex-col hover:shadow-md transition duration-300">
              <h3 className="font-bold text-slate-800 dark:text-white text-lg mb-6 flex items-center gap-2">
                 <i className="fa-solid fa-chart-pie text-rose-500"></i> สรุปสถานะผลงาน
              </h3>
              <div className="flex-1 flex flex-col justify-center items-center relative min-h-[200px]">
                 {/* Donut Chart Simulation with Conic Gradient */}
                 {stats.total > 0 ? (
-                    <div className="relative h-48 w-48 rounded-full" 
+                    <div className="relative h-48 w-48 rounded-full shadow-lg ring-4 ring-slate-50 dark:ring-slate-700 transition-transform hover:scale-105 duration-500" 
                         style={{ 
                             background: `conic-gradient(
                                 #f59e0b 0% ${(stats.draft / stats.total) * 100}%, 
@@ -136,7 +147,7 @@ const Dashboard: React.FC<{ submissions: Submission[] }> = ({ submissions }) => 
                             )`
                         }}
                     >
-                        <div className="absolute inset-4 bg-white dark:bg-slate-800 rounded-full flex flex-col items-center justify-center">
+                        <div className="absolute inset-4 bg-white dark:bg-slate-800 rounded-full flex flex-col items-center justify-center shadow-inner">
                             <span className="text-3xl font-black text-slate-800 dark:text-white">{stats.total}</span>
                             <span className="text-xs text-slate-400 uppercase font-bold">Total Items</span>
                         </div>
@@ -151,26 +162,26 @@ const Dashboard: React.FC<{ submissions: Submission[] }> = ({ submissions }) => 
              {/* Legend */}
              <div className="grid grid-cols-2 gap-3 mt-6">
                 <div className="flex items-center gap-2 text-sm">
-                    <span className="w-3 h-3 rounded-full bg-amber-500"></span>
+                    <span className="w-3 h-3 rounded-full bg-amber-500 shadow-sm"></span>
                     <span className="text-slate-600 dark:text-slate-300">ฉบับร่าง ({stats.draft})</span>
                 </div>
                 <div className="flex items-center gap-2 text-sm">
-                    <span className="w-3 h-3 rounded-full bg-blue-500"></span>
+                    <span className="w-3 h-3 rounded-full bg-blue-500 shadow-sm"></span>
                     <span className="text-slate-600 dark:text-slate-300">รอพิจารณา ({stats.pending})</span>
                 </div>
                 <div className="flex items-center gap-2 text-sm">
-                    <span className="w-3 h-3 rounded-full bg-emerald-500"></span>
+                    <span className="w-3 h-3 rounded-full bg-emerald-500 shadow-sm"></span>
                     <span className="text-slate-600 dark:text-slate-300">ผ่าน ({stats.accepted})</span>
                 </div>
                 <div className="flex items-center gap-2 text-sm">
-                    <span className="w-3 h-3 rounded-full bg-rose-500"></span>
+                    <span className="w-3 h-3 rounded-full bg-rose-500 shadow-sm"></span>
                     <span className="text-slate-600 dark:text-slate-300">ไม่ผ่าน ({stats.rejected})</span>
                 </div>
              </div>
           </div>
 
           {/* Interactive Chart: Work Types */}
-          <div className="lg:col-span-2 rounded-3xl bg-white dark:bg-slate-800 ring-1 ring-slate-200 dark:ring-slate-700 shadow-sm p-6">
+          <div className="lg:col-span-2 rounded-3xl bg-white dark:bg-slate-800 ring-1 ring-slate-200 dark:ring-slate-700 shadow-sm p-6 hover:shadow-md transition duration-300">
              <div className="flex items-center justify-between mb-6">
                 <h3 className="font-bold text-slate-800 dark:text-white text-lg flex items-center gap-2">
                     <i className="fa-solid fa-chart-bar text-sky-500"></i> สัดส่วนตามประเภทผลงาน
@@ -182,9 +193,7 @@ const Dashboard: React.FC<{ submissions: Submission[] }> = ({ submissions }) => 
                   <div key={t.id} className="group relative">
                     <div className="flex justify-between text-sm mb-2 relative z-10">
                       <span className="font-bold text-slate-700 dark:text-slate-300 flex items-center gap-2">
-                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 text-slate-400">
-                              <path strokeLinecap="round" strokeLinejoin="round" d={t.icon} />
-                          </svg>
+                          <i className={`${t.icon} text-slate-400 w-5 text-center`}></i>
                           {t.label}
                       </span>
                       <span className="font-mono text-slate-500 dark:text-slate-400 group-hover:text-sky-600 dark:group-hover:text-sky-400 transition font-bold">
@@ -214,14 +223,19 @@ const Dashboard: React.FC<{ submissions: Submission[] }> = ({ submissions }) => 
              </div>
           </div>
 
-          {/* Top 5 Branches (Moved to full width below or keep in grid if prefer 3 cols layout) */}
-          <div className="lg:col-span-3 rounded-3xl bg-white dark:bg-slate-800 ring-1 ring-slate-200 dark:ring-slate-700 shadow-sm p-6">
-             <h3 className="font-bold text-slate-800 dark:text-white text-lg mb-6 flex items-center gap-2">
+          {/* Top 5 Branches */}
+          <div className="lg:col-span-3 rounded-3xl bg-white dark:bg-slate-800 ring-1 ring-slate-200 dark:ring-slate-700 shadow-sm p-6 hover:shadow-md transition duration-300 relative overflow-hidden">
+             {/* Subtle internal watermark */}
+             <div className="absolute -bottom-10 -right-10 opacity-5 pointer-events-none">
+                 <i className="fa-solid fa-trophy text-[150px] text-amber-500"></i>
+             </div>
+
+             <h3 className="font-bold text-slate-800 dark:text-white text-lg mb-6 flex items-center gap-2 relative z-10">
                 <i className="fa-solid fa-trophy text-amber-500"></i> 5 อันดับสาขายอดนิยม
              </h3>
-             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 relative z-10">
                 {stats.byBranch.map((b, idx) => (
-                  <div key={b.id} className="flex flex-col p-4 rounded-2xl bg-slate-50 dark:bg-slate-700/50 border border-slate-100 dark:border-slate-700 hover:bg-white dark:hover:bg-slate-700 hover:shadow-md transition group text-center items-center">
+                  <div key={b.id} className="flex flex-col p-4 rounded-2xl bg-slate-50 dark:bg-slate-700/50 border border-slate-100 dark:border-slate-700 hover:bg-white dark:hover:bg-slate-700 hover:shadow-md transition group text-center items-center hover:-translate-y-1 duration-300">
                      <div className={`
                         h-10 w-10 rounded-xl flex items-center justify-center text-lg font-bold shadow-sm mb-3 transition-transform group-hover:scale-110
                         ${idx === 0 ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 ring-1 ring-amber-200 dark:ring-amber-900/50' : 
