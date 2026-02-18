@@ -623,7 +623,10 @@ export default function App() {
                 )}
                 
                 {activeTab === 'analytics' && (
-                    <Dashboard submissions={submissions} />
+                    <Dashboard 
+                        submissions={submissions} 
+                        onViewAll={() => handleTabChange('history')}
+                    />
                 )}
                 
                 {activeTab === 'profile' && currentUser && (
