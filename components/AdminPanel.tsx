@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { Submission, NewsItem, AppSettings, SubmissionStatus, UserProfile, UserRole } from '../types';
-import { apiUpdateSubmission, apiDeleteSubmission, apiGetNews, apiAddNews, apiDeleteNews, apiGetAllUsers, apiUpdateUserRole, apiGetUsersByRole } from '../services/apiService';
+import { apiUpdateSubmission, apiDeleteSubmission, apiGetNews, apiAddNews, apiDeleteNews, apiUpdateNews, apiGetAllUsers, apiUpdateUserProfileAdmin, apiDeleteUserProfile, apiGetUsersByRole } from '../services/apiService';
 import { BRANCHES, WORK_TYPES } from '../constants';
 import Badge from './ui/Badge';
 
@@ -29,8 +29,14 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ submissions, settings, refreshD
   const [userFilter, setUserFilter] = useState({ q: '', role: 'all' });
 
   // News Form State
-  const [newsForm, setNewsForm] = useState({ title: '', desc: '', type: 'news', imageUrl: '', fileType: '' });
+  const [newsForm, setNewsForm] = useState({ id: 0, title: '', desc: '', type: 'news', imageUrl: '', fileType: '' });
   const [showNewsForm, setShowNewsForm] = useState(false);
+  const [isEditingNews, setIsEditingNews] = useState(false);
+
+  // User Edit Modal State
+  const [editingUser, setEditingUser] = useState<UserProfile | null>(null);
+  const [showUserModal, setShowUserModal] = useState(false);
+  const [userForm, setUserForm] = useState<Partial<UserProfile>>({});
 
   // --- Manage Submission Modal State ---
   const [selectedSubmission, setSelectedSubmission] = useState<Submission | null>(null);
@@ -134,6 +140,57 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ submissions, settings, refreshD
       }
   };
 
+  // --- User Management Handlers ---
+  const handleEditUser = (user: UserProfile) => {
+      setEditingUser(user);
+      setUserForm({
+          firstName: user.firstName,
+          lastName: user.lastName,
+          email: user.email,
+          phone: user.phone || '',
+          organization: user.organization || '',
+          position: user.position || '',
+          role: user.role
+      });
+      setShowUserModal(true);
+  };
+
+  const handleSaveUser = async () => {
+      if (!editingUser) return;
+      try {
+          await apiUpdateUserProfileAdmin(editingUser.id, userForm);
+          showToast({ type: 'success', title: 'บันทึกสำเร็จ', message: 'แก้ไขข้อมูลผู้ใช้งานเรียบร้อยแล้ว' });
+          setShowUserModal(false);
+          setEditingUser(null);
+          fetchUsers(); // Refresh list
+      } catch (e: any) {
+          showToast({ type: 'error', title: 'บันทึกไม่สำเร็จ', message: e.message });
+      }
+  };
+
+  const handleDeleteUser = async (user: UserProfile) => {
+      const result = await Swal.fire({
+          title: 'ลบผู้ใช้งาน?',
+          html: `ต้องการลบผู้ใช้งาน <b>${user.firstName} ${user.lastName}</b><br/><span class="text-rose-500 text-sm">การกระทำนี้ไม่สามารถย้อนกลับได้</span>`,
+          icon: 'warning',
+          showCancelButton: true,
+          confirmButtonColor: '#d33',
+          confirmButtonText: 'ลบผู้ใช้งาน',
+          cancelButtonText: 'ยกเลิก',
+          customClass: { popup: 'rounded-3xl' }
+      });
+
+      if (result.isConfirmed) {
+          try {
+              await apiDeleteUserProfile(user.id);
+              showToast({ type: 'success', title: 'ลบสำเร็จ', message: 'ลบผู้ใช้งานออกจากระบบแล้ว' });
+              fetchUsers();
+          } catch (e: any) {
+              showToast({ type: 'error', title: 'ลบไม่สำเร็จ', message: e.message });
+          }
+      }
+  };
+
   const handleUpdateUserRole = async (user: UserProfile, newRole: UserRole) => {
       // If same role, do nothing
       if (user.role === newRole) return;
@@ -152,7 +209,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ submissions, settings, refreshD
       if (result.isConfirmed) {
           setUpdatingUser(user.id);
           try {
-              await apiUpdateUserRole(user.id, newRole);
+              await apiUpdateUserProfileAdmin(user.id, { role: newRole });
               
               // Success
               showToast({ type: 'success', title: 'สำเร็จ', message: `ปรับสิทธิ์เป็น ${newRole} เรียบร้อยแล้ว` });
@@ -234,21 +291,46 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ submissions, settings, refreshD
           return;
       }
       try {
-          await apiAddNews({
-              title: newsForm.title,
-              desc: newsForm.desc,
-              date: new Date().toLocaleDateString('th-TH'),
-              type: newsForm.type as any,
-              imageUrl: newsForm.imageUrl,
-              fileType: newsForm.fileType || 'PDF'
-          });
+          if (isEditingNews && newsForm.id) {
+              await apiUpdateNews(newsForm.id, {
+                  title: newsForm.title,
+                  desc: newsForm.desc,
+                  type: newsForm.type as any,
+                  imageUrl: newsForm.imageUrl,
+                  fileType: newsForm.fileType || 'PDF'
+              });
+              showToast({ type: 'success', title: 'สำเร็จ', message: 'แก้ไขข่าวประชาสัมพันธ์แล้ว' });
+          } else {
+              await apiAddNews({
+                  title: newsForm.title,
+                  desc: newsForm.desc,
+                  date: new Date().toLocaleDateString('th-TH'),
+                  type: newsForm.type as any,
+                  imageUrl: newsForm.imageUrl,
+                  fileType: newsForm.fileType || 'PDF'
+              });
+              showToast({ type: 'success', title: 'สำเร็จ', message: 'เพิ่มข่าวประชาสัมพันธ์แล้ว' });
+          }
           setNewsList(apiGetNews());
           setShowNewsForm(false);
-          setNewsForm({ title: '', desc: '', type: 'news', imageUrl: '', fileType: '' });
-          showToast({ type: 'success', title: 'สำเร็จ', message: 'เพิ่มข่าวประชาสัมพันธ์แล้ว' });
+          setIsEditingNews(false);
+          setNewsForm({ id: 0, title: '', desc: '', type: 'news', imageUrl: '', fileType: '' });
       } catch (e: any) {
           showToast({ type: 'error', title: 'ผิดพลาด', message: e.message });
       }
+  };
+
+  const handleEditNews = (item: NewsItem) => {
+      setNewsForm({
+          id: item.id,
+          title: item.title,
+          desc: item.desc,
+          type: item.type,
+          imageUrl: item.imageUrl || '',
+          fileType: item.fileType || ''
+      });
+      setIsEditingNews(true);
+      setShowNewsForm(true);
   };
 
   const handleDeleteNews = async (id: number) => {
@@ -518,7 +600,14 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ submissions, settings, refreshD
                                         </div>
                                     </td>
                                     <td className="p-4 text-right text-xs text-slate-400">
-                                        <span title="Registration Date">Active</span>
+                                        <div className="flex justify-end gap-2">
+                                            <button onClick={() => handleEditUser(u)} className="h-8 w-8 rounded-lg bg-slate-100 text-slate-500 hover:bg-sky-100 hover:text-sky-600 transition flex items-center justify-center" title="แก้ไขข้อมูล">
+                                                <i className="fa-solid fa-pen-to-square"></i>
+                                            </button>
+                                            <button onClick={() => handleDeleteUser(u)} className="h-8 w-8 rounded-lg bg-slate-100 text-slate-500 hover:bg-rose-100 hover:text-rose-600 transition flex items-center justify-center" title="ลบผู้ใช้งาน">
+                                                <i className="fa-solid fa-trash-can"></i>
+                                            </button>
+                                        </div>
                                     </td>
                                 </tr>
                             ))}
@@ -540,7 +629,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ submissions, settings, refreshD
                 </div>
                 {showNewsForm && (
                      <div className="bg-slate-50 dark:bg-slate-900 p-6 rounded-2xl mb-6 border border-slate-200 dark:border-slate-700 animate-fade-in">
-                        <h4 className="font-bold mb-4 dark:text-white">ฟอร์มเพิ่มข่าวสาร</h4>
+                        <h4 className="font-bold mb-4 dark:text-white">{isEditingNews ? 'แก้ไขข่าวสาร' : 'ฟอร์มเพิ่มข่าวสาร'}</h4>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <input value={newsForm.title} onChange={e => setNewsForm({...newsForm, title: e.target.value})} placeholder="หัวข้อข่าว" className="p-3 rounded-xl border outline-none focus:ring-2 focus:ring-sky-200 dark:bg-slate-800 dark:border-slate-600 dark:text-white" />
                             <select value={newsForm.type} onChange={e => setNewsForm({...newsForm, type: e.target.value})} className="p-3 rounded-xl border outline-none dark:bg-slate-800 dark:border-slate-600 dark:text-white">
@@ -552,8 +641,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ submissions, settings, refreshD
                             {newsForm.type === 'download' && <input value={newsForm.fileType} onChange={e => setNewsForm({...newsForm, fileType: e.target.value})} placeholder="ชนิดไฟล์ (PDF, DOCX)" className="p-3 rounded-xl border outline-none dark:bg-slate-800 dark:border-slate-600 dark:text-white" />}
                         </div>
                         <div className="flex justify-end gap-2 mt-4">
-                            <button onClick={() => setShowNewsForm(false)} className="px-4 py-2 text-slate-500 hover:bg-slate-200 rounded-lg transition">ยกเลิก</button>
-                            <button onClick={handleAddNews} className="px-6 py-2 bg-slate-900 text-white rounded-lg font-bold hover:bg-slate-800 transition">บันทึก</button>
+                            <button onClick={() => { setShowNewsForm(false); setIsEditingNews(false); setNewsForm({ id: 0, title: '', desc: '', type: 'news', imageUrl: '', fileType: '' }); }} className="px-4 py-2 text-slate-500 hover:bg-slate-200 rounded-lg transition">ยกเลิก</button>
+                            <button onClick={handleAddNews} className="px-6 py-2 bg-slate-900 text-white rounded-lg font-bold hover:bg-slate-800 transition">{isEditingNews ? 'บันทึกการแก้ไข' : 'บันทึก'}</button>
                         </div>
                     </div>
                 )}
@@ -569,9 +658,14 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ submissions, settings, refreshD
                                     <div className="text-xs text-slate-500">{item.date} • {item.type}</div>
                                 </div>
                             </div>
-                            <button onClick={() => handleDeleteNews(item.id)} className="h-10 w-10 rounded-full hover:bg-rose-100 hover:text-rose-600 text-slate-400 transition flex items-center justify-center">
-                                <i className="fa-solid fa-trash-can"></i>
-                            </button>
+                            <div className="flex items-center gap-2">
+                                <button onClick={() => handleEditNews(item)} className="h-10 w-10 rounded-full hover:bg-sky-100 hover:text-sky-600 text-slate-400 transition flex items-center justify-center">
+                                    <i className="fa-solid fa-pen-to-square"></i>
+                                </button>
+                                <button onClick={() => handleDeleteNews(item.id)} className="h-10 w-10 rounded-full hover:bg-rose-100 hover:text-rose-600 text-slate-400 transition flex items-center justify-center">
+                                    <i className="fa-solid fa-trash-can"></i>
+                                </button>
+                            </div>
                         </div>
                     ))}
                 </div>
@@ -709,6 +803,100 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ submissions, settings, refreshD
                       </div>
                  </div>
              </div>
+        )}
+        {/* --- USER EDIT MODAL --- */}
+        {showUserModal && editingUser && (
+            <div className="fixed inset-0 z-[200] flex items-center justify-center px-4 animate-fade-in">
+                <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" onClick={() => setShowUserModal(false)}></div>
+                <div className="relative bg-white dark:bg-slate-900 rounded-3xl shadow-2xl max-w-lg w-full p-6 ring-1 ring-slate-200 dark:ring-slate-700 animate-bounce-in">
+                    <div className="flex justify-between items-center mb-6">
+                        <h3 className="text-xl font-black text-slate-900 dark:text-white flex items-center gap-2">
+                            <i className="fa-solid fa-user-pen text-sky-500"></i> แก้ไขข้อมูลผู้ใช้งาน
+                        </h3>
+                        <button onClick={() => setShowUserModal(false)} className="h-8 w-8 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 flex items-center justify-center hover:bg-rose-100 hover:text-rose-500 transition">
+                            <i className="fa-solid fa-xmark"></i>
+                        </button>
+                    </div>
+                    
+                    <div className="space-y-4">
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <label className="text-xs font-bold text-slate-500 mb-1 block">ชื่อ</label>
+                                <input 
+                                    value={userForm.firstName || ''} 
+                                    onChange={e => setUserForm({...userForm, firstName: e.target.value})} 
+                                    className="w-full p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 outline-none focus:ring-2 focus:ring-sky-200 dark:text-white"
+                                />
+                            </div>
+                            <div>
+                                <label className="text-xs font-bold text-slate-500 mb-1 block">นามสกุล</label>
+                                <input 
+                                    value={userForm.lastName || ''} 
+                                    onChange={e => setUserForm({...userForm, lastName: e.target.value})} 
+                                    className="w-full p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 outline-none focus:ring-2 focus:ring-sky-200 dark:text-white"
+                                />
+                            </div>
+                        </div>
+
+                        <div>
+                            <label className="text-xs font-bold text-slate-500 mb-1 block">หน่วยงาน</label>
+                            <input 
+                                value={userForm.organization || ''} 
+                                onChange={e => setUserForm({...userForm, organization: e.target.value})} 
+                                className="w-full p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 outline-none focus:ring-2 focus:ring-sky-200 dark:text-white"
+                            />
+                        </div>
+
+                        <div>
+                            <label className="text-xs font-bold text-slate-500 mb-1 block">ตำแหน่ง</label>
+                            <input 
+                                value={userForm.position || ''} 
+                                onChange={e => setUserForm({...userForm, position: e.target.value})} 
+                                className="w-full p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 outline-none focus:ring-2 focus:ring-sky-200 dark:text-white"
+                            />
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <label className="text-xs font-bold text-slate-500 mb-1 block">เบอร์โทรศัพท์</label>
+                                <input 
+                                    value={userForm.phone || ''} 
+                                    onChange={e => setUserForm({...userForm, phone: e.target.value})} 
+                                    className="w-full p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 outline-none focus:ring-2 focus:ring-sky-200 dark:text-white"
+                                />
+                            </div>
+                            <div>
+                                <label className="text-xs font-bold text-slate-500 mb-1 block">สิทธิ์การใช้งาน</label>
+                                <select 
+                                    value={userForm.role} 
+                                    onChange={e => setUserForm({...userForm, role: e.target.value as UserRole})} 
+                                    className="w-full p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 outline-none focus:ring-2 focus:ring-sky-200 dark:text-white"
+                                >
+                                    <option value="user">User</option>
+                                    <option value="reviewer">Reviewer</option>
+                                    <option value="admin">Admin</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div className="pt-4 border-t border-slate-100 dark:border-slate-700 mt-4">
+                             <button 
+                                onClick={() => Swal.fire('แจ้งเตือน', 'ระบบจะส่งลิงก์รีเซ็ตรหัสผ่านไปยังอีเมลผู้ใช้งาน', 'info')}
+                                className="text-xs font-bold text-sky-600 hover:underline flex items-center gap-1"
+                             >
+                                <i className="fa-solid fa-key"></i> รีเซ็ตรหัสผ่าน (Send Reset Email)
+                             </button>
+                        </div>
+                    </div>
+
+                    <div className="flex justify-end gap-2 mt-8">
+                        <button onClick={() => setShowUserModal(false)} className="px-4 py-2 rounded-xl text-slate-500 font-bold hover:bg-slate-100 transition">ยกเลิก</button>
+                        <button onClick={handleSaveUser} className="px-6 py-2 rounded-xl bg-slate-900 dark:bg-sky-600 text-white font-bold hover:bg-slate-800 dark:hover:bg-sky-500 transition shadow-lg shadow-slate-200 dark:shadow-none">
+                            บันทึกการเปลี่ยนแปลง
+                        </button>
+                    </div>
+                </div>
+            </div>
         )}
     </div>
   );

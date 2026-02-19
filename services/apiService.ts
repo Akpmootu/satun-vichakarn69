@@ -214,10 +214,17 @@ export async function apiGetUsersByRole(role: UserRole): Promise<UserProfile[]> 
     return data.map(mapProfileFromDB);
 }
 
-export async function apiUpdateUserRole(userId: string, newRole: UserRole): Promise<void> {
-    const { data, error } = await supabase.from('profiles').update({ role: newRole }).eq('id', userId).select();
+export async function apiUpdateUserProfileAdmin(userId: string, updates: Partial<UserProfile>): Promise<void> {
+    const dbPayload: any = {};
+    if (updates.firstName !== undefined) dbPayload.first_name = updates.firstName;
+    if (updates.lastName !== undefined) dbPayload.last_name = updates.lastName;
+    if (updates.phone !== undefined) dbPayload.phone = updates.phone;
+    if (updates.organization !== undefined) dbPayload.organization = updates.organization;
+    if (updates.position !== undefined) dbPayload.position = updates.position;
+    if (updates.role !== undefined) dbPayload.role = updates.role;
+    
+    const { error } = await supabase.from('profiles').update(dbPayload).eq('id', userId);
     if (error) throw new Error(error.message);
-    if (!data || data.length === 0) throw new Error("RLS_BLOCK");
 }
 
 // --- News Management ---
@@ -235,8 +242,26 @@ export async function apiAddNews(item: Omit<NewsItem, 'id'>): Promise<NewsItem> 
     if (error) throw new Error(error.message);
     return { ...item, id: data.id };
 }
+export async function apiUpdateNews(id: number, item: Partial<NewsItem>): Promise<void> {
+    const payload: any = {};
+    if (item.title) payload.title = item.title;
+    if (item.desc) payload.desc = item.desc;
+    if (item.type) payload.type = item.type;
+    if (item.imageUrl !== undefined) payload.image_url = item.imageUrl;
+    if (item.fileType !== undefined) payload.file_type = item.fileType;
+
+    const { error } = await supabase.from('news').update(payload).eq('id', id);
+    if (error) throw new Error(error.message);
+}
+
 export async function apiDeleteNews(id: number): Promise<void> {
     const { error } = await supabase.from('news').delete().eq('id', id);
+    if (error) throw new Error(error.message);
+}
+
+export async function apiDeleteUserProfile(userId: string): Promise<void> {
+    // Note: This only deletes the profile. Auth user deletion requires service role.
+    const { error } = await supabase.from('profiles').delete().eq('id', userId);
     if (error) throw new Error(error.message);
 }
 
