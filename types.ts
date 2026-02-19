@@ -73,7 +73,7 @@ export interface Submission {
   updatedAt: string;
   audit: AuditLog[];
   coAuthors?: CoAuthor[]; // Replaced string with structured array
-  authorPhoto?: string; // New: Official Photo Base64/URL
+  authorPhoto?: string | null; // New: Official Photo Base64/URL
 }
 
 export interface NewsItem {

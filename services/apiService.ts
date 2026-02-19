@@ -292,10 +292,10 @@ export async function apiUpdateSubmission(settings: AppSettings, id: string, pat
     if (patch.phone) dbPatch.phone = patch.phone;
     if (patch.workType) dbPatch.work_type = patch.workType;
     if (patch.branchId) dbPatch.branch_id = patch.branchId;
-    if (patch.fileUrl) dbPatch.file_url = patch.fileUrl;
-    if (patch.fileName) dbPatch.file_name = patch.fileName;
-    if (patch.coAuthors) dbPatch.co_authors = patch.coAuthors;
-    if (patch.authorPhoto) dbPatch.author_photo = patch.authorPhoto; // Update Photo
+    if (patch.fileUrl !== undefined) dbPatch.file_url = patch.fileUrl;
+    if (patch.fileName !== undefined) dbPatch.file_name = patch.fileName;
+    if (patch.coAuthors !== undefined) dbPatch.co_authors = patch.coAuthors;
+    if (patch.authorPhoto !== undefined) dbPatch.author_photo = patch.authorPhoto; // Update Photo
 
     const { data, error } = await supabase.from('submissions').update(dbPatch).eq('id', id).select().single();
     if (error) throw new Error(error.message);
