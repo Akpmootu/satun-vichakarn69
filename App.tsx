@@ -1,8 +1,8 @@
 
 import React, { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { BUDGET_YEAR } from "./constants";
-import { AppSettings, Submission, ToastMessage, UserProfile, VisitorStats } from "./types";
-import { apiListSubmissions, loadSettings, getCurrentUser, logoutUser, apiGetUserProfile, subscribeToVisitorPresence, subscribeToStatsUpdates, apiGetVisitorStats, apiRecordVisit } from "./services/apiService";
+import { AppSettings, Submission, ToastMessage, UserProfile, VisitorStats, NewsItem } from "./types";
+import { apiListSubmissions, loadSettings, getCurrentUser, logoutUser, apiGetUserProfile, subscribeToVisitorPresence, subscribeToStatsUpdates, apiGetVisitorStats, apiRecordVisit, apiFetchNewsAsync } from "./services/apiService";
 
 import Registration from "./components/Registration";
 import History from "./components/History";
@@ -29,8 +29,26 @@ export default function App() {
   const [toast, setToast] = useState<ToastMessage | null>(null);
   const [showNews, setShowNews] = useState(false);
   const [newsStartIndex, setNewsStartIndex] = useState(0);
+  const [newsList, setNewsList] = useState<NewsItem[]>([]); // News State
   const [showAuth, setShowAuth] = useState(false);
   const [isPageLoading, setIsPageLoading] = useState(false);
+  // ...
+
+  // Fetch News
+  const fetchNews = async () => {
+    try {
+      const news = await apiFetchNewsAsync();
+      setNewsList(news);
+    } catch (e) {
+      console.error("Failed to fetch news", e);
+    }
+  };
+
+  useEffect(() => {
+    fetchNews();
+  }, []);
+
+  // ... (rest of the code)
   
   // UI States
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -355,7 +373,7 @@ export default function App() {
       <LoadingOverlay isLoading={isPageLoading} />
 
       {/* News Popup Modal */}
-      <NewsModal isOpen={showNews} onClose={handleCloseNews} initialIndex={newsStartIndex} />
+      <NewsModal isOpen={showNews} onClose={handleCloseNews} initialIndex={newsStartIndex} newsList={newsList} />
       
       {/* Auth Modal */}
       <UserAuthModal 
@@ -582,7 +600,9 @@ export default function App() {
                     submissions={submissions} 
                     settings={settings} 
                     refreshData={loadData} 
-                    showToast={showToast} 
+                    showToast={showToast}
+                    newsList={newsList}
+                    onNewsUpdate={fetchNews}
                 />
             )
         ) : isReviewer ? (
@@ -610,6 +630,7 @@ export default function App() {
                         userSubmissions={submissions.filter(s => s.userId === currentUser?.id)}
                         showToast={showToast}
                         onOpenNews={handleOpenNews}
+                        newsList={newsList}
                     />
                 )}
 

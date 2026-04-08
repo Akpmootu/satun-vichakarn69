@@ -1,7 +1,6 @@
 
 import React, { useMemo } from 'react';
-import { PR_NEWS } from '../constants';
-import { Submission, UserProfile } from '../types';
+import { Submission, UserProfile, NewsItem } from '../types';
 import Timeline from './Timeline';
 
 interface HomeProps {
@@ -11,9 +10,10 @@ interface HomeProps {
   userSubmissions: Submission[];
   showToast: (t: any) => void;
   onOpenNews: (index?: number) => void;
+  newsList: NewsItem[];
 }
 
-const Home: React.FC<HomeProps> = ({ onNavigate, currentUser, onLoginRequest, userSubmissions, showToast, onOpenNews }) => {
+const Home: React.FC<HomeProps> = ({ onNavigate, currentUser, onLoginRequest, userSubmissions, showToast, onOpenNews, newsList }) => {
   
   // Get latest submission photo if available
   const displayPhoto = useMemo(() => {
@@ -33,7 +33,7 @@ const Home: React.FC<HomeProps> = ({ onNavigate, currentUser, onLoginRequest, us
   };
 
   const handleDownload = (id: number) => {
-      const item = PR_NEWS.find(n => n.id === id);
+      const item = newsList.find(n => n.id === id);
       if (item) {
           // Simulate download
           showToast({
@@ -474,8 +474,8 @@ const Home: React.FC<HomeProps> = ({ onNavigate, currentUser, onLoginRequest, us
               </div>
               
               <div className="space-y-4">
-                  {PR_NEWS.filter(n => n.type === 'news').map(item => {
-                      const fullIndex = PR_NEWS.findIndex(x => x.id === item.id);
+                  {newsList.filter(n => n.type === 'news').map(item => {
+                      const fullIndex = newsList.findIndex(x => x.id === item.id);
                       return (
                           <div key={item.id} className="group relative bg-white dark:bg-slate-900 rounded-3xl p-5 shadow-sm hover:shadow-lg transition-all duration-300 ring-1 ring-slate-100 dark:ring-slate-700 border-l-4 border-l-rose-500 cursor-pointer overflow-hidden hover:-translate-y-1" onClick={() => onOpenNews(fullIndex)}>
                               
@@ -533,7 +533,7 @@ const Home: React.FC<HomeProps> = ({ onNavigate, currentUser, onLoginRequest, us
               </div>
               
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {PR_NEWS.filter(n => n.type === 'download').map(item => (
+                  {newsList.filter(n => n.type === 'download').map(item => (
                       <div 
                         key={item.id} 
                         onClick={() => handleDownload(item.id)}

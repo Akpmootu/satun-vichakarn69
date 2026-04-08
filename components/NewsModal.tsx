@@ -1,14 +1,15 @@
 
 import React, { useState, useEffect } from 'react';
-import { PR_NEWS } from '../constants';
+import { NewsItem } from '../types';
 
 interface NewsModalProps {
   isOpen: boolean;
   onClose: (dontShow: boolean) => void;
   initialIndex?: number;
+  newsList: NewsItem[];
 }
 
-const NewsModal: React.FC<NewsModalProps> = ({ isOpen, onClose, initialIndex = 0 }) => {
+const NewsModal: React.FC<NewsModalProps> = ({ isOpen, onClose, initialIndex = 0, newsList }) => {
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
   const [dontShow, setDontShow] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
@@ -29,13 +30,14 @@ const NewsModal: React.FC<NewsModalProps> = ({ isOpen, onClose, initialIndex = 0
   };
 
   if (!isOpen && !isClosing) return null;
+  if (newsList.length === 0) return null;
 
-  const totalItems = PR_NEWS.length;
+  const totalItems = newsList.length;
 
   const nextSlide = () => setCurrentIndex((prev) => (prev + 1) % totalItems);
   const prevSlide = () => setCurrentIndex((prev) => (prev - 1 + totalItems) % totalItems);
 
-  const currentItem = PR_NEWS[currentIndex];
+  const currentItem = newsList[currentIndex];
   const isNews = currentItem.type === 'news';
 
   return (
@@ -66,7 +68,7 @@ const NewsModal: React.FC<NewsModalProps> = ({ isOpen, onClose, initialIndex = 0
                 className="flex h-full transition-transform duration-500 ease-out will-change-transform"
                 style={{ transform: `translateX(-${currentIndex * 100}%)` }}
              >
-                {PR_NEWS.map((item, index) => {
+                {newsList.map((item, index) => {
                     const itemIsNews = item.type === 'news';
                     return (
                         <div key={item.id} className="min-w-full h-full relative">

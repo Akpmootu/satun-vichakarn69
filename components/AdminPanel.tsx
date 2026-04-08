@@ -12,11 +12,13 @@ interface AdminPanelProps {
   settings: AppSettings;
   refreshData: () => void;
   showToast: (t: any) => void;
+  newsList: NewsItem[];
+  onNewsUpdate: () => void;
 }
 
-const AdminPanel: React.FC<AdminPanelProps> = ({ submissions, settings, refreshData, showToast }) => {
+const AdminPanel: React.FC<AdminPanelProps> = ({ submissions, settings, refreshData, showToast, newsList, onNewsUpdate }) => {
   const [activeTab, setActiveTab] = useState<'submissions' | 'users' | 'news'>('submissions');
-  const [newsList, setNewsList] = useState<NewsItem[]>([]);
+  // const [newsList, setNewsList] = useState<NewsItem[]>([]); // Removed local state
   const [userList, setUserList] = useState<UserProfile[]>([]);
   const [reviewerList, setReviewerList] = useState<UserProfile[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(false);
@@ -45,7 +47,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ submissions, settings, refreshD
 
   // Initial Data Load
   useEffect(() => {
-      setNewsList(apiGetNews());
+      // setNewsList(apiGetNews()); // Removed
       fetchUsers();
       fetchReviewers();
   }, []);
@@ -311,7 +313,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ submissions, settings, refreshD
               });
               showToast({ type: 'success', title: 'สำเร็จ', message: 'เพิ่มข่าวประชาสัมพันธ์แล้ว' });
           }
-          setNewsList(apiGetNews());
+          onNewsUpdate();
           setShowNewsForm(false);
           setIsEditingNews(false);
           setNewsForm({ id: 0, title: '', desc: '', type: 'news', imageUrl: '', fileType: '' });
@@ -345,7 +347,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ submissions, settings, refreshD
 
       if (result.isConfirmed) {
           await apiDeleteNews(id);
-          setNewsList(apiGetNews());
+          onNewsUpdate();
           showToast({ type: 'success', title: 'ลบสำเร็จ', message: 'ลบข่าวเรียบร้อยแล้ว' });
       }
   };
