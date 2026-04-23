@@ -35,14 +35,28 @@ const Home: React.FC<HomeProps> = ({ onNavigate, currentUser, onLoginRequest, us
   const handleDownload = (id: number) => {
       const item = newsList.find(n => n.id === id);
       if (item) {
-          // Simulate download
-          showToast({
-              type: 'success',
-              title: 'กำลังดาวน์โหลด',
-              message: `เริ่มการดาวน์โหลดไฟล์: ${item.title}`
-          });
-          
-          // In real app: window.open(item.url, '_blank');
+          if (item.imageUrl) {
+              showToast({
+                  type: 'success',
+                  title: 'กำลังดาวน์โหลด',
+                  message: `เริ่มการดาวน์โหลดไฟล์: ${item.title}`
+              });
+              window.open(item.imageUrl, '_blank');
+          } else if (item.fileType && item.fileType.startsWith('http')) {
+              // Fallback for existing data where URL was put in fileType
+              showToast({
+                  type: 'success',
+                  title: 'กำลังดาวน์โหลด',
+                  message: `เริ่มการดาวน์โหลดไฟล์: ${item.title}`
+              });
+              window.open(item.fileType, '_blank');
+          } else {
+              showToast({
+                  type: 'error',
+                  title: 'ไม่พบไฟล์',
+                  message: 'ไม่มีลิงก์สำหรับดาวน์โหลดไฟล์นี้'
+              });
+          }
       }
   };
 
@@ -474,10 +488,9 @@ const Home: React.FC<HomeProps> = ({ onNavigate, currentUser, onLoginRequest, us
               </div>
               
               <div className="space-y-4">
-                  {newsList.filter(n => n.type === 'news').map(item => {
-                      const fullIndex = newsList.findIndex(x => x.id === item.id);
+                  {newsList.filter(n => n.type === 'news').map((item, filteredIndex) => {
                       return (
-                          <div key={item.id} className="group relative bg-white dark:bg-slate-900 rounded-3xl p-5 shadow-sm hover:shadow-lg transition-all duration-300 ring-1 ring-slate-100 dark:ring-slate-700 border-l-4 border-l-rose-500 cursor-pointer overflow-hidden hover:-translate-y-1" onClick={() => onOpenNews(fullIndex)}>
+                          <div key={item.id} className="group relative bg-white dark:bg-slate-900 rounded-3xl p-5 shadow-sm hover:shadow-lg transition-all duration-300 ring-1 ring-slate-100 dark:ring-slate-700 border-l-4 border-l-rose-500 cursor-pointer overflow-hidden hover:-translate-y-1" onClick={() => onOpenNews(filteredIndex)}>
                               
                               <div className="flex flex-col sm:flex-row gap-5">
                                   {/* Image/Icon */}

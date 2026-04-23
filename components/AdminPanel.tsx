@@ -152,7 +152,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ submissions, settings, refreshD
           phone: user.phone || '',
           organization: user.organization || '',
           position: user.position || '',
-          role: user.role
+          role: user.role,
+          isVerified: user.isVerified || false
       });
       setShowUserModal(true);
   };
@@ -561,7 +562,14 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ submissions, settings, refreshD
                                                 {u.firstName.charAt(0)}
                                             </div>
                                             <div>
-                                                <div className="font-bold text-slate-900 dark:text-white">{u.firstName} {u.lastName}</div>
+                                                <div className="font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                                                    {u.firstName} {u.lastName}
+                                                    {u.isVerified && (
+                                                        <span className="text-sky-500" title="ยืนยันตัวตนแล้ว">
+                                                            <i className="fa-solid fa-check-circle"></i>
+                                                        </span>
+                                                    )}
+                                                </div>
                                                 <div className="text-xs text-slate-500">{u.position || '-'}</div>
                                             </div>
                                         </div>
@@ -879,6 +887,20 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ submissions, settings, refreshD
                                     <option value="admin">Admin</option>
                                 </select>
                             </div>
+                        </div>
+
+                        <div className="flex items-center gap-3 p-4 bg-sky-50 dark:bg-sky-900/20 rounded-xl border border-sky-100 dark:border-sky-800">
+                            <input 
+                                type="checkbox" 
+                                id="isVerified"
+                                checked={userForm.isVerified || false}
+                                onChange={e => setUserForm({...userForm, isVerified: e.target.checked})}
+                                className="w-5 h-5 rounded text-sky-500 focus:ring-sky-500"
+                            />
+                            <label htmlFor="isVerified" className="text-sm font-bold text-slate-700 dark:text-slate-300 cursor-pointer flex items-center gap-2">
+                                ยืนยันตัวตน (Verified User)
+                                <i className="fa-solid fa-check-circle text-sky-500"></i>
+                            </label>
                         </div>
                         
                         <div className="pt-4 border-t border-slate-100 dark:border-slate-700 mt-4">

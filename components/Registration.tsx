@@ -256,13 +256,24 @@ const Registration: React.FC<RegistrationProps> = ({ settings, onSuccess, showTo
 
   // Co-Author Logic
   const addCoAuthor = () => {
-      setCoAuthors([...coAuthors, { id: Math.random().toString(36).substr(2, 9), firstName: '', lastName: '', position: '', level: '', organization: '', phone: '', email: '' }]);
+      setCoAuthors([...coAuthors, { id: Math.random().toString(36).substr(2, 9), firstName: '', lastName: '', position: '', organization: '', province: '', phone: '', email: '', lineId: '', photoUrl: '' }]);
   };
   const removeCoAuthor = (id: string) => {
       setCoAuthors(coAuthors.filter(c => c.id !== id));
   };
   const updateCoAuthor = (id: string, field: keyof CoAuthor, value: string) => {
       setCoAuthors(coAuthors.map(c => c.id === id ? { ...c, [field]: value } : c));
+  };
+
+  const handleCoAuthorPhotoChange = (id: string, e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (file) {
+          const reader = new FileReader();
+          reader.onloadend = () => {
+              updateCoAuthor(id, 'photoUrl', reader.result as string);
+          };
+          reader.readAsDataURL(file);
+      }
   };
 
   // --- Handlers (Author Photo) ---
@@ -506,7 +517,14 @@ const Registration: React.FC<RegistrationProps> = ({ settings, onSuccess, showTo
                         <div className="shrink-0 flex flex-col items-center gap-2">
                             <div className="w-32 h-40 bg-slate-200 dark:bg-slate-700 rounded-lg overflow-hidden border-2 border-dashed border-slate-300 dark:border-slate-600 flex items-center justify-center relative group">
                                 {authorPhoto ? (
-                                    <img src={authorPhoto} alt="Author" className="w-full h-full object-cover" />
+                                    <>
+                                        <img src={authorPhoto} alt="Author" className="w-full h-full object-cover" />
+                                        {currentUser?.isVerified && (
+                                            <div className="absolute top-1 right-1 bg-sky-500 text-white rounded-full w-5 h-5 flex items-center justify-center shadow-md border-2 border-white" title="ยืนยันตัวตนแล้ว">
+                                                <i className="fa-solid fa-check text-[10px]"></i>
+                                            </div>
+                                        )}
+                                    </>
                                 ) : (
                                     <div className="text-center text-slate-400">
                                         <i className="fa-solid fa-user text-3xl mb-1"></i>
@@ -670,137 +688,95 @@ const Registration: React.FC<RegistrationProps> = ({ settings, onSuccess, showTo
                 </div>
             </div>
 
-            {/* --- SECTION 1.5: OFFICIAL DOC INFO (New Section - Z-20) --- */}
+            {/* --- SECTION 1.5: CO-AUTHORS (New Section - Z-20) --- */}
             <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm ring-1 ring-slate-200 dark:ring-slate-700 relative z-20">
                 {/* Watermark Container */}
                 <div className="absolute inset-0 overflow-hidden rounded-2xl pointer-events-none">
-                    <i className="fa-solid fa-file-contract absolute -bottom-4 -right-4 text-9xl text-slate-100 dark:text-slate-700/50 opacity-50 transform -rotate-12 z-0"></i>
+                    <i className="fa-solid fa-users absolute -bottom-4 -right-4 text-9xl text-slate-100 dark:text-slate-700/50 opacity-50 transform -rotate-12 z-0"></i>
                 </div>
 
-                <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800 rounded-t-2xl relative z-10">
+                <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800 rounded-t-2xl relative z-10 flex justify-between items-center">
                     <h3 className="font-bold text-slate-900 dark:text-white flex items-center gap-2">
                         <span className="flex items-center justify-center w-6 h-6 rounded-md bg-amber-500 text-white text-xs">2</span>
-                        <i className="fa-solid fa-file-contract text-amber-500"></i>
-                        ข้อมูลสำหรับออกหนังสือราชการ (Official Doc Info)
+                        <i className="fa-solid fa-users text-amber-500"></i>
+                        ผู้ร่วมส่งผลงาน (Co-Authors) <span className="text-xs text-slate-400 font-normal">(ถ้ามี)</span>
                     </h3>
+                    <button onClick={addCoAuthor} className="text-xs font-bold bg-slate-100 dark:bg-slate-700 px-3 py-1.5 rounded-lg hover:bg-sky-50 dark:hover:bg-sky-900/30 text-slate-600 dark:text-slate-300 hover:text-sky-600 transition flex items-center gap-1">
+                        <i className="fa-solid fa-plus"></i> เพิ่มรายชื่อ
+                    </button>
                 </div>
                 <div className="p-6 space-y-6 relative z-10">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                        <div>
-                            <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 uppercase">เลขที่หนังสือส่ง (ถ้ามี)</label>
-                            <div className="relative">
-                                <i className="fa-solid fa-book absolute left-4 top-3 text-slate-400"></i>
-                                <input 
-                                    value={form.bookNo}
-                                    onChange={e => onChangeField("bookNo", e.target.value)}
-                                    placeholder="เช่น สต 0032/..."
-                                    className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 outline-none focus:ring-2 focus:ring-amber-200 dark:text-white"
-                                />
-                            </div>
-                        </div>
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                        <div>
-                            <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 uppercase">ชื่อผู้บังคับบัญชา (ผอ./สสอ.)</label>
-                            <div className="relative">
-                                <i className="fa-solid fa-user-tie absolute left-4 top-3 text-slate-400"></i>
-                                <input 
-                                    value={form.bossName}
-                                    onChange={e => onChangeField("bossName", e.target.value)}
-                                    placeholder="ระบุชื่อผู้เซ็นรับรอง..."
-                                    className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 outline-none focus:ring-2 focus:ring-amber-200 dark:text-white"
-                                />
-                            </div>
-                        </div>
-                        <div>
-                            <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 uppercase">ตำแหน่งผู้บังคับบัญชา</label>
-                            <div className="relative">
-                                <i className="fa-solid fa-sitemap absolute left-4 top-3 text-slate-400 z-10"></i>
-                                <select 
-                                    value={form.bossPosition}
-                                    onChange={e => onChangeField("bossPosition", e.target.value)}
-                                    className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 outline-none focus:ring-2 focus:ring-amber-200 dark:text-white appearance-none cursor-pointer"
-                                >
-                                    <option>ผู้อำนวยการโรงพยาบาล</option>
-                                    <option>สาธารณสุขอำเภอ</option>
-                                    <option>หัวหน้ากลุ่มงาน</option>
-                                    <option>รักษาการในตำแหน่ง...</option>
-                                </select>
-                                <i className="fa-solid fa-chevron-down absolute right-4 top-3.5 text-xs text-slate-400 pointer-events-none"></i>
-                            </div>
-                        </div>
-                    </div>
+                    <div className="space-y-4">
+                        {coAuthors.map((ca, index) => (
+                            <div key={ca.id} className="p-5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 relative group">
+                                <button onClick={() => removeCoAuthor(ca.id)} className="absolute top-3 right-3 h-8 w-8 rounded-full bg-white dark:bg-slate-800 text-slate-400 hover:text-rose-500 flex items-center justify-center shadow-sm border border-slate-200 dark:border-slate-700 transition">
+                                    <i className="fa-solid fa-xmark"></i>
+                                </button>
+                                <div className="text-sm font-bold text-slate-600 dark:text-slate-400 mb-4 border-b border-slate-200 dark:border-slate-700 pb-2">ผู้ร่วมวิจัยคนที่ {index + 1}</div>
+                                
+                                <div className="grid grid-cols-1 md:grid-cols-12 gap-5">
+                                    {/* Photo Upload */}
+                                    <div className="md:col-span-3 lg:col-span-2">
+                                        <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-2 uppercase text-center">รูปถ่าย</label>
+                                        <div className="relative w-24 h-32 mx-auto rounded-xl overflow-hidden bg-slate-100 dark:bg-slate-800 border-2 border-dashed border-slate-300 dark:border-slate-600 group/photo cursor-pointer flex items-center justify-center">
+                                            {ca.photoUrl ? (
+                                                <>
+                                                    <img src={ca.photoUrl} alt="Co-Author" className="w-full h-full object-cover" />
+                                                    {ca.isVerified && (
+                                                        <div className="absolute top-1 right-1 bg-sky-500 text-white rounded-full w-5 h-5 flex items-center justify-center shadow-md border-2 border-white" title="ยืนยันตัวตนแล้ว">
+                                                            <i className="fa-solid fa-check text-[10px]"></i>
+                                                        </div>
+                                                    )}
+                                                </>
+                                            ) : (
+                                                <div className="text-slate-400 flex flex-col items-center">
+                                                    <i className="fa-solid fa-camera text-2xl mb-1"></i>
+                                                    <span className="text-[10px] font-bold">อัปโหลดรูป</span>
+                                                </div>
+                                            )}
+                                            <input type="file" accept="image/*" onChange={(e) => handleCoAuthorPhotoChange(ca.id, e)} className="absolute inset-0 opacity-0 cursor-pointer" />
+                                        </div>
+                                    </div>
 
-                    {/* Co-Authors Dynamic List */}
-                    <div className="pt-4 border-t border-slate-100 dark:border-slate-700">
-                        <div className="flex justify-between items-center mb-4">
-                            <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 flex items-center gap-2">
-                                <i className="fa-solid fa-users text-slate-400"></i>
-                                ผู้ร่วมส่งผลงาน (Co-Authors) <span className="text-xs text-slate-400 font-normal">(ถ้ามี)</span>
-                            </label>
-                            <button onClick={addCoAuthor} className="text-xs font-bold bg-slate-100 dark:bg-slate-700 px-3 py-1.5 rounded-lg hover:bg-sky-50 dark:hover:bg-sky-900/30 text-slate-600 dark:text-slate-300 hover:text-sky-600 transition flex items-center gap-1">
-                                <i className="fa-solid fa-plus"></i> เพิ่มรายชื่อ
-                            </button>
-                        </div>
-                        
-                        <div className="space-y-3">
-                            {coAuthors.map((ca, index) => (
-                                <div key={ca.id} className="p-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 relative group">
-                                    <button onClick={() => removeCoAuthor(ca.id)} className="absolute top-2 right-2 h-7 w-7 rounded-full bg-white dark:bg-slate-800 text-slate-400 hover:text-rose-500 flex items-center justify-center shadow-sm border border-slate-200 dark:border-slate-700 transition">
-                                        <i className="fa-solid fa-xmark"></i>
-                                    </button>
-                                    <div className="text-xs font-bold text-slate-400 mb-2">ลำดับที่ {index + 2} (ผู้ร่วมวิจัย)</div>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                                        <input 
-                                            value={ca.firstName} 
-                                            onChange={e => updateCoAuthor(ca.id, 'firstName', e.target.value)}
-                                            placeholder="ชื่อจริง" 
-                                            className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-2 text-sm focus:border-sky-500 outline-none"
-                                        />
-                                        <input 
-                                            value={ca.lastName} 
-                                            onChange={e => updateCoAuthor(ca.id, 'lastName', e.target.value)}
-                                            placeholder="นามสกุล" 
-                                            className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-2 text-sm focus:border-sky-500 outline-none"
-                                        />
-                                        <select 
-                                            value={ca.position} 
-                                            onChange={e => updateCoAuthor(ca.id, 'position', e.target.value)}
-                                            className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-2 text-sm focus:border-sky-500 outline-none"
-                                        >
-                                            <option value="">-- ตำแหน่ง --</option>
-                                            {HEALTH_POSITIONS.map(p => <option key={p} value={p}>{p}</option>)}
-                                        </select>
-                                        <OrgAutocomplete 
-                                            value={ca.organization}
-                                            onChange={(val) => updateCoAuthor(ca.id, 'organization', val)}
-                                            placeholder="หน่วยงาน"
-                                            className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-2 text-sm focus:border-sky-500 outline-none"
-                                        />
-                                        <input 
-                                            value={ca.phone} 
-                                            onChange={e => updateCoAuthor(ca.id, 'phone', e.target.value)}
-                                            placeholder="เบอร์โทร" 
-                                            className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-2 text-sm focus:border-sky-500 outline-none"
-                                        />
-                                        <input 
-                                            value={ca.email} 
-                                            onChange={e => updateCoAuthor(ca.id, 'email', e.target.value)}
-                                            placeholder="อีเมล" 
-                                            className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-2 text-sm focus:border-sky-500 outline-none"
-                                        />
+                                    {/* Info Fields */}
+                                    <div className="md:col-span-9 lg:col-span-10 grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">ชื่อจริง</label>
+                                            <input value={ca.firstName} onChange={e => updateCoAuthor(ca.id, 'firstName', e.target.value)} className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-2 text-sm focus:border-sky-500 outline-none" />
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">นามสกุล</label>
+                                            <input value={ca.lastName} onChange={e => updateCoAuthor(ca.id, 'lastName', e.target.value)} className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-2 text-sm focus:border-sky-500 outline-none" />
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">ตำแหน่ง</label>
+                                            <input value={ca.position} onChange={e => updateCoAuthor(ca.id, 'position', e.target.value)} className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-2 text-sm focus:border-sky-500 outline-none" />
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">สถานที่ปฏิบัติงาน</label>
+                                            <OrgAutocomplete value={ca.organization} onChange={(val) => updateCoAuthor(ca.id, 'organization', val)} className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-2 text-sm focus:border-sky-500 outline-none" />
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">จังหวัด</label>
+                                            <input value={ca.province} onChange={e => updateCoAuthor(ca.id, 'province', e.target.value)} className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-2 text-sm focus:border-sky-500 outline-none" />
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">โทรศัพท์/มือถือ</label>
+                                            <input value={ca.phone} onChange={e => updateCoAuthor(ca.id, 'phone', e.target.value)} className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-2 text-sm focus:border-sky-500 outline-none" />
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">E-mail</label>
+                                            <input value={ca.email} onChange={e => updateCoAuthor(ca.id, 'email', e.target.value)} className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-2 text-sm focus:border-sky-500 outline-none" />
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">ID Line</label>
+                                            <input value={ca.lineId} onChange={e => updateCoAuthor(ca.id, 'lineId', e.target.value)} className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-2 text-sm focus:border-sky-500 outline-none" />
+                                        </div>
                                     </div>
                                 </div>
-                            ))}
-                            {coAuthors.length === 0 && <div className="text-center text-slate-400 text-xs italic py-2">ไม่มีรายชื่อผู้ร่วม (คลิกเพิ่มรายชื่อหากต้องการ)</div>}
-                        </div>
-                    </div>
-
-                    <div className="bg-amber-50 dark:bg-amber-900/20 p-3 rounded-xl flex gap-3 items-center border border-amber-100 dark:border-amber-800">
-                        <i className="fa-solid fa-print text-amber-500 text-xl pl-2"></i>
-                        <div className="text-xs text-amber-800 dark:text-amber-200">
-                            <b>Tips:</b> ข้อมูลในส่วนนี้จะถูกนำไปสร้างเอกสารราชการ (Cover Letter & Certification) อัตโนมัติ ท่านสามารถกดปุ่ม <b>"พิมพ์เอกสารนำส่ง"</b> ด้านบนเพื่อดูตัวอย่าง
-                        </div>
+                            </div>
+                        ))}
+                        {coAuthors.length === 0 && <div className="text-center text-slate-400 text-sm italic py-8 border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-xl">ไม่มีรายชื่อผู้ร่วม (คลิกเพิ่มรายชื่อหากมีผู้ร่วมส่งผลงาน)</div>}
                     </div>
                 </div>
             </div>

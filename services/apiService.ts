@@ -39,7 +39,8 @@ const mapProfileFromDB = (data: any): UserProfile => ({
     role: data.role || 'user',
     avatarUrl: data.avatar_url || null,
     addressInfo: data.address_info || {}, // Map JSONB
-    educationHistory: data.education_history || [] // Map JSONB
+    educationHistory: data.education_history || [], // Map JSONB
+    isVerified: data.is_verified || false
 });
 
 // --- Auth Methods (Supabase Auth) ---
@@ -222,6 +223,7 @@ export async function apiUpdateUserProfileAdmin(userId: string, updates: Partial
     if (updates.organization !== undefined) dbPayload.organization = updates.organization;
     if (updates.position !== undefined) dbPayload.position = updates.position;
     if (updates.role !== undefined) dbPayload.role = updates.role;
+    if (updates.isVerified !== undefined) dbPayload.is_verified = updates.isVerified;
     
     const { error } = await supabase.from('profiles').update(dbPayload).eq('id', userId);
     if (error) throw new Error(error.message);

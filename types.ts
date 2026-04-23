@@ -32,10 +32,13 @@ export interface CoAuthor {
   firstName: string;
   lastName: string;
   position: string;
-  level: string;
   organization: string;
+  province: string;
   phone: string;
   email: string;
+  lineId: string;
+  photoUrl?: string;
+  isVerified?: boolean;
 }
 
 export interface UserProfile {
@@ -49,8 +52,9 @@ export interface UserProfile {
   level?: string; 
   role: UserRole;
   avatarUrl?: string;
-  addressInfo?: AddressInfo; // Added
-  educationHistory?: Education[]; // Added
+  addressInfo?: AddressInfo;
+  educationHistory?: Education[];
+  isVerified?: boolean;
 }
 
 export interface Submission {

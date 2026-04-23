@@ -373,7 +373,7 @@ export default function App() {
       <LoadingOverlay isLoading={isPageLoading} />
 
       {/* News Popup Modal */}
-      <NewsModal isOpen={showNews} onClose={handleCloseNews} initialIndex={newsStartIndex} newsList={newsList} />
+      <NewsModal isOpen={showNews} onClose={handleCloseNews} initialIndex={newsStartIndex} newsList={newsList.filter(n => n.type === 'news')} />
       
       {/* Auth Modal */}
       <UserAuthModal 
