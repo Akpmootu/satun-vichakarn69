@@ -26,6 +26,7 @@ const NewsModal: React.FC<NewsModalProps> = ({ isOpen, onClose, initialIndex = 0
   const handleClose = () => {
       setIsClosing(true);
       setTimeout(() => {
+          setIsClosing(false);
           onClose(dontShow);
       }, 300); // Wait for animation
   };

@@ -106,16 +106,20 @@ const Home: React.FC<HomeProps> = ({ onNavigate, currentUser, onLoginRequest, us
                     <h1 className="text-3xl md:text-5xl font-black mb-4 tracking-tight leading-tight">
                         สวัสดีคุณ <span className="text-sky-400">{currentUser.firstName} {currentUser.lastName}</span>
                     </h1>
-                    <p className="text-lg text-slate-300 max-w-2xl mx-auto mb-10 leading-relaxed">
-                        ยินดีต้อนรับเข้าสู่ระบบ SKMS พื้นที่สำหรับการแบ่งปันและแลกเปลี่ยนเรียนรู้<br className="hidden md:block"/> เพื่อพัฒนาศักยภาพระบบสุขภาพจังหวัดสตูล
+                    <p className="text-lg md:text-xl text-slate-300 max-w-3xl mx-auto mb-4 leading-relaxed font-bold">
+                        ประกวดผลงานวิชาการ และนวัตกรรม ด้านสุขภาพ จังหวัดสตูล 2569
                     </p>
+                    <p className="text-sm md:text-md text-slate-400 max-w-2xl mx-auto mb-8 leading-relaxed">
+                        เปิดเวทีให้บุคลากรสาธารณสุข ร่วมแลกเปลี่ยนเรียนรู้ นำเสนอผลงานวิชาการ<br className="hidden md:block"/> พร้อมคัดเลือกผลงานสู่ระดับจังหวัด ระดับเขต และระดับประเทศ
+                    </p>
+                    
                     <div className="flex flex-col sm:flex-row justify-center gap-4">
                          <button 
                             onClick={() => handleActionClick('register')}
                             className="px-8 py-3.5 rounded-2xl bg-white text-slate-900 font-bold text-sm hover:bg-sky-50 transition shadow-lg hover:shadow-xl hover:-translate-y-0.5 active:translate-y-0 flex items-center justify-center gap-2 min-w-[180px]"
                         >
                             <i className="fa-solid fa-plus text-sky-600"></i>
-                            ส่งผลงานใหม่
+                            ส่งผลงานใหม่ (15 สาขา)
                         </button>
                          <button 
                             onClick={() => handleActionClick('history')}
@@ -125,20 +129,45 @@ const Home: React.FC<HomeProps> = ({ onNavigate, currentUser, onLoginRequest, us
                             ประวัติของฉัน
                         </button>
                     </div>
+                    
+                    {/* Event Schedule Info */}
+                    <div className="mt-8 flex flex-col md:flex-row justify-center gap-4 text-left max-w-4xl mx-auto">
+                        <div className="bg-sky-900/40 backdrop-blur-sm border border-sky-700/50 rounded-xl p-4 flex items-start gap-4 flex-1">
+                            <div className="h-10 w-10 shrink-0 rounded-full bg-sky-500/20 flex items-center justify-center text-sky-400">
+                                <i className="fa-regular fa-calendar-check text-xl"></i>
+                            </div>
+                            <div>
+                                <h4 className="text-white font-bold mb-1">กำหนดการรับผลงาน</h4>
+                                <p className="text-sky-200 text-sm">7 เม.ย. - 6 พ.ค. 2569</p>
+                                <p className="text-slate-400 text-xs mt-1">ปิดส่งผลงานเวลา 16.30 น.</p>
+                            </div>
+                        </div>
+                        <div className="bg-emerald-900/40 backdrop-blur-sm border border-emerald-700/50 rounded-xl p-4 flex items-start gap-4 flex-1">
+                            <div className="h-10 w-10 shrink-0 rounded-full bg-emerald-500/20 flex items-center justify-center text-emerald-400">
+                                <i className="fa-solid fa-medal text-xl"></i>
+                            </div>
+                            <div>
+                                <h4 className="text-white font-bold mb-1">วันประกวดผลงาน</h4>
+                                <p className="text-emerald-200 text-sm">11 - 12 พ.ค. 2569</p>
+                                <p className="text-slate-400 text-xs mt-1">ณ สสจ.สตูล และ รพ.สตูล</p>
+                            </div>
+                        </div>
+                    </div>
                  </div>
              ) : (
                  <>
                     <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-sky-500/10 text-sky-300 border border-sky-500/30 text-xs font-bold mb-6 backdrop-blur-sm">
                         <i className="fa-solid fa-star"></i>
-                        Satun Knowledge Management Systems
+                        มหกรรมแลกเปลี่ยนเรียนรู้ฯ 2569
                     </div>
-                    <h1 className="text-4xl md:text-6xl font-black mb-6 tracking-tight leading-tight">
-                        ระบบจัดการความรู้<br/>
-                        <span className="text-transparent bg-clip-text bg-gradient-to-r from-sky-400 to-emerald-400">สาธารณสุขจังหวัดสตูล</span>
+                    <h1 className="text-4xl md:text-5xl lg:text-6xl font-black mb-6 tracking-tight leading-tight">
+                        ประกวดผลงานวิชาการ<br/>
+                        <span className="text-transparent bg-clip-text bg-gradient-to-r from-sky-400 to-emerald-400">และนวัตกรรม ด้านสุขภาพ</span><br/>
+                        <span className="text-2xl md:text-4xl">จังหวัดสตูล 2569</span>
                     </h1>
-                    <p className="text-lg text-slate-300 max-w-2xl mx-auto mb-10 font-light leading-relaxed">
-                        "รวบรวม จัดระเบียบ และเผยแพร่ความรู้ สู่ความเป็นเลิศ"<br/>
-                        แพลตฟอร์มกลางสำหรับบุคลากรสาธารณสุขในการแลกเปลี่ยนเรียนรู้
+                    <p className="text-base md:text-lg text-slate-300 max-w-2xl mx-auto mb-10 font-light leading-relaxed">
+                        เปิดเวทีให้บุคลากรสาธารณสุข ร่วมแลกเปลี่ยนเรียนรู้ นำเสนอผลงานวิชาการ<br/>
+                        พร้อมคัดเลือกผลงานสู่ระดับจังหวัด ระดับเขต และระดับประเทศ
                     </p>
                     
                     {/* Primary Actions */}
@@ -155,8 +184,51 @@ const Home: React.FC<HomeProps> = ({ onNavigate, currentUser, onLoginRequest, us
                              className="w-full sm:w-auto px-8 py-4 rounded-2xl bg-slate-800/50 text-slate-200 font-bold text-lg hover:bg-slate-800 hover:text-white transition border border-slate-700 backdrop-blur-sm active:bg-slate-800"
                         >
                             <i className="fa-solid fa-book-open mr-2"></i>
-                            เข้าสู่คลังความรู้
+                            เข้าสู่คลังผลงาน
                         </button>
+                    </div>
+
+                    {/* Event Schedule Info (Logged out) */}
+                    <div className="mt-8 mb-8 flex flex-col md:flex-row justify-center gap-4 text-left max-w-4xl mx-auto">
+                        <div className="bg-sky-900/40 backdrop-blur-sm border border-sky-700/50 rounded-xl p-4 flex items-start gap-4 flex-1">
+                            <div className="h-10 w-10 shrink-0 rounded-full bg-sky-500/20 flex items-center justify-center text-sky-400">
+                                <i className="fa-regular fa-calendar-check text-xl"></i>
+                            </div>
+                            <div>
+                                <h4 className="text-white font-bold mb-1">กำหนดการรับผลงาน (15 สาขา)</h4>
+                                <p className="text-sky-200 text-sm">7 เม.ย. - 6 พ.ค. 2569</p>
+                                <p className="text-slate-400 text-xs mt-1">ปิดส่งผลงานเวลา 16.30 น.</p>
+                            </div>
+                        </div>
+                        <div className="bg-emerald-900/40 backdrop-blur-sm border border-emerald-700/50 rounded-xl p-4 flex items-start gap-4 flex-1">
+                            <div className="h-10 w-10 shrink-0 rounded-full bg-emerald-500/20 flex items-center justify-center text-emerald-400">
+                                <i className="fa-solid fa-medal text-xl"></i>
+                            </div>
+                            <div>
+                                <h4 className="text-white font-bold mb-1">วันประกวดผลงาน</h4>
+                                <p className="text-emerald-200 text-sm">11 - 12 พ.ค. 2569</p>
+                                <p className="text-slate-400 text-xs mt-1">ณ สสจ.สตูล และ รพ.สตูล</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Submission Links / QR Alternatives */}
+                    <div className="bg-slate-800/30 backdrop-blur-sm border border-slate-700 rounded-[2rem] p-6 max-w-4xl mx-auto mb-10">
+                         <h4 className="text-white font-bold mb-4 text-sm text-center">ช่องทางการส่งผลงาน (หรือสแกน QR Code ในโปสเตอร์)</h4>
+                         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                              <a href="https://moph.link/stn-oral" target="_blank" rel="noreferrer" className="flex items-center justify-center gap-2 p-3 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-600 transition text-sm text-slate-300 hover:text-white group">
+                                  <i className="fa-solid fa-microphone-lines text-sky-400 group-hover:scale-110 transition-transform"></i>
+                                  Oral Presentation
+                              </a>
+                              <a href="https://moph.link/stn-eposter" target="_blank" rel="noreferrer" className="flex items-center justify-center gap-2 p-3 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-600 transition text-sm text-slate-300 hover:text-white group">
+                                  <i className="fa-solid fa-image text-emerald-400 group-hover:scale-110 transition-transform"></i>
+                                  E-Poster
+                              </a>
+                              <a href="https://moph.link/stn-innovation" target="_blank" rel="noreferrer" className="flex items-center justify-center gap-2 p-3 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-600 transition text-sm text-slate-300 hover:text-white group">
+                                  <i className="fa-solid fa-lightbulb text-amber-400 group-hover:scale-110 transition-transform"></i>
+                                  Innovation & Invention
+                              </a>
+                         </div>
                     </div>
                     
                     {/* Secondary Links (Manuals) */}
