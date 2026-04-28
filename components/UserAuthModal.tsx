@@ -4,6 +4,7 @@ import { apiRegisterUser, apiLoginUser, apiUploadAvatar, apiUpdateUserProfile } 
 import { HEALTH_POSITIONS, JOB_LEVELS, EDUCATION_LEVELS } from '../constants';
 import OrgAutocomplete from './ui/OrgAutocomplete';
 import UniversityAutocomplete from './ui/UniversityAutocomplete';
+import PasswordStrengthMeter from './ui/PasswordStrengthMeter';
 
 interface UserAuthModalProps {
   isOpen: boolean;
@@ -591,19 +592,7 @@ const UserAuthModal: React.FC<UserAuthModalProps> = ({ isOpen, onClose, onSucces
                             </div>
 
                             {/* Password Strength Meter */}
-                            {regPassword && (
-                                <div className="space-y-1">
-                                    <div className="flex justify-between text-[10px] text-slate-500">
-                                        <span>ความปลอดภัย: <span className={`${passScore <= 1 ? 'text-rose-500' : passScore <= 3 ? 'text-amber-500' : 'text-emerald-500'} font-bold`}>{getStrengthLabel(passScore)}</span></span>
-                                    </div>
-                                    <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
-                                        <div 
-                                            className={`h-full transition-all duration-300 ${getStrengthColor(passScore)}`} 
-                                            style={{ width: `${(passScore / 4) * 100}%` }}
-                                        ></div>
-                                    </div>
-                                </div>
-                            )}
+                            <PasswordStrengthMeter password={regPassword} />
                         </div>
                     </div>
 

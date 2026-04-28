@@ -56,6 +56,8 @@ export interface UserProfile {
   addressInfo?: AddressInfo;
   educationHistory?: Education[];
   isVerified?: boolean;
+  verifiedBy?: string;
+  verifiedAt?: string;
 }
 
 export interface Submission {

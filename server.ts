@@ -41,6 +41,32 @@ async function startServer() {
     }
   });
 
+  app.post('/api/admin/reset-password', async (req, res) => {
+    try {
+      const { targetUserId, newPassword } = req.body;
+      const url = process.env.VITE_SUPABASE_URL;
+      const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+      if (!url || !key) {
+        return res.status(500).json({ error: 'Missing SUPABASE_SERVICE_ROLE_KEY environment variable. Cannot reset passwords without it.' });
+      }
+
+      const { createClient } = await import('@supabase/supabase-js');
+      const supabaseAdmin = createClient(url, key, { auth: { autoRefreshToken: false, persistSession: false } });
+
+      const { data, error } = await supabaseAdmin.auth.admin.updateUserById(targetUserId, {
+        password: newPassword
+      });
+
+      if (error) {
+        return res.status(400).json({ error: error.message });
+      }
+      res.json({ status: 'ok', data });
+    } catch (error) {
+      console.error('Password Reset Error:', error);
+      res.status(500).json({ error: String(error) });
+    }
+  });
+
   // Vite middleware for development
   if (process.env.NODE_ENV !== 'production') {
     const vite = await createViteServer({

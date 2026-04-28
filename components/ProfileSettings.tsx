@@ -5,6 +5,7 @@ import { apiUpdateUserProfile, apiUploadAvatar, apiChangePassword } from '../ser
 import { HEALTH_POSITIONS, JOB_LEVELS, EDUCATION_LEVELS } from '../constants';
 import OrgAutocomplete from './ui/OrgAutocomplete';
 import UniversityAutocomplete from './ui/UniversityAutocomplete';
+import PasswordStrengthMeter from './ui/PasswordStrengthMeter';
 
 interface ProfileSettingsProps {
     currentUser: UserProfile;
@@ -522,16 +523,7 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({ currentUser, onUpdate
                                         </div>
                                         
                                         {/* Strength Meter */}
-                                        <div className="mt-2 flex gap-1 h-1.5 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-700">
-                                            {[1, 2, 3, 4].map((step) => (
-                                                <div 
-                                                    key={step} 
-                                                    className={`flex-1 transition-all duration-300 ${strength >= step 
-                                                        ? (strength <= 1 ? 'bg-rose-500' : strength <= 2 ? 'bg-amber-500' : 'bg-emerald-500') 
-                                                        : 'bg-transparent'}`} 
-                                                />
-                                            ))}
-                                        </div>
+                                        <PasswordStrengthMeter password={newPassword} />
                                     </div>
 
                                     <div>

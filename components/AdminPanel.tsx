@@ -3,8 +3,10 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, Legend } from 'recharts';
 import { Submission, NewsItem, AppSettings, SubmissionStatus, UserProfile, UserRole } from '../types';
 import { apiUpdateSubmission, apiDeleteSubmission, apiGetNews, apiAddNews, apiDeleteNews, apiUpdateNews, apiGetAllUsers, apiUpdateUserProfileAdmin, apiDeleteUserProfile, apiGetUsersByRole } from '../services/apiService';
-import { BRANCHES, WORK_TYPES } from '../constants';
+import { BRANCHES, WORK_TYPES, HEALTH_POSITIONS, JOB_LEVELS, EDUCATION_LEVELS } from '../constants';
 import Badge from './ui/Badge';
+import OrgAutocomplete from './ui/OrgAutocomplete';
+import UniversityAutocomplete from './ui/UniversityAutocomplete';
 
 declare const Swal: any;
 
@@ -15,9 +17,10 @@ interface AdminPanelProps {
   showToast: (t: any) => void;
   newsList: NewsItem[];
   onNewsUpdate: () => void;
+  currentUser: UserProfile;
 }
 
-const AdminPanel: React.FC<AdminPanelProps> = ({ submissions, settings, refreshData, showToast, newsList, onNewsUpdate }) => {
+const AdminPanel: React.FC<AdminPanelProps> = ({ submissions, settings, refreshData, showToast, newsList, onNewsUpdate, currentUser }) => {
   const [activeTab, setActiveTab] = useState<'submissions' | 'users' | 'news' | 'dashboard'>('dashboard');
   // const [newsList, setNewsList] = useState<NewsItem[]>([]); // Removed local state
   const [userList, setUserList] = useState<UserProfile[]>([]);
@@ -191,7 +194,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ submissions, settings, refreshD
           organization: user.organization || '',
           position: user.position || '',
           role: user.role,
-          isVerified: user.isVerified || false
+          isVerified: user.isVerified || false,
+          educationHistory: user.educationHistory || []
       });
       setShowUserModal(true);
   };
@@ -199,7 +203,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ submissions, settings, refreshD
   const handleSaveUser = async () => {
       if (!editingUser) return;
       try {
-          await apiUpdateUserProfileAdmin(editingUser.id, userForm);
+          const updates = { ...userForm };
+          if (updates.isVerified && currentUser?.id) {
+              updates.verifiedBy = currentUser.id;
+          }
+          await apiUpdateUserProfileAdmin(editingUser.id, updates);
           showToast({ type: 'success', title: 'บันทึกสำเร็จ', message: 'แก้ไขข้อมูลผู้ใช้งานเรียบร้อยแล้ว' });
           setShowUserModal(false);
           setEditingUser(null);
@@ -713,8 +721,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ submissions, settings, refreshD
                                                 <div className="font-bold text-slate-900 dark:text-white flex items-center gap-2">
                                                     {u.firstName} {u.lastName}
                                                     {u.isVerified && (
-                                                        <span className="text-sky-500" title="ยืนยันตัวตนแล้ว">
-                                                            <i className="fa-solid fa-check-circle"></i>
+                                                        <span className="text-blue-500" title={`ยืนยันตัวตนแล้ว${u.verifiedBy ? ` โดย ${userList.find(a => a.id === u.verifiedBy)?.firstName || 'Admin'}` : ''}`}>
+                                                            <i className="fa-solid fa-circle-check"></i>
                                                         </span>
                                                     )}
                                                 </div>
@@ -1003,22 +1011,39 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ submissions, settings, refreshD
                             </div>
                         </div>
 
-                        <div>
-                            <label className="text-xs font-bold text-slate-500 mb-1 block">หน่วยงาน</label>
-                            <input 
-                                value={userForm.organization || ''} 
-                                onChange={e => setUserForm({...userForm, organization: e.target.value})} 
-                                className="w-full p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 outline-none focus:ring-2 focus:ring-sky-200 dark:text-white"
-                            />
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <label className="text-xs font-bold text-slate-500 mb-1 block">หน่วยงาน</label>
+                                <OrgAutocomplete 
+                                    value={userForm.organization || ''} 
+                                    onChange={val => setUserForm({...userForm, organization: val})} 
+                                    className="w-full p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 outline-none focus:ring-2 focus:ring-sky-200 dark:text-white"
+                                />
+                            </div>
+                            <div>
+                                <label className="text-xs font-bold text-slate-500 mb-1 block">ระดับ</label>
+                                <select 
+                                    value={userForm.level || ''}
+                                    onChange={e => setUserForm({...userForm, level: e.target.value})}
+                                    className="w-full p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 outline-none focus:ring-2 focus:ring-sky-200 dark:text-white"
+                                >
+                                    <option value="">-- เลือกระดับ --</option>
+                                    {JOB_LEVELS.map(l => <option key={l} value={l}>{l}</option>)}
+                                </select>
+                            </div>
                         </div>
 
                         <div>
                             <label className="text-xs font-bold text-slate-500 mb-1 block">ตำแหน่ง</label>
                             <input 
+                                list="admin-positions"
                                 value={userForm.position || ''} 
                                 onChange={e => setUserForm({...userForm, position: e.target.value})} 
                                 className="w-full p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 outline-none focus:ring-2 focus:ring-sky-200 dark:text-white"
                             />
+                            <datalist id="admin-positions">
+                                {HEALTH_POSITIONS.map(p => <option key={p} value={p} />)}
+                            </datalist>
                         </div>
 
                         <div className="grid grid-cols-2 gap-4">
@@ -1044,26 +1069,120 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ submissions, settings, refreshD
                             </div>
                         </div>
 
-                        <div className="flex items-center gap-3 p-4 bg-sky-50 dark:bg-sky-900/20 rounded-xl border border-sky-100 dark:border-sky-800">
-                            <input 
-                                type="checkbox" 
-                                id="isVerified"
-                                checked={userForm.isVerified || false}
-                                onChange={e => setUserForm({...userForm, isVerified: e.target.checked})}
-                                className="w-5 h-5 rounded text-sky-500 focus:ring-sky-500"
-                            />
-                            <label htmlFor="isVerified" className="text-sm font-bold text-slate-700 dark:text-slate-300 cursor-pointer flex items-center gap-2">
-                                ยืนยันตัวตน (Verified User)
-                                <i className="fa-solid fa-check-circle text-sky-500"></i>
-                            </label>
+                        {/* Education Section */}
+                        <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700">
+                            <h4 className="font-bold text-slate-700 dark:text-slate-300 mb-3 text-sm flex items-center gap-2">
+                                <i className="fa-solid fa-graduation-cap"></i> ประวัติการศึกษา
+                            </h4>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label className="text-xs font-bold text-slate-500 mb-1 block">ระดับการศึกษา</label>
+                                    <select
+                                        value={userForm.educationHistory?.[0]?.degree || ''}
+                                        onChange={(e) => {
+                                            const edu = [...(userForm.educationHistory || [{ id: 'primary', degree: '', major: '', institution: '', year: '' }])];
+                                            edu[0] = { ...edu[0], degree: e.target.value };
+                                            setUserForm({ ...userForm, educationHistory: edu });
+                                        }}
+                                        className="w-full p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 outline-none focus:ring-2 focus:ring-sky-200 dark:text-white"
+                                    >
+                                        <option value="">-- เลือกระดับ --</option>
+                                        {EDUCATION_LEVELS.map((l) => (
+                                            <option key={l} value={l}>{l}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="text-xs font-bold text-slate-500 mb-1 block">สาขาวิชา</label>
+                                    <input
+                                        value={userForm.educationHistory?.[0]?.major || ''}
+                                        onChange={(e) => {
+                                            const edu = [...(userForm.educationHistory || [{ id: 'primary', degree: '', major: '', institution: '', year: '' }])];
+                                            edu[0] = { ...edu[0], major: e.target.value };
+                                            setUserForm({ ...userForm, educationHistory: edu });
+                                        }}
+                                        className="w-full p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 outline-none focus:ring-2 focus:ring-sky-200 dark:text-white"
+                                        placeholder="เช่น สาธารณสุขศาสตร์"
+                                    />
+                                </div>
+                                <div className="md:col-span-2">
+                                    <label className="text-xs font-bold text-slate-500 mb-1 block">สถาบันการศึกษา</label>
+                                    <UniversityAutocomplete
+                                        value={userForm.educationHistory?.[0]?.institution || ''}
+                                        onChange={(val) => {
+                                            const edu = [...(userForm.educationHistory || [{ id: 'primary', degree: '', major: '', institution: '', year: '' }])];
+                                            edu[0] = { ...edu[0], institution: val };
+                                            setUserForm({ ...userForm, educationHistory: edu });
+                                        }}
+                                        className="w-full p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 outline-none focus:ring-2 focus:ring-sky-200 dark:text-white"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="text-xs font-bold text-slate-500 mb-1 block">ปีที่จบ (พ.ศ.)</label>
+                                    <select
+                                        value={userForm.educationHistory?.[0]?.year || ''}
+                                        onChange={(e) => {
+                                            const edu = [...(userForm.educationHistory || [{ id: 'primary', degree: '', major: '', institution: '', year: '' }])];
+                                            edu[0] = { ...edu[0], year: e.target.value };
+                                            setUserForm({ ...userForm, educationHistory: edu });
+                                        }}
+                                        className="w-full p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 outline-none focus:ring-2 focus:ring-sky-200 dark:text-white"
+                                    >
+                                        <option value="">-- ปีที่จบ --</option>
+                                        {Array.from({length: 50}, (_, i) => (new Date().getFullYear() + 543) - i).map(y => (
+                                            <option key={y} value={y.toString()}>{y}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="flex flex-col gap-2 p-4 bg-sky-50 dark:bg-sky-900/20 rounded-xl border border-sky-100 dark:border-sky-800 mt-4">
+                            <div className="flex items-center gap-3">
+                                <input 
+                                    type="checkbox" 
+                                    id="isVerified"
+                                    checked={userForm.isVerified || false}
+                                    onChange={e => setUserForm({...userForm, isVerified: e.target.checked})}
+                                    className="w-5 h-5 rounded text-sky-500 focus:ring-sky-500"
+                                />
+                                <label htmlFor="isVerified" className="text-sm font-bold text-slate-700 dark:text-slate-300 cursor-pointer flex items-center gap-2">
+                                    ยืนยันตัวตน (Verified User)
+                                    <i className="fa-solid fa-circle-check text-blue-500"></i>
+                                </label>
+                            </div>
+                            {editingUser?.isVerified && editingUser?.verifiedBy && (
+                                <div className="text-xs text-slate-500 dark:text-slate-400 ml-8 bg-white dark:bg-slate-800 p-2 rounded-lg border border-slate-100 dark:border-slate-700 inline-block">
+                                    ยืนยันโดยแอดมิน: <span className="font-bold text-sky-600">{userList.find(u => u.id === editingUser.verifiedBy)?.firstName || 'Admin'}</span> 
+                                    {editingUser.verifiedAt && ` (เมื่อ ${new Date(editingUser.verifiedAt).toLocaleDateString('th-TH')})`}
+                                </div>
+                            )}
                         </div>
                         
                         <div className="pt-4 border-t border-slate-100 dark:border-slate-700 mt-4">
                              <button 
-                                onClick={() => Swal.fire('แจ้งเตือน', 'ระบบจะส่งลิงก์รีเซ็ตรหัสผ่านไปยังอีเมลผู้ใช้งาน', 'info')}
+                                onClick={async () => {
+                                    const result = await Swal.fire({
+                                        title: 'ยืนยันการตั้งรหัสผ่านใหม่',
+                                        html: `ต้องการตั้งรหัสผ่านของ <b>${editingUser.firstName}</b> เป็น <b>Satun@2569</b> หรือไม่?`,
+                                        icon: 'warning',
+                                        showCancelButton: true,
+                                        confirmButtonText: 'ยืนยัน',
+                                        cancelButtonText: 'ยกเลิก'
+                                    });
+                                    if (result.isConfirmed) {
+                                        try {
+                                            Swal.fire({title: 'กำลังดำเนินการ...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); }});
+                                            await import('../services/apiService').then(m => m.apiUpdateUserPasswordAdmin(editingUser.id, 'Satun@2569'));
+                                            Swal.fire('สำเร็จ', 'รหัสผ่านถูกตั้งเป็น Satun@2569 แล้ว', 'success');
+                                        } catch(e: any) {
+                                            Swal.fire('ข้อผิดพลาด', e.message, 'error');
+                                        }
+                                    }
+                                }}
                                 className="text-xs font-bold text-sky-600 hover:underline flex items-center gap-1"
                              >
-                                <i className="fa-solid fa-key"></i> รีเซ็ตรหัสผ่าน (Send Reset Email)
+                                <i className="fa-solid fa-key"></i> รีเซ็ตรหัสผ่าน (เป็นค่าเริ่มต้น Satun@2569)
                              </button>
                         </div>
                     </div>

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { LOADING_QUOTES } from '../../constants';
-import logoSrc from '../../pic/logo.png';
+const logoSrc = '/pic/logo.png';
 
 interface LoadingOverlayProps {
   isLoading: boolean;

@@ -88,7 +88,14 @@ export default function App() {
 
   const mySubmissions = useMemo(() => {
      if (!currentUser) return [];
-     return allSubmissions.filter(s => s.userId === currentUser.id);
+     return allSubmissions.filter(s => {
+         if (s.userId === currentUser.id) return true;
+         // Check if user is a co-author (match by ID or Email)
+         if (s.coAuthors && Array.isArray(s.coAuthors)) {
+             return s.coAuthors.some(ca => ca.id === currentUser.id || (currentUser.email && ca.email === currentUser.email));
+         }
+         return false;
+     });
   }, [allSubmissions, currentUser]);
 
   // Apply Dark Mode Class
@@ -453,15 +460,25 @@ export default function App() {
                         ${darkMode ? 'md:bg-slate-800/50 md:border-slate-700 hover:bg-slate-800' : 'md:bg-white md:border-slate-200 hover:bg-slate-50'}`}
                      >
                          {/* Avatar */}
-                         <div className={`h-9 w-9 rounded-full flex items-center justify-center text-sm font-bold border-2 shrink-0 overflow-hidden
-                            ${isAdmin ? 'bg-rose-100 text-rose-600 border-rose-200' : 
-                              isReviewer ? 'bg-indigo-100 text-indigo-600 border-indigo-200' : 
-                              'bg-sky-100 text-sky-600 border-sky-200'}
-                         `}>
-                             {currentUser.avatarUrl ? (
-                                 <img src={currentUser.avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
-                             ) : (
-                                 currentUser.firstName.charAt(0)
+                         <div className="relative shrink-0">
+                             <div className={`h-9 w-9 rounded-full flex items-center justify-center text-sm font-bold border-2 overflow-hidden
+                                ${isAdmin ? 'bg-rose-100 text-rose-600 border-rose-200' : 
+                                  isReviewer ? 'bg-indigo-100 text-indigo-600 border-indigo-200' : 
+                                  'bg-sky-100 text-sky-600 border-sky-200'}
+                             `}>
+                                 {currentUser.avatarUrl ? (
+                                     <img src={currentUser.avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+                                 ) : (
+                                     currentUser.firstName.charAt(0)
+                                 )}
+                             </div>
+                             {currentUser.isVerified && (
+                                 <div 
+                                    className="absolute -bottom-1 -right-1 bg-white dark:bg-slate-900 rounded-full w-4 h-4 flex items-center justify-center" 
+                                    title={currentUser.verifiedBy ? "ยืนยันตัวตนแล้วโดยแอดมิน" : "ยืนยันตัวตนแล้ว"}
+                                 >
+                                     <i className="fa-solid fa-circle-check text-blue-500 text-sm"></i>
+                                 </div>
                              )}
                          </div>
 
@@ -607,6 +624,7 @@ export default function App() {
                     showToast={showToast}
                     newsList={newsList}
                     onNewsUpdate={fetchNews}
+                    currentUser={currentUser}
                 />
             )
         ) : isReviewer ? (
@@ -661,6 +679,7 @@ export default function App() {
                         settings={settings} 
                         showToast={showToast} 
                         onEdit={handleEditSubmission}
+                        currentUser={currentUser!}
                     />
                 )}
                 

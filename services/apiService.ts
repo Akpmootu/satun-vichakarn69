@@ -39,8 +39,10 @@ const mapProfileFromDB = (data: any): UserProfile => ({
     role: data.role || 'user',
     avatarUrl: data.avatar_url || null,
     addressInfo: data.address_info || {}, // Map JSONB
-    educationHistory: data.education_history || [], // Map JSONB
-    isVerified: data.is_verified || false
+    educationHistory: data.education_history || [],
+    isVerified: data.is_verified || false,
+    verifiedBy: data.verified_by || undefined,
+    verifiedAt: data.verified_at || undefined
 });
 
 // --- Auth Methods (Supabase Auth) ---
@@ -215,6 +217,23 @@ export async function apiGetUsersByRole(role: UserRole): Promise<UserProfile[]> 
     return data.map(mapProfileFromDB);
 }
 
+export async function apiUpdateUserPasswordAdmin(userId: string, newPassword?: string): Promise<void> {
+    const passwordToSet = newPassword || 'Satun@2569';
+    try {
+        const res = await fetch('/api/admin/reset-password', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ targetUserId: userId, newPassword: passwordToSet })
+        });
+        const data = await res.json();
+        if (!res.ok) {
+            throw new Error(data.error || 'Failed to reset password');
+        }
+    } catch (e: any) {
+        throw new Error(e.message || 'Failed to connect to reset password service');
+    }
+}
+
 export async function apiUpdateUserProfileAdmin(userId: string, updates: Partial<UserProfile>): Promise<void> {
     const dbPayload: any = {};
     if (updates.firstName !== undefined) dbPayload.first_name = updates.firstName;
@@ -222,8 +241,18 @@ export async function apiUpdateUserProfileAdmin(userId: string, updates: Partial
     if (updates.phone !== undefined) dbPayload.phone = updates.phone;
     if (updates.organization !== undefined) dbPayload.organization = updates.organization;
     if (updates.position !== undefined) dbPayload.position = updates.position;
+    if (updates.level !== undefined) dbPayload.level = updates.level;
     if (updates.role !== undefined) dbPayload.role = updates.role;
-    if (updates.isVerified !== undefined) dbPayload.is_verified = updates.isVerified;
+    if (updates.isVerified !== undefined) {
+        dbPayload.is_verified = updates.isVerified;
+        if (updates.isVerified && updates.verifiedBy) {
+            dbPayload.verified_by = updates.verifiedBy;
+            dbPayload.verified_at = new Date().toISOString();
+        } else if (!updates.isVerified) {
+            dbPayload.verified_by = null;
+            dbPayload.verified_at = null;
+        }
+    }
     
     const { error } = await supabase.from('profiles').update(dbPayload).eq('id', userId);
     if (error) throw new Error(error.message);

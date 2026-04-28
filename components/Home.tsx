@@ -18,10 +18,11 @@ interface HomeProps {
 
 const Home: React.FC<HomeProps> = ({ onNavigate, currentUser, onLoginRequest, userSubmissions, showToast, onOpenNews, newsList }) => {
   
-  // Display popup for rework
+  // Display popups for rework or new co-author tagging
   useEffect(() => {
      if (currentUser && userSubmissions && userSubmissions.length > 0) {
-         const reworked = userSubmissions.filter(s => s.status === 'revision_requested');
+         // Rework alert
+         const reworked = userSubmissions.filter(s => s.status === 'revision_requested' && s.userId === currentUser.id);
          if (reworked.length > 0) {
              const hasAlerted = sessionStorage.getItem(`rework_alerted_${currentUser.id}`);
              if (!hasAlerted) {
@@ -44,6 +45,33 @@ const Home: React.FC<HomeProps> = ({ onNavigate, currentUser, onLoginRequest, us
                      }
                  });
                  sessionStorage.setItem(`rework_alerted_${currentUser.id}`, 'true');
+             }
+         }
+
+         // Tag alert for Co-authors
+         const coAuthorSubmissions = userSubmissions.filter(s => s.userId !== currentUser.id && s.coAuthors?.some(ca => ca.id === currentUser.id || (currentUser.email && ca.email === currentUser.email)));
+         if (coAuthorSubmissions.length > 0) {
+             const viewed = JSON.parse(localStorage.getItem(`viewed_coauthor_${currentUser.id}`) || '[]');
+             const unviewed = coAuthorSubmissions.filter(s => !viewed.includes(s.id));
+             
+             if (unviewed.length > 0) {
+                 const listHtml = unviewed.map(s => `<li>• <b>${s.fileName}</b></li>`).join('');
+                 Swal.fire({
+                     title: '🎉 คุณถูกแท็กชื่อ!',
+                     html: `คุณได้รับเชิญเป็นผู้ร่วมส่งผลงานประกวด:<br/><ul class="text-left mt-4 text-sm space-y-2 bg-sky-50 p-4 rounded-xl text-sky-900 shadow-inner">${listHtml}</ul>`,
+                     icon: 'info',
+                     showCancelButton: true,
+                     confirmButtonText: 'ดูผลงาน',
+                     cancelButtonText: 'รับทราบ',
+                     confirmButtonColor: '#0ea5e9',
+                     customClass: { popup: 'rounded-3xl' }
+                 }).then((result: any) => {
+                     const updatedViewed = [...viewed, ...unviewed.map(s => s.id)];
+                     localStorage.setItem(`viewed_coauthor_${currentUser.id}`, JSON.stringify(updatedViewed));
+                     if (result.isConfirmed) {
+                         onNavigate('history');
+                     }
+                 });
              }
          }
      }
@@ -250,18 +278,18 @@ const Home: React.FC<HomeProps> = ({ onNavigate, currentUser, onLoginRequest, us
                     <div className="bg-slate-800/30 backdrop-blur-sm border border-slate-700 rounded-[2rem] p-6 max-w-4xl mx-auto mb-10">
                          <h4 className="text-white font-bold mb-4 text-sm text-center">ช่องทางการส่งผลงาน (หรือสแกน QR Code ในโปสเตอร์)</h4>
                          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                              <a href="https://moph.link/stn-oral" target="_blank" rel="noreferrer" className="flex items-center justify-center gap-2 p-3 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-600 transition text-sm text-slate-300 hover:text-white group">
+                              <button onClick={() => onNavigate('register')} className="flex items-center justify-center gap-2 p-3 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-600 transition text-sm text-slate-300 hover:text-white group">
                                   <i className="fa-solid fa-microphone-lines text-sky-400 group-hover:scale-110 transition-transform"></i>
                                   Oral Presentation
-                              </a>
-                              <a href="https://moph.link/stn-eposter" target="_blank" rel="noreferrer" className="flex items-center justify-center gap-2 p-3 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-600 transition text-sm text-slate-300 hover:text-white group">
+                              </button>
+                              <button onClick={() => onNavigate('register')} className="flex items-center justify-center gap-2 p-3 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-600 transition text-sm text-slate-300 hover:text-white group">
                                   <i className="fa-solid fa-image text-emerald-400 group-hover:scale-110 transition-transform"></i>
                                   E-Poster
-                              </a>
-                              <a href="https://moph.link/stn-innovation" target="_blank" rel="noreferrer" className="flex items-center justify-center gap-2 p-3 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-600 transition text-sm text-slate-300 hover:text-white group">
+                              </button>
+                              <button onClick={() => onNavigate('register')} className="flex items-center justify-center gap-2 p-3 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-600 transition text-sm text-slate-300 hover:text-white group">
                                   <i className="fa-solid fa-lightbulb text-amber-400 group-hover:scale-110 transition-transform"></i>
                                   Innovation & Invention
-                              </a>
+                              </button>
                          </div>
                     </div>
                     

@@ -1,6 +1,6 @@
 
 import React, { useMemo, useState, useEffect, useRef } from 'react';
-import { Submission, AppSettings, SubmissionStatus, AuditLog } from '../types';
+import { Submission, AppSettings, SubmissionStatus, AuditLog, UserProfile } from '../types';
 import { BRANCHES, WORK_TYPES, BUDGET_YEAR } from '../constants';
 import Badge from './ui/Badge';
 
@@ -14,6 +14,7 @@ interface HistoryProps {
   settings: AppSettings;
   showToast: (t: any) => void;
   onEdit: (submission: Submission) => void;
+  currentUser: UserProfile;
 }
 
 // Configuration for statuses
@@ -184,7 +185,7 @@ const HistoryTimelineModal: React.FC<{
     );
 };
 
-const History: React.FC<HistoryProps> = ({ submissions, loading, refreshList, settings, showToast, onEdit }) => {
+const History: React.FC<HistoryProps> = ({ submissions, loading, refreshList, settings, showToast, onEdit, currentUser }) => {
   // Load initial filter from localStorage or default
   const [filter, setFilter] = useState(() => {
       const saved = localStorage.getItem('svk_history_filter');
@@ -438,7 +439,8 @@ const History: React.FC<HistoryProps> = ({ submissions, loading, refreshList, se
               const latestLogs = [...auditLogs].reverse().slice(0, 2);
               
               // Edit Lock Logic
-              const isLocked = ['reviewed', 'accepted', 'rejected'].includes(s.status);
+              const isOwner = currentUser?.id === s.userId;
+              const isLocked = !isOwner || ['reviewed', 'accepted', 'rejected'].includes(s.status);
               const isMenuOpen = activeMenuId === s.id;
 
               return (

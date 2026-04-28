@@ -186,6 +186,7 @@ const Registration: React.FC<RegistrationProps> = ({ settings, onSuccess, showTo
   const [linkInput, setLinkInput] = useState({ url: '', name: '' });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
+  const [showCoAuthorSearch, setShowCoAuthorSearch] = useState(false);
 
   // Initialize Data
   useEffect(() => {
@@ -247,7 +248,6 @@ const Registration: React.FC<RegistrationProps> = ({ settings, onSuccess, showTo
   };
 
   // Co-Author Logic
-  const [showCoAuthorSearch, setShowCoAuthorSearch] = useState(false);
   
   const handleSelectCoAuthor = (user: UserProfile) => {
       setCoAuthors([...coAuthors, {
@@ -435,8 +435,11 @@ const Registration: React.FC<RegistrationProps> = ({ settings, onSuccess, showTo
             </div>
             <div className="flex-1 text-center md:text-left min-w-0 z-10 w-full">
                 <div className="flex flex-col md:flex-row items-center gap-2 mb-1">
-                    <h3 className="font-bold text-slate-900 dark:text-white text-lg truncate">
+                    <h3 className="font-bold text-slate-900 dark:text-white text-lg truncate flex items-center gap-1">
                         {currentUser.firstName} {currentUser.lastName}
+                        {currentUser.isVerified && (
+                             <i className="fa-solid fa-circle-check text-blue-500 text-sm" title={currentUser.verifiedBy ? "ยืนยันโดยแอดมินแล้ว" : "ยืนยันตัวตนแล้ว"}></i>
+                        )}
                     </h3>
                     {!isProfileComplete ? (
                         <span className="text-[10px] bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-bold border border-amber-200 animate-pulse">
@@ -681,7 +684,13 @@ const Registration: React.FC<RegistrationProps> = ({ settings, onSuccess, showTo
                                 <button onClick={() => removeCoAuthor(ca.id)} className="absolute top-3 right-3 h-8 w-8 rounded-full bg-white dark:bg-slate-800 text-slate-400 hover:text-rose-500 flex items-center justify-center shadow-sm border border-slate-200 dark:border-slate-700 transition">
                                     <i className="fa-solid fa-xmark"></i>
                                 </button>
-                                <div className="text-sm font-bold text-slate-600 dark:text-slate-400 mb-4 border-b border-slate-200 dark:border-slate-700 pb-2">ผู้ร่วมวิจัยคนที่ {index + 1}</div>
+                                <div className="text-sm font-bold text-slate-600 dark:text-slate-400 mb-4 border-b border-slate-200 dark:border-slate-700 pb-2 flex items-center justify-between">
+                                    <span>ผู้ร่วมวิจัยคนที่ {index + 1}
+                                        {ca.isVerified && (
+                                            <i className="fa-solid fa-circle-check text-blue-500 ml-2" title="ยืนยันตัวตนแล้ว"></i>
+                                        )}
+                                    </span>
+                                </div>
                                 
                                 <div className="grid grid-cols-1 md:grid-cols-12 gap-5">
                                     {/* Photo Upload */}
@@ -719,7 +728,7 @@ const Registration: React.FC<RegistrationProps> = ({ settings, onSuccess, showTo
                                         </div>
                                         <div>
                                             <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">ตำแหน่ง</label>
-                                            <input readOnly={ca.isSystemUser} value={ca.position} onChange={e => updateCoAuthor(ca.id, 'position', e.target.value)} className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-2 text-sm focus:border-sky-500 outline-none read-only:bg-slate-100 dark:read-only:bg-slate-700/50 read-only:text-slate-500" />
+                                            <input list="health-positions" readOnly={ca.isSystemUser} value={ca.position} onChange={e => updateCoAuthor(ca.id, 'position', e.target.value)} className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-2 text-sm focus:border-sky-500 outline-none read-only:bg-slate-100 dark:read-only:bg-slate-700/50 read-only:text-slate-500" />
                                         </div>
                                         <div>
                                             <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">สถานที่ปฏิบัติงาน</label>
@@ -862,6 +871,10 @@ const Registration: React.FC<RegistrationProps> = ({ settings, onSuccess, showTo
              onAddManual={addCoAuthorManual}
         />
     )}
+
+    <datalist id="health-positions">
+        {HEALTH_POSITIONS.map(p => <option key={p} value={p} />)}
+    </datalist>
   </>
   );
 };
