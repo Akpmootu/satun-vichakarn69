@@ -8,9 +8,10 @@ interface OrgAutocompleteProps {
   onChange: (value: string) => void;
   placeholder?: string;
   className?: string;
+  disabled?: boolean;
 }
 
-const OrgAutocomplete: React.FC<OrgAutocompleteProps> = ({ value, onChange, placeholder, className }) => {
+const OrgAutocomplete: React.FC<OrgAutocompleteProps> = ({ value, onChange, placeholder, className, disabled }) => {
   const [query, setQuery] = useState(value);
   const [showDropdown, setShowDropdown] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
@@ -82,10 +83,13 @@ const OrgAutocomplete: React.FC<OrgAutocompleteProps> = ({ value, onChange, plac
         type="text"
         value={query}
         onChange={handleInputChange}
-        onFocus={() => setShowDropdown(true)}
+        onFocus={() => {
+            if (!disabled) setShowDropdown(true);
+        }}
         placeholder={placeholder || "พิมพ์ชื่อหน่วยงาน, อำเภอ หรือตำบล..."}
         className={className || "w-full rounded-xl border border-slate-200 dark:border-slate-700 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-sky-200 dark:bg-slate-800 dark:text-white transition"}
         autoComplete="off"
+        disabled={disabled}
       />
       
       {showDropdown && filteredOrgs.length > 0 && (

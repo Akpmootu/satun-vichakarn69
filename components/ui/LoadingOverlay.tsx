@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { LOADING_QUOTES } from '../../constants';
+import logoSrc from '../../pic/logo.png';
 
 interface LoadingOverlayProps {
   isLoading: boolean;
@@ -33,32 +34,12 @@ const LoadingOverlay: React.FC<LoadingOverlayProps> = ({ isLoading }) => {
              <div className="absolute inset-0 border-2 border-sky-500/30 rounded-full animate-[spin_10s_linear_infinite]"></div>
              <div className="absolute inset-2 border-2 border-dashed border-emerald-500/30 rounded-full animate-[spin_15s_linear_infinite_reverse]"></div>
              
-             {/* Main SVG Logo */}
-             <svg viewBox="0 0 100 100" className="w-24 h-24 drop-shadow-[0_0_15px_rgba(14,165,233,0.5)]">
-                {/* Hexagon Background */}
-                <path d="M50 5 L90 25 L90 75 L50 95 L10 75 L10 25 Z" fill="#1e293b" stroke="#38bdf8" strokeWidth="2" className="animate-[pulse_3s_ease-in-out_infinite]" />
-                
-                {/* Connections */}
-                <line x1="30" y1="70" x2="70" y2="50" stroke="#94a3b8" strokeWidth="1" strokeDasharray="4" className="opacity-50" />
-                <line x1="70" y1="50" x2="50" y2="25" stroke="#94a3b8" strokeWidth="1" strokeDasharray="4" className="opacity-50" />
-                <line x1="30" y1="70" x2="50" y2="25" stroke="#94a3b8" strokeWidth="1" strokeDasharray="4" className="opacity-30" />
-
-                {/* Nodes with sequential animation */}
-                {/* Node 1: Upstream (Bottom Left) */}
-                <circle cx="30" cy="70" r="6" fill="#0ea5e9" className="animate-[ping_2s_cubic-bezier(0,0,0.2,1)_infinite]" />
-                <circle cx="30" cy="70" r="6" fill="#bae6fd" />
-                
-                {/* Node 2: Midstream (Right) */}
-                <circle cx="70" cy="50" r="6" fill="#0ea5e9" className="animate-[ping_2s_cubic-bezier(0,0,0.2,1)_infinite_0.6s]" />
-                <circle cx="70" cy="50" r="6" fill="#7dd3fc" />
-
-                {/* Node 3: Downstream (Top) */}
-                <circle cx="50" cy="25" r="6" fill="#10b981" className="animate-[ping_2s_cubic-bezier(0,0,0.2,1)_infinite_1.2s]" />
-                <circle cx="50" cy="25" r="6" fill="#34d399" />
-                
-                {/* Text Center */}
-                <text x="50" y="65" fontSize="14" fontWeight="bold" fill="white" textAnchor="middle" className="font-sans">KM</text>
-             </svg>
+             {/* Main Image Logo */}
+             <img 
+                 src={logoSrc} 
+                 alt="SKMS Logo" 
+                 className="w-24 h-24 object-contain animate-[pulse_3s_ease-in-out_infinite] drop-shadow-[0_0_15px_rgba(14,165,233,0.5)]" 
+             />
           </div>
 
           {/* Text Content */}

@@ -2,9 +2,10 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { BRANCHES, BUDGET_YEAR, WORK_TYPES, HEALTH_POSITIONS, JOB_LEVELS } from '../constants';
 import { AppSettings, Submission, UserProfile, SubmissionStatus, CoAuthor } from '../types';
-import { apiCreateSubmission, apiUpdateSubmission, nowISO } from '../services/apiService';
+import { apiCreateSubmission, apiUpdateSubmission, nowISO, apiCheckTitleUnique, apiSearchUsers } from '../services/apiService';
 import Badge from './ui/Badge';
 import OrgAutocomplete from './ui/OrgAutocomplete';
+import { CoAuthorSearchModal } from './CoAuthorSearchModal';
 
 // Declare Swal globally since it's loaded via CDN
 declare const Swal: any;
@@ -181,15 +182,10 @@ const Registration: React.FC<RegistrationProps> = ({ settings, onSuccess, showTo
   
   const [coAuthors, setCoAuthors] = useState<CoAuthor[]>([]);
   const [attachments, setAttachments] = useState<Attachment[]>([]);
-  const [authorPhoto, setAuthorPhoto] = useState<string | null>(null); // New Official Photo State
   
   const [linkInput, setLinkInput] = useState({ url: '', name: '' });
-  const [isDragging, setIsDragging] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
-  
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const photoInputRef = useRef<HTMLInputElement>(null); // Ref for photo input
 
   // Initialize Data
   useEffect(() => {
@@ -205,9 +201,6 @@ const Registration: React.FC<RegistrationProps> = ({ settings, onSuccess, showTo
         
         // Co-Authors
         setCoAuthors(editingSubmission.coAuthors || []);
-        
-        // Author Photo
-        setAuthorPhoto(editingSubmission.authorPhoto || null);
 
         try {
             if (editingSubmission.fileUrl && editingSubmission.fileUrl.startsWith('[')) {
@@ -228,7 +221,6 @@ const Registration: React.FC<RegistrationProps> = ({ settings, onSuccess, showTo
         });
         setCoAuthors([]);
         setAttachments([]);
-        setAuthorPhoto(null);
     }
   }, [editingSubmission]);
 
@@ -255,8 +247,27 @@ const Registration: React.FC<RegistrationProps> = ({ settings, onSuccess, showTo
   };
 
   // Co-Author Logic
-  const addCoAuthor = () => {
-      setCoAuthors([...coAuthors, { id: Math.random().toString(36).substr(2, 9), firstName: '', lastName: '', position: '', organization: '', province: '', phone: '', email: '', lineId: '', photoUrl: '' }]);
+  const [showCoAuthorSearch, setShowCoAuthorSearch] = useState(false);
+  
+  const handleSelectCoAuthor = (user: UserProfile) => {
+      setCoAuthors([...coAuthors, {
+          id: Math.random().toString(36).substr(2, 9),
+          firstName: user.firstName,
+          lastName: user.lastName,
+          position: user.position || '',
+          organization: user.organization || '',
+          province: 'สตูล',
+          phone: user.phone || '',
+          email: user.email || '',
+          lineId: '',
+          photoUrl: user.avatarUrl || '',
+          isVerified: user.isVerified || false,
+          isSystemUser: true
+      }]);
+  };
+
+  const addCoAuthorManual = () => {
+      setCoAuthors([...coAuthors, { id: Math.random().toString(36).substr(2, 9), firstName: '', lastName: '', position: '', organization: '', province: 'สตูล', phone: '', email: '', lineId: '', photoUrl: '' }]);
   };
   const removeCoAuthor = (id: string) => {
       setCoAuthors(coAuthors.filter(c => c.id !== id));
@@ -276,46 +287,9 @@ const Registration: React.FC<RegistrationProps> = ({ settings, onSuccess, showTo
       }
   };
 
-  // --- Handlers (Author Photo) ---
-  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0];
-      if (!file) return;
-      if (file.size > 2 * 1024 * 1024) {
-          showToast({ type: "error", title: "ไฟล์ใหญ่เกินไป", message: "รูปภาพต้องมีขนาดไม่เกิน 2MB" });
-          return;
-      }
-      
-      const reader = new FileReader();
-      reader.onloadend = () => {
-          setAuthorPhoto(reader.result as string);
-          // Clear photo error if exists
-          setErrors(prev => { const next = {...prev}; delete next.authorPhoto; return next; });
-      };
-      reader.readAsDataURL(file);
-  };
-
-  // --- Handlers (File, DragDrop, Links) ---
-  const handleFile = (file: File) => {
-      if (attachments.length >= 5) { showToast({ type: "error", title: "ครบจำนวนแล้ว", message: "อนุญาตให้อัปโหลดได้สูงสุด 5 ไฟล์" }); return; }
-      if (attachments.some(att => att.name === file.name)) { showToast({ type: "error", title: "ไฟล์ซ้ำ", message: "มีไฟล์นี้อยู่ในรายการแล้ว" }); return; }
-      if (file.size > 10 * 1024 * 1024) { showToast({ type: "error", title: "ไฟล์ใหญ่เกินไป", message: `ขนาดไฟล์ ${file.name} เกิน 10MB` }); return; }
-      const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png', 'image/jpg'];
-      if (!allowedTypes.includes(file.type)) { showToast({ type: "error", title: "นามสกุลไม่ถูกต้อง", message: "รองรับเฉพาะ PDF, JPG, PNG เท่านั้น" }); return; }
-
-      const reader = new FileReader();
-      reader.onloadend = () => {
-          setAttachments(prev => [...prev, { type: 'file', value: reader.result as string, name: file.name, size: file.size }]);
-          showToast({ type: "success", title: "อัปโหลดสำเร็จ", message: file.name });
-      };
-      reader.readAsDataURL(file);
-  };
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => { const files = e.target.files; if (files) Array.from(files).forEach(file => handleFile(file as File)); if (fileInputRef.current) fileInputRef.current.value = ""; };
-  const handleDragOver = (e: React.DragEvent) => { e.preventDefault(); setIsDragging(true); };
-  const handleDragLeave = (e: React.DragEvent) => { e.preventDefault(); setIsDragging(false); };
-  const handleDrop = (e: React.DragEvent) => { e.preventDefault(); setIsDragging(false); const files = e.dataTransfer.files; if (files) Array.from(files).forEach(file => handleFile(file as File)); };
-  const handleAddLink = () => { if (!linkInput.url.startsWith('http')) { showToast({ type: "error", title: "ลิงก์ไม่ถูกต้อง", message: "ต้องขึ้นต้นด้วย http:// หรือ https://" }); return; } setAttachments(prev => [...prev, { type: 'link', value: linkInput.url, name: linkInput.name || linkInput.url, size: 0 }]); setLinkInput({ url: '', name: '' }); };
+  // --- Handlers (Links) ---
+  const handleAddLink = () => { if (!linkInput.url.startsWith('http')) { showToast({ type: "error", title: "ลิงก์ไม่ถูกต้อง", message: "ต้องขึ้นต้นด้วย http:// หรือ https://" }); return; } setAttachments(prev => [...prev, { type: 'link', value: linkInput.url, name: linkInput.name || linkInput.url, size: 0 }]); setLinkInput({ url: '', name: '' }); setErrors(prev => { const next = {...prev}; delete next.attachments; return next; }); };
   const removeAttachment = (index: number) => { setAttachments(prev => prev.filter((_, i) => i !== index)); };
-  const formatFileSize = (bytes?: number) => { if (!bytes) return ''; const k = 1024; const sizes = ['Bytes', 'KB', 'MB', 'GB']; const i = Math.floor(Math.log(bytes) / Math.log(k)); return `(${parseFloat((bytes / Math.pow(k, i)).toFixed(2))} ${sizes[i]})`; };
 
   // --- Validate & Submit ---
   const validateForm = () => {
@@ -323,20 +297,35 @@ const Registration: React.FC<RegistrationProps> = ({ settings, onSuccess, showTo
     if (!form.workType) e.workType = "กรุณาเลือกประเภทผลงาน";
     if (!form.branchId) e.branchId = "กรุณาเลือกสาขา";
     if (!form.title) e.title = "กรุณาระบุชื่อเรื่องผลงาน";
-    if (!authorPhoto) e.authorPhoto = "กรุณาอัปโหลดรูปถ่ายทางการ"; // New Validation
+    if (attachments.length === 0) e.attachments = "กรุณาแนบลิงก์ผลงาน";
     if (!isProfileComplete) { showToast({ type: 'error', title: 'ข้อมูลส่วนตัวไม่ครบ', message: 'กรุณาอัปเดตข้อมูลในหน้าโปรไฟล์ก่อนส่งผลงาน' }); return false; }
     setErrors(e);
     return Object.keys(e).length === 0;
   };
 
   const submit = async (mode: 'draft' | 'submit') => {
-    if (mode === 'submit' && !validateForm()) { showToast({ type: "error", title: "ข้อมูลไม่ครบถ้วน", message: "กรุณากรอกข้อมูลและอัปโหลดรูปถ่ายให้ครบถ้วน" }); return; }
+    if (mode === 'submit' && !validateForm()) { showToast({ type: "error", title: "ข้อมูลไม่ครบถ้วน", message: "กรุณากรอกข้อมูลและอัปโหลดรูปลิงก์ให้ครบถ้วน" }); return; }
     
+    setSaving(true);
+    
+    // Check Title Unique
+    if (form.title) {
+         const isUnique = await apiCheckTitleUnique(form.title, editingSubmission?.id);
+         if (!isUnique) {
+              showToast({ type: "error", title: "ชื่อผลงานซ้ำ", message: "มีชื่อเรื่องนี้อยู่ในระบบแล้ว ไม่สามารถส่งเข้าประกวดได้" });
+              setErrors(prev => ({...prev, title: "มีชื่อเรื่องนี้ซ้ำในระบบ"}));
+              setSaving(false);
+              return;
+         }
+    }
+
     const confirmText = mode === 'submit' ? (editingSubmission ? 'ยืนยันการแก้ไขและส่งผลงาน?' : 'ยืนยันการส่งผลงาน?') : 'บันทึกแบบร่างไว้ทำต่อภายหลัง?';
     const result = await Swal.fire({ title: confirmText, text: mode === 'submit' ? 'กรุณาตรวจสอบความถูกต้องของข้อมูล' : '', icon: 'question', showCancelButton: true, confirmButtonColor: mode === 'submit' ? '#0f172a' : '#64748b', confirmButtonText: mode === 'submit' ? 'ยืนยันส่งผลงาน' : 'บันทึกร่าง', cancelButtonText: 'ยกเลิก', customClass: { popup: 'rounded-3xl' } });
-    if (!result.isConfirmed) return;
+    if (!result.isConfirmed) {
+        setSaving(false);
+        return;
+    }
 
-    setSaving(true);
     try {
       const filePayload = attachments.length > 0 ? JSON.stringify(attachments) : "";
       const nextStatus: SubmissionStatus = mode === 'submit' ? 'submitted' : 'draft';
@@ -355,7 +344,7 @@ const Registration: React.FC<RegistrationProps> = ({ settings, onSuccess, showTo
         fileUrl: filePayload, 
         status: nextStatus,
         coAuthors: coAuthors, // Pass JSON array
-        authorPhoto: authorPhoto // Pass Photo Data
+        authorPhoto: currentUser.avatarUrl // Use user's avatar
       };
 
       if (editingSubmission) {
@@ -374,7 +363,6 @@ const Registration: React.FC<RegistrationProps> = ({ settings, onSuccess, showTo
           setForm({ workType: "", branchId: "", title: "", bookNo: "", bossName: "", bossPosition: "ผู้อำนวยการโรงพยาบาล/สาธารณสุขอำเภอ" }); 
           setCoAuthors([]);
           setAttachments([]); 
-          setAuthorPhoto(null);
           setLinkInput({ url: '', name: '' }); 
       }
       onSuccess();
@@ -397,6 +385,7 @@ const Registration: React.FC<RegistrationProps> = ({ settings, onSuccess, showTo
   );
 
   return (
+    <>
     <div className="max-w-4xl mx-auto pb-12 fade-in">
         
         {/* --- PRINTABLE SECTION (HIDDEN ON SCREEN) --- */}
@@ -512,13 +501,13 @@ const Registration: React.FC<RegistrationProps> = ({ settings, onSuccess, showTo
                 </div>
                 <div className="p-6 space-y-6 relative z-10">
                     
-                    {/* NEW: Author Photo Upload (Mandatory) */}
-                    <div className="flex flex-col sm:flex-row gap-6 items-start p-4 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-700">
+                    {/* Author Photo Display */}
+                    <div className="flex flex-col sm:flex-row gap-6 items-center p-4 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-700">
                         <div className="shrink-0 flex flex-col items-center gap-2">
-                            <div className="w-32 h-40 bg-slate-200 dark:bg-slate-700 rounded-lg overflow-hidden border-2 border-dashed border-slate-300 dark:border-slate-600 flex items-center justify-center relative group">
-                                {authorPhoto ? (
+                            <div className="w-32 h-40 bg-slate-200 dark:bg-slate-700 rounded-lg overflow-hidden border-2 border-slate-300 dark:border-slate-600 flex items-center justify-center relative">
+                                {currentUser?.avatarUrl ? (
                                     <>
-                                        <img src={authorPhoto} alt="Author" className="w-full h-full object-cover" />
+                                        <img src={currentUser.avatarUrl} alt="Author" className="w-full h-full object-cover" />
                                         {currentUser?.isVerified && (
                                             <div className="absolute top-1 right-1 bg-sky-500 text-white rounded-full w-5 h-5 flex items-center justify-center shadow-md border-2 border-white" title="ยืนยันตัวตนแล้ว">
                                                 <i className="fa-solid fa-check text-[10px]"></i>
@@ -528,39 +517,19 @@ const Registration: React.FC<RegistrationProps> = ({ settings, onSuccess, showTo
                                 ) : (
                                     <div className="text-center text-slate-400">
                                         <i className="fa-solid fa-user text-3xl mb-1"></i>
-                                        <div className="text-[10px]">รูปถ่าย</div>
+                                        <div className="text-[10px]">ไม่มีรูปภาพ</div>
                                     </div>
                                 )}
-                                <div 
-                                    className="absolute inset-0 bg-black/40 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition cursor-pointer"
-                                    onClick={() => photoInputRef.current?.click()}
-                                >
-                                    <i className="fa-solid fa-camera text-white text-2xl"></i>
-                                    <span className="text-[10px] text-white mt-1">เปลี่ยนรูป</span>
-                                </div>
                             </div>
-                            <input 
-                                type="file" 
-                                ref={photoInputRef} 
-                                onChange={handlePhotoChange} 
-                                accept="image/png, image/jpeg" 
-                                className="hidden" 
-                            />
                         </div>
                         <div className="flex-1">
                             <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-1">
-                                รูปถ่ายหน้าตรง (ชุดข้าราชการ/สุภาพ) <span className="text-rose-500">*</span>
+                                รูปถ่ายหน้าตรง (Official Photo)
                             </label>
-                            <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">
-                                กรุณาอัปโหลดไฟล์รูปถ่ายทางการ (Official Photo) เพื่อใช้ในการประชาสัมพันธ์และทำทำเนียบผู้ส่งผลงาน (ขนาดไม่เกิน 2MB)
+                            <p className="text-xs text-slate-500 dark:text-slate-400 mb-3 leading-relaxed">
+                                รูปภาพนี้ดึงมาจากข้อมูลโปรไฟล์ของคุณโดยอัตโนมัติ เพื่อใช้ในการประชาสัมพันธ์และทำทำเนียบผู้ส่งผลงาน 
+                                หากต้องการเปลี่ยนรูป กรุณาไปแก้ไขที่ "บัญชีของฉัน"
                             </p>
-                            <button 
-                                onClick={() => photoInputRef.current?.click()}
-                                className={`px-4 py-2 rounded-lg text-xs font-bold transition flex items-center gap-2 ${errors.authorPhoto ? 'bg-rose-50 text-rose-600 border border-rose-200' : 'bg-white border border-slate-200 hover:bg-slate-50 text-slate-600'}`}
-                            >
-                                <i className="fa-solid fa-upload"></i> อัปโหลดรูปภาพ
-                            </button>
-                            {errors.authorPhoto && <p className="text-xs text-rose-500 mt-2 font-bold"><i className="fa-solid fa-circle-exclamation"></i> {errors.authorPhoto}</p>}
                         </div>
                     </div>
 
@@ -701,7 +670,7 @@ const Registration: React.FC<RegistrationProps> = ({ settings, onSuccess, showTo
                         <i className="fa-solid fa-users text-amber-500"></i>
                         ผู้ร่วมส่งผลงาน (Co-Authors) <span className="text-xs text-slate-400 font-normal">(ถ้ามี)</span>
                     </h3>
-                    <button onClick={addCoAuthor} className="text-xs font-bold bg-slate-100 dark:bg-slate-700 px-3 py-1.5 rounded-lg hover:bg-sky-50 dark:hover:bg-sky-900/30 text-slate-600 dark:text-slate-300 hover:text-sky-600 transition flex items-center gap-1">
+                    <button onClick={() => setShowCoAuthorSearch(true)} className="text-xs font-bold bg-slate-100 dark:bg-slate-700 px-3 py-1.5 rounded-lg hover:bg-sky-50 dark:hover:bg-sky-900/30 text-slate-600 dark:text-slate-300 hover:text-sky-600 transition flex items-center gap-1">
                         <i className="fa-solid fa-plus"></i> เพิ่มรายชื่อ
                     </button>
                 </div>
@@ -734,7 +703,7 @@ const Registration: React.FC<RegistrationProps> = ({ settings, onSuccess, showTo
                                                     <span className="text-[10px] font-bold">อัปโหลดรูป</span>
                                                 </div>
                                             )}
-                                            <input type="file" accept="image/*" onChange={(e) => handleCoAuthorPhotoChange(ca.id, e)} className="absolute inset-0 opacity-0 cursor-pointer" />
+                                            {!ca.isSystemUser && <input type="file" accept="image/*" onChange={(e) => handleCoAuthorPhotoChange(ca.id, e)} className="absolute inset-0 opacity-0 cursor-pointer" />}
                                         </div>
                                     </div>
 
@@ -742,35 +711,35 @@ const Registration: React.FC<RegistrationProps> = ({ settings, onSuccess, showTo
                                     <div className="md:col-span-9 lg:col-span-10 grid grid-cols-1 md:grid-cols-2 gap-4">
                                         <div>
                                             <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">ชื่อจริง</label>
-                                            <input value={ca.firstName} onChange={e => updateCoAuthor(ca.id, 'firstName', e.target.value)} className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-2 text-sm focus:border-sky-500 outline-none" />
+                                            <input readOnly={ca.isSystemUser} value={ca.firstName} onChange={e => updateCoAuthor(ca.id, 'firstName', e.target.value)} className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-2 text-sm focus:border-sky-500 outline-none read-only:bg-slate-100 dark:read-only:bg-slate-700/50 read-only:text-slate-500" />
                                         </div>
                                         <div>
                                             <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">นามสกุล</label>
-                                            <input value={ca.lastName} onChange={e => updateCoAuthor(ca.id, 'lastName', e.target.value)} className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-2 text-sm focus:border-sky-500 outline-none" />
+                                            <input readOnly={ca.isSystemUser} value={ca.lastName} onChange={e => updateCoAuthor(ca.id, 'lastName', e.target.value)} className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-2 text-sm focus:border-sky-500 outline-none read-only:bg-slate-100 dark:read-only:bg-slate-700/50 read-only:text-slate-500" />
                                         </div>
                                         <div>
                                             <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">ตำแหน่ง</label>
-                                            <input value={ca.position} onChange={e => updateCoAuthor(ca.id, 'position', e.target.value)} className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-2 text-sm focus:border-sky-500 outline-none" />
+                                            <input readOnly={ca.isSystemUser} value={ca.position} onChange={e => updateCoAuthor(ca.id, 'position', e.target.value)} className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-2 text-sm focus:border-sky-500 outline-none read-only:bg-slate-100 dark:read-only:bg-slate-700/50 read-only:text-slate-500" />
                                         </div>
                                         <div>
                                             <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">สถานที่ปฏิบัติงาน</label>
-                                            <OrgAutocomplete value={ca.organization} onChange={(val) => updateCoAuthor(ca.id, 'organization', val)} className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-2 text-sm focus:border-sky-500 outline-none" />
+                                            <OrgAutocomplete disabled={ca.isSystemUser} value={ca.organization} onChange={(val) => updateCoAuthor(ca.id, 'organization', val)} className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-2 text-sm focus:border-sky-500 outline-none disabled:bg-slate-100 dark:disabled:bg-slate-700/50 disabled:text-slate-500 disabled:opacity-100" />
                                         </div>
                                         <div>
                                             <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">จังหวัด</label>
-                                            <input value={ca.province} onChange={e => updateCoAuthor(ca.id, 'province', e.target.value)} className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-2 text-sm focus:border-sky-500 outline-none" />
+                                            <input readOnly={ca.isSystemUser} value={ca.province} onChange={e => updateCoAuthor(ca.id, 'province', e.target.value)} className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-2 text-sm focus:border-sky-500 outline-none read-only:bg-slate-100 dark:read-only:bg-slate-700/50 read-only:text-slate-500" />
                                         </div>
                                         <div>
                                             <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">โทรศัพท์/มือถือ</label>
-                                            <input value={ca.phone} onChange={e => updateCoAuthor(ca.id, 'phone', e.target.value)} className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-2 text-sm focus:border-sky-500 outline-none" />
+                                            <input readOnly={ca.isSystemUser} value={ca.phone} onChange={e => updateCoAuthor(ca.id, 'phone', e.target.value)} className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-2 text-sm focus:border-sky-500 outline-none read-only:bg-slate-100 dark:read-only:bg-slate-700/50 read-only:text-slate-500" />
                                         </div>
                                         <div>
                                             <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">E-mail</label>
-                                            <input value={ca.email} onChange={e => updateCoAuthor(ca.id, 'email', e.target.value)} className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-2 text-sm focus:border-sky-500 outline-none" />
+                                            <input readOnly={ca.isSystemUser} value={ca.email} onChange={e => updateCoAuthor(ca.id, 'email', e.target.value)} className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-2 text-sm focus:border-sky-500 outline-none read-only:bg-slate-100 dark:read-only:bg-slate-700/50 read-only:text-slate-500" />
                                         </div>
                                         <div>
                                             <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">ID Line</label>
-                                            <input value={ca.lineId} onChange={e => updateCoAuthor(ca.id, 'lineId', e.target.value)} className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-2 text-sm focus:border-sky-500 outline-none" />
+                                            <input readOnly={ca.isSystemUser} value={ca.lineId} onChange={e => updateCoAuthor(ca.id, 'lineId', e.target.value)} className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-2 text-sm focus:border-sky-500 outline-none read-only:bg-slate-100 dark:read-only:bg-slate-700/50 read-only:text-slate-500" />
                                         </div>
                                     </div>
                                 </div>
@@ -796,37 +765,39 @@ const Registration: React.FC<RegistrationProps> = ({ settings, onSuccess, showTo
                     </h3>
                 </div>
                 <div className="p-6 relative z-10">
-                    <div className="flex justify-between items-end mb-2">
-                        <label className="block text-sm font-bold text-slate-700 dark:text-slate-300">อัปโหลดเอกสาร</label>
-                        <span className="text-xs text-slate-400">อนุญาตสูงสุด 5 ไฟล์ (รวมไม่เกิน 10MB)</span>
-                    </div>
-                    <div 
-                        onDragOver={handleDragOver}
-                        onDragLeave={handleDragLeave}
-                        onDrop={handleDrop}
-                        onClick={() => fileInputRef.current?.click()}
-                        className={`border-2 border-dashed rounded-2xl p-8 text-center cursor-pointer transition-all duration-200 group ${isDragging ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20 dark:border-indigo-400' : 'border-slate-300 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700/50 hover:border-indigo-400'}`}
-                    >
-                        <div className={`h-14 w-14 rounded-full flex items-center justify-center mx-auto mb-4 transition-transform group-hover:scale-110 ${isDragging ? 'bg-indigo-100 text-indigo-600' : 'bg-slate-100 dark:bg-slate-700 text-slate-400 group-hover:text-indigo-500'}`}>
-                            <i className="fa-solid fa-cloud-arrow-up text-2xl"></i>
+                    <div className="flex justify-between items-end mb-4">
+                        <div>
+                            <label className="block text-sm font-bold text-slate-700 dark:text-slate-300">แนบลิงก์ผลงาน <span className="text-rose-500">*</span></label>
+                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                                เพื่อป้องกันปัญหาพื้นที่จัดเก็บข้อมูลเต็ม ระบบรองรับเฉพาะการแนบ "ลิงก์" เท่านั้น 
+                                (เช่น Google Drive, Canva, OneDrive, YouTube)
+                            </p>
                         </div>
-                        <div className="font-bold text-slate-700 dark:text-white text-sm mb-1">คลิกเพื่อเลือกไฟล์ หรือ ลากไฟล์มาวางที่นี่</div>
-                        <div className="text-xs text-slate-400">รองรับไฟล์ PDF, JPG, PNG (ขนาดไม่เกิน 10MB ต่อไฟล์)</div>
-                        <input type="file" ref={fileInputRef} onChange={handleFileChange} accept="application/pdf,image/png,image/jpeg" className="hidden" multiple />
+                        <span className="text-xs text-slate-400">อนุญาตสูงสุด 5 ลิงก์</span>
                     </div>
-                    {attachments.length > 0 && (
-                        <div className="mt-4 space-y-2 animate-fade-in">
+
+                    <div className="flex flex-col md:flex-row gap-3 mb-6 bg-slate-50 dark:bg-slate-900/50 p-4 rounded-xl border border-slate-200 dark:border-slate-700">
+                        <div className="flex-1 relative">
+                            <i className="fa-solid fa-link absolute left-4 top-3 text-slate-400"></i>
+                            <input value={linkInput.url} onChange={e => setLinkInput({...linkInput, url: e.target.value})} placeholder="วาง URL ผลงานที่นี่..." className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 text-sm outline-none focus:ring-2 focus:ring-indigo-200 dark:bg-slate-800 dark:border-slate-600 dark:text-white" />
+                        </div>
+                        <div className="md:w-1/3">
+                            <input value={linkInput.name} onChange={e => setLinkInput({...linkInput, name: e.target.value})} placeholder="ชื่อเรียก (ระบุ)" className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm outline-none focus:ring-2 focus:ring-indigo-200 dark:bg-slate-800 dark:border-slate-600 dark:text-white" />
+                        </div>
+                        <button onClick={handleAddLink} className="px-5 bg-indigo-600 text-white rounded-xl font-bold text-sm hover:bg-indigo-700 transition shadow-sm shrink-0 flex items-center justify-center gap-2"><i className="fa-solid fa-plus"></i> เพิ่มลิงก์</button>
+                    </div>
+
+                    {attachments.length > 0 ? (
+                        <div className="space-y-2 animate-fade-in">
                             {attachments.map((item, idx) => (
-                                <div key={idx} className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-700/50 rounded-xl border border-slate-200 dark:border-slate-600 group">
-                                    <div className={`h-10 w-10 rounded-lg flex items-center justify-center text-lg shrink-0 ${item.type === 'link' ? 'bg-indigo-100 text-indigo-600 dark:bg-indigo-900/50 dark:text-indigo-400' : 'bg-rose-100 text-rose-600 dark:bg-rose-900/50 dark:text-rose-400'}`}>
-                                        <i className={`fa-solid ${item.type === 'link' ? 'fa-link' : 'fa-file-lines'}`}></i>
+                                <div key={idx} className="flex items-center gap-3 p-3 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-600 group shadow-sm hover:border-indigo-300 transition-colors">
+                                    <div className="h-10 w-10 rounded-lg flex items-center justify-center text-lg shrink-0 bg-indigo-100 text-indigo-600 dark:bg-indigo-900/50 dark:text-indigo-400">
+                                        <i className="fa-solid fa-link"></i>
                                     </div>
                                     <div className="flex-1 min-w-0">
                                         <div className="text-sm font-bold text-slate-800 dark:text-white truncate">{item.name}</div>
-                                        <div className="text-xs text-slate-500 flex items-center gap-2">
-                                            <span className="uppercase bg-slate-200 dark:bg-slate-600 px-1.5 rounded text-[10px] font-bold text-slate-600 dark:text-slate-300">{item.type}</span>
-                                            {item.type === 'file' && item.size ? <span>{formatFileSize(item.size)}</span> : null}
-                                            {item.type === 'link' && <span className="truncate max-w-[200px] text-indigo-500">{item.value}</span>}
+                                        <div className="text-xs text-slate-500 m-0.5 mt-1 block">
+                                            <a href={item.value} target="_blank" rel="noreferrer" className="truncate block hover:text-indigo-600 hover:underline">{item.value}</a>
                                         </div>
                                     </div>
                                     <button onClick={() => removeAttachment(idx)} className="h-8 w-8 rounded-lg text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/30 transition flex items-center justify-center" title="ลบรายการ">
@@ -835,23 +806,16 @@ const Registration: React.FC<RegistrationProps> = ({ settings, onSuccess, showTo
                                 </div>
                             ))}
                         </div>
+                    ) : (
+                        <div className={`text-center py-8 border-2 border-dashed rounded-xl ${errors.attachments ? 'border-rose-400 bg-rose-50 dark:bg-rose-900/20' : 'border-slate-200 dark:border-slate-700'}`}>
+                            <i className={`fa-solid fa-link text-3xl mb-2 ${errors.attachments ? 'text-rose-400' : 'text-slate-300'}`}></i>
+                            <div className={`text-sm font-bold ${errors.attachments ? 'text-rose-500' : 'text-slate-400'}`}>ยังไม่มีลิงก์ผลงาน</div>
+                            {errors.attachments && <div className="text-xs text-rose-500 mt-2"><i className="fa-solid fa-circle-exclamation"></i> {errors.attachments}</div>}
+                        </div>
                     )}
-                    <div className="mt-6 pt-6 border-t border-slate-100 dark:border-slate-700">
-                        <div className="flex items-center gap-2 mb-2">
-                            <label className="text-sm font-bold text-slate-700 dark:text-slate-300">แนบลิงก์ผลงาน (ถ้ามี)</label>
-                            <span className="text-[10px] bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-bold border border-amber-200"><i className="fa-solid fa-lightbulb mr-1"></i> อย่าลืมเปิดสิทธิ์ Public</span>
-                        </div>
-                        <div className="flex gap-2">
-                            <div className="flex-1 relative">
-                                <i className="fa-solid fa-link absolute left-4 top-3 text-slate-400"></i>
-                                <input value={linkInput.url} onChange={e => setLinkInput({...linkInput, url: e.target.value})} placeholder="วาง URL ที่นี่ (เช่น Google Drive, Canva, YouTube)" className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 text-sm outline-none focus:ring-2 focus:ring-indigo-200 dark:bg-slate-900 dark:border-slate-600 dark:text-white" />
-                            </div>
-                            <div className="w-1/3">
-                                <input value={linkInput.name} onChange={e => setLinkInput({...linkInput, name: e.target.value})} placeholder="ชื่อเรียก (ระบุ)" className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm outline-none focus:ring-2 focus:ring-indigo-200 dark:bg-slate-900 dark:border-slate-600 dark:text-white" />
-                            </div>
-                            <button onClick={handleAddLink} className="px-4 bg-slate-900 dark:bg-indigo-600 text-white rounded-xl font-bold text-sm hover:bg-slate-800 transition shadow-sm shrink-0"><i className="fa-solid fa-plus"></i> เพิ่ม</button>
-                        </div>
-                        <p className="text-xs text-slate-400 mt-2 ml-1">* กรณีไฟล์มีขนาดใหญ่กว่า 10MB แนะนำให้อัปโหลดขึ้น Cloud แล้วนำลิงก์มาวางที่นี่</p>
+
+                    <div className="mt-4 flex items-center justify-center">
+                         <span className="text-xs bg-amber-50 text-amber-600 dark:bg-amber-900/20 dark:text-amber-400 px-3 py-1.5 rounded-full font-bold border border-amber-200 dark:border-amber-800"><i className="fa-solid fa-lightbulb mr-1.5"></i> ข้อควรระวัง: กรุณาตั้งค่าลิงก์เป็น "สาธารณะ (Public)" หรือ "ทุกคนที่มีลิงก์ (Anyone with the link)" เพื่อให้กรรมการสามารถตรวจสอบได้</span>
                     </div>
                 </div>
             </div>
@@ -890,6 +854,15 @@ const Registration: React.FC<RegistrationProps> = ({ settings, onSuccess, showTo
 
         </div>
     </div>
+    
+    {showCoAuthorSearch && (
+        <CoAuthorSearchModal 
+             onClose={() => setShowCoAuthorSearch(false)}
+             onSelect={handleSelectCoAuthor}
+             onAddManual={addCoAuthorManual}
+        />
+    )}
+  </>
   );
 };
 

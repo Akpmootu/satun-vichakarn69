@@ -1,5 +1,6 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, Legend } from 'recharts';
 import { Submission, NewsItem, AppSettings, SubmissionStatus, UserProfile, UserRole } from '../types';
 import { apiUpdateSubmission, apiDeleteSubmission, apiGetNews, apiAddNews, apiDeleteNews, apiUpdateNews, apiGetAllUsers, apiUpdateUserProfileAdmin, apiDeleteUserProfile, apiGetUsersByRole } from '../services/apiService';
 import { BRANCHES, WORK_TYPES } from '../constants';
@@ -17,7 +18,7 @@ interface AdminPanelProps {
 }
 
 const AdminPanel: React.FC<AdminPanelProps> = ({ submissions, settings, refreshData, showToast, newsList, onNewsUpdate }) => {
-  const [activeTab, setActiveTab] = useState<'submissions' | 'users' | 'news'>('submissions');
+  const [activeTab, setActiveTab] = useState<'submissions' | 'users' | 'news' | 'dashboard'>('dashboard');
   // const [newsList, setNewsList] = useState<NewsItem[]>([]); // Removed local state
   const [userList, setUserList] = useState<UserProfile[]>([]);
   const [reviewerList, setReviewerList] = useState<UserProfile[]>([]);
@@ -139,6 +140,43 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ submissions, settings, refreshD
           setSelectedSubmission(null);
       } catch (e: any) {
           showToast({ type: 'error', title: 'ผิดพลาด', message: e.message });
+      }
+  };
+
+  const handleRequestRevision = async () => {
+      if (!selectedSubmission) return;
+
+      const result = await Swal.fire({
+          title: 'ตีกลับให้แก้ไข?',
+          text: 'คุณต้องการส่งผลงานนี้กลับไปให้ผู้ใช้งานแก้ไขใช่หรือไม่? (เช่น ลิงก์ไม่ถูกต้อง, ไฟล์แนบมีปัญหา)',
+          icon: 'warning',
+          input: 'text',
+          inputPlaceholder: 'ระบุเหตุผลที่ให้แก้ไข...',
+          showCancelButton: true,
+          confirmButtonColor: '#f43f5e',
+          confirmButtonText: 'ยืนยันตีกลับแก้ไข',
+          cancelButtonText: 'ยกเลิก',
+          customClass: { popup: 'rounded-3xl' }
+      });
+
+      if (result.isConfirmed) {
+          try {
+              const audit = selectedSubmission.audit || [];
+              await apiUpdateSubmission(settings, selectedSubmission.id, {
+                  status: 'revision_requested',
+                  audit: [...audit, { 
+                      at: new Date().toISOString(), 
+                      action: 'REVISION_REQUESTED', 
+                      note: `แอดมินตีกลับให้แก้ไข: ${result.value || 'ไม่ระบุเหตุผล'}` 
+                  }]
+              });
+
+              showToast({ type: 'success', title: 'สำเร็จ', message: 'เปลี่ยนสถานะเป็น "ตีกลับให้แก้ไข" เรียบร้อยแล้ว' });
+              refreshData();
+              setSelectedSubmission(null);
+          } catch (e: any) {
+              showToast({ type: 'error', title: 'ผิดพลาด', message: e.message });
+          }
       }
   };
 
@@ -365,6 +403,45 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ submissions, settings, refreshD
     }
   };
 
+  const handleExportCSV = () => {
+    try {
+      const headers = ['ลำดับ', 'สาขา', 'ชื่อผลงาน', 'รายชื่อผู้แต่ง', 'ตำแหน่ง', 'หน่วยงาน', 'ลิงก์ผลงาน', 'สถานะ'];
+      const rows = filteredSubmissions.map((s, index) => {
+        const branchName = BRANCHES.find(b => b.id === s.branchId)?.label || s.branchId;
+        const mainAuthor = `${s.firstName} ${s.lastName}`;
+        const coAuthorsList = (s.coAuthors || []).map((c: any) => `${c.firstName} ${c.lastName}`).join(', ');
+        const allAuthors = coAuthorsList ? `${mainAuthor}, ${coAuthorsList}` : mainAuthor;
+        
+        const attachs = parseAttachments(s.fileUrl);
+        const link = attachs.length > 0 ? attachs.map((a: any) => a.value).join(', ') : '-';
+        
+        // Escape quotes
+        return [
+          index + 1,
+          `"${branchName}"`,
+          `"${s.fileName || '-'}"`,
+          `"${allAuthors}"`,
+          `"${s.position || '-'}"`,
+          `"${s.organization || '-'}"`,
+          `"${link}"`,
+          `"${s.status}"`
+        ].join(',');
+      });
+
+      const csvContent = "\uFEFF" + [headers.join(','), ...rows].join('\n');
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.setAttribute("href", url);
+      link.setAttribute("download", `submissions_export_${new Date().getTime()}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (e: any) {
+      showToast({ type: 'error', title: 'Export Failed', message: e.message });
+    }
+  };
+
   return (
     <div className="space-y-6 animate-fade-in pb-12">
         <div className="flex flex-col md:flex-row items-center justify-between gap-4 bg-slate-900 text-white p-6 rounded-3xl shadow-xl">
@@ -375,7 +452,13 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ submissions, settings, refreshD
                 </h1>
                 <p className="text-slate-400 text-sm mt-1">จัดการข้อมูลข่าวสาร ติดตามและตรวจสอบสถานะผลงาน</p>
             </div>
-            <div className="flex gap-2 bg-slate-800 p-1 rounded-2xl">
+            <div className="flex flex-wrap gap-2 bg-slate-800 p-1 rounded-2xl max-w-full overflow-x-auto">
+                <button 
+                    onClick={() => setActiveTab('dashboard')}
+                    className={`px-4 py-2 rounded-xl font-bold transition flex items-center gap-2 ${activeTab === 'dashboard' ? 'bg-white text-slate-900 shadow-md' : 'text-slate-400 hover:text-white hover:bg-slate-700'}`}
+                >
+                    <i className="fa-solid fa-chart-pie"></i> <span className="hidden md:inline">ภาพรวม</span>
+                </button>
                 <button 
                     onClick={() => setActiveTab('submissions')}
                     className={`px-4 py-2 rounded-xl font-bold transition flex items-center gap-2 ${activeTab === 'submissions' ? 'bg-white text-slate-900 shadow-md' : 'text-slate-400 hover:text-white hover:bg-slate-700'}`}
@@ -396,6 +479,64 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ submissions, settings, refreshD
                 </button>
             </div>
         </div>
+
+        {activeTab === 'dashboard' && (
+            <div className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl shadow-sm ring-1 ring-slate-200 dark:ring-slate-700 flex flex-col items-center justify-center">
+                        <i className="fa-solid fa-file-contract text-4xl text-sky-500 mb-2"></i>
+                        <div className="text-3xl font-black text-slate-800 dark:text-white">{submissions.length}</div>
+                        <div className="text-sm font-bold text-slate-500">ผลงานทั้งหมด</div>
+                    </div>
+                    <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl shadow-sm ring-1 ring-slate-200 dark:ring-slate-700 flex flex-col items-center justify-center">
+                        <i className="fa-solid fa-paper-plane text-4xl text-amber-500 mb-2"></i>
+                        <div className="text-3xl font-black text-slate-800 dark:text-white">{submissions.filter(s => s.status === 'submitted').length}</div>
+                        <div className="text-sm font-bold text-slate-500">รอตรวจสอบ (Submitted)</div>
+                    </div>
+                    <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl shadow-sm ring-1 ring-slate-200 dark:ring-slate-700 flex flex-col items-center justify-center">
+                        <i className="fa-solid fa-check-circle text-4xl text-emerald-500 mb-2"></i>
+                        <div className="text-3xl font-black text-slate-800 dark:text-white">{submissions.filter(s => s.status === 'accepted').length}</div>
+                        <div className="text-sm font-bold text-slate-500">อนุมัติแล้ว/ผ่าน (Accepted)</div>
+                    </div>
+                    <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl shadow-sm ring-1 ring-slate-200 dark:ring-slate-700 flex flex-col items-center justify-center">
+                        <i className="fa-solid fa-user-clock text-4xl text-rose-500 mb-2"></i>
+                        <div className="text-3xl font-black text-slate-800 dark:text-white">{submissions.filter(s => s.status === 'revision_requested').length}</div>
+                        <div className="text-sm font-bold text-slate-500">ตีกลับแก้ไข (Rework)</div>
+                    </div>
+                </div>
+
+                <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl shadow-sm ring-1 ring-slate-200 dark:ring-slate-700">
+                    <h3 className="font-black text-slate-800 dark:text-white mb-6 text-lg"><i className="fa-solid fa-chart-pie text-amber-500 mr-2"></i> สัดส่วนผลงานจำแนกตามสาขา (15 สาขา)</h3>
+                    <div className="h-80 w-full">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <PieChart>
+                                <Pie 
+                                  data={BRANCHES.map(b => ({ name: b.label, value: submissions.filter(s => s.branchId === b.id).length })).filter(d => d.value > 0)} 
+                                  dataKey="value" 
+                                  nameKey="name" 
+                                  cx="50%" 
+                                  cy="50%" 
+                                  outerRadius={100} 
+                                  fill="#8884d8"
+                                  label={({name, percent}) => `${(percent || 0 * 100).toFixed(0)}%`}
+                                >
+                                    {
+                                        BRANCHES.map((entry, index) => (
+                                            <Cell key={`cell-${index}`} fill={`hsl(${(index * 360 / BRANCHES.length)}, 70%, 50%)`} />
+                                        ))
+                                    }
+                                </Pie>
+                                <RechartsTooltip 
+                                    contentStyle={{ borderRadius: '1rem', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)' }}
+                                    itemStyle={{ fontWeight: 'bold' }}
+                                />
+                                <Legend />
+                            </PieChart>
+                        </ResponsiveContainer>
+                    </div>
+                </div>
+            </div>
+        )}
 
         {activeTab === 'submissions' && (
             <div className="bg-white dark:bg-slate-800 rounded-3xl p-6 shadow-sm ring-1 ring-slate-200 dark:ring-slate-700">
@@ -426,8 +567,15 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ submissions, settings, refreshD
                         <option value="submitted">รอตรวจสอบ (Submitted)</option>
                         <option value="reviewed">กำลังพิจารณา (Under Review)</option>
                         <option value="accepted">ผ่านการคัดเลือก (Accepted)</option>
+                        <option value="revision_requested">ตีกลับแก้ไข (Rework)</option>
                         <option value="rejected">ไม่ผ่าน (Rejected)</option>
                     </select>
+                    <button 
+                         onClick={handleExportCSV}
+                         className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl flex items-center justify-center gap-2 transition"
+                    >
+                         <i className="fa-solid fa-file-csv"></i> <span className="hidden xl:inline">Export CSV</span>
+                    </button>
                 </div>
 
                 <div className="overflow-x-auto">
@@ -789,13 +937,20 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ submissions, settings, refreshD
                       </div>
 
                       {/* Footer Actions */}
-                      <div className="p-4 bg-slate-50 dark:bg-slate-800 border-t border-slate-100 dark:border-slate-700 flex justify-end gap-3 rounded-b-3xl">
+                      <div className="p-4 bg-slate-50 dark:bg-slate-800 border-t border-slate-100 dark:border-slate-700 flex flex-wrap justify-end gap-3 rounded-b-3xl">
                            {/* Add Delete Button here as requested by generic "manage" concept */}
                           <button 
                               onClick={() => handleDeleteSubmission(selectedSubmission.id)}
-                              className="px-4 py-2 rounded-xl text-rose-600 font-bold text-sm hover:bg-rose-50 transition mr-auto"
+                              className="px-4 py-2 rounded-xl text-rose-600 font-bold text-sm hover:bg-rose-50 dark:hover:bg-rose-900/30 transition auto md:mr-auto"
                           >
                               <i className="fa-solid fa-trash-can mr-1"></i> ลบข้อมูล
+                          </button>
+
+                          <button 
+                              onClick={handleRequestRevision}
+                              className="px-4 py-2 rounded-xl border border-rose-200 text-rose-600 bg-white font-bold text-sm hover:bg-rose-50 transition"
+                          >
+                              <i className="fa-solid fa-rotate-left mr-1"></i> ตีกลับให้แก้ไข
                           </button>
 
                           <button 

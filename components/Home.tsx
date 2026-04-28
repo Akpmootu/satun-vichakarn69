@@ -1,7 +1,10 @@
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useEffect } from 'react';
 import { Submission, UserProfile, NewsItem } from '../types';
 import Timeline from './Timeline';
+
+// Declare Swal globally
+declare const Swal: any;
 
 interface HomeProps {
   onNavigate: (tabId: string) => void;
@@ -15,6 +18,37 @@ interface HomeProps {
 
 const Home: React.FC<HomeProps> = ({ onNavigate, currentUser, onLoginRequest, userSubmissions, showToast, onOpenNews, newsList }) => {
   
+  // Display popup for rework
+  useEffect(() => {
+     if (currentUser && userSubmissions && userSubmissions.length > 0) {
+         const reworked = userSubmissions.filter(s => s.status === 'revision_requested');
+         if (reworked.length > 0) {
+             const hasAlerted = sessionStorage.getItem(`rework_alerted_${currentUser.id}`);
+             if (!hasAlerted) {
+                 const names = reworked.map(s => s.fileName).join(', ');
+                 const latestAudit = reworked[0].audit && reworked[0].audit.length > 0 
+                     ? reworked[0].audit[reworked[0].audit.length - 1].note 
+                     : 'กรุณาตรวจสอบรายละเอียดในระบบ';
+                 
+                 Swal.fire({
+                     title: 'มีผลงานส่งกลับให้แก้ไข!',
+                     html: `คุณมีผลงานที่ต้องแก้ไขจำนวน <b>${reworked.length}</b> รายการ<br/><br/><div className="text-sm p-3 bg-slate-100 rounded-lg text-left"><b>เรื่อง:</b> ${names}<br/><b>หมายเหตุ:</b> <span className="text-rose-600">${latestAudit}</span></div>`,
+                     icon: 'warning',
+                     confirmButtonText: 'ไปที่ประวัติของฉัน',
+                     confirmButtonColor: '#0ea5e9',
+                     showCancelButton: true,
+                     cancelButtonText: 'ไว้ทีหลัง'
+                 }).then((result: any) => {
+                     if (result.isConfirmed) {
+                         onNavigate('history');
+                     }
+                 });
+                 sessionStorage.setItem(`rework_alerted_${currentUser.id}`, 'true');
+             }
+         }
+     }
+  }, [currentUser, userSubmissions, onNavigate]);
+
   // Get latest submission photo if available
   const displayPhoto = useMemo(() => {
       if (!userSubmissions || userSubmissions.length === 0) return null;

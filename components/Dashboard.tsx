@@ -3,6 +3,7 @@ import React, { useMemo, useState } from 'react';
 import { Submission, SubmissionStatus } from '../types';
 import { BRANCHES, WORK_TYPES, BUDGET_YEAR } from '../constants';
 import Badge from './ui/Badge';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, Legend, Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis } from 'recharts';
 
 // --- UI Components ---
 
@@ -128,10 +129,11 @@ const Dashboard: React.FC<DashboardProps> = ({ submissions, onViewAll }) => {
     })).filter(o => o.count > 0).sort((a, b) => b.count - a.count).slice(0, 10);
 
     // 5. Distribution: Branch
-    const branchCounts = BRANCHES.map(b => ({
+    const branchCountsAll = BRANCHES.map(b => ({
         ...b,
         count: filtered.filter(s => s.branchId === b.id).length
-    })).filter(b => b.count > 0).sort((a, b) => b.count - a.count);
+    }));
+    const branchCounts = [...branchCountsAll].filter(b => b.count > 0).sort((a, b) => b.count - a.count);
 
     // 6. Distribution: Work Type (Prepare for Donut)
     const typeCounts = WORK_TYPES.map(t => {
@@ -194,7 +196,7 @@ const Dashboard: React.FC<DashboardProps> = ({ submissions, onViewAll }) => {
     }).slice(0, 10);
 
     return { 
-        stats: { total, uniqueOrgs, uniqueAuthors, completionRate, statusCounts, typeCounts, orgCounts, branchCounts },
+        stats: { total, uniqueOrgs, uniqueAuthors, completionRate, statusCounts, typeCounts, orgCounts, branchCounts, branchCountsAll },
         orgOptions: orgs, // Fixed: Explicitly map local 'orgs' to 'orgOptions' property
         monthlyData: { data: mData, max: maxMonthly },
         tableData: tData,
@@ -465,6 +467,62 @@ const Dashboard: React.FC<DashboardProps> = ({ submissions, onViewAll }) => {
                          </div>
                      </div>
                   </div>
+               </div>
+           </section>
+
+           {/* SECTION 3.5: BRANCHES (PIE & RADAR) */}
+           <section>
+               <SectionHeader title="ผลงานรายสาขา (15 สาขา)" subtitle="Branches Distribution" icon="fa-chart-pie" />
+               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                   <div className="bg-white dark:bg-slate-800 rounded-3xl p-6 shadow-sm border border-slate-100 dark:border-slate-700 flex flex-col items-center">
+                       <h3 className="font-bold text-slate-800 dark:text-white mb-6 w-full text-left flex items-center gap-2">
+                           <i className="fa-solid fa-chart-pie text-sky-500"></i> สัดส่วนผลงานจำแนกตามสาขา
+                       </h3>
+                       <div className="h-80 w-full">
+                           <ResponsiveContainer width="100%" height="100%">
+                               <PieChart>
+                                   <Pie 
+                                     data={stats.branchCounts} 
+                                     dataKey="count" 
+                                     nameKey="label" 
+                                     cx="50%" 
+                                     cy="50%" 
+                                     outerRadius={100} 
+                                     labelLine={false}
+                                   >
+                                       {
+                                           stats.branchCounts.map((entry, index) => (
+                                               <Cell key={`cell-${index}`} fill={`hsl(${(index * 360 / Math.max(stats.branchCounts.length, 1))}, 70%, 50%)`} />
+                                           ))
+                                       }
+                                   </Pie>
+                                   <RechartsTooltip 
+                                       contentStyle={{ borderRadius: '1rem', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)' }}
+                                       itemStyle={{ fontWeight: 'bold' }}
+                                   />
+                               </PieChart>
+                           </ResponsiveContainer>
+                       </div>
+                   </div>
+
+                   <div className="bg-white dark:bg-slate-800 rounded-3xl p-6 shadow-sm border border-slate-100 dark:border-slate-700 flex flex-col items-center">
+                       <h3 className="font-bold text-slate-800 dark:text-white mb-6 w-full text-left flex items-center gap-2">
+                           <i className="fa-solid fa-radar text-emerald-500"></i> Radar Chart แสดงภาพรวมสาขา
+                       </h3>
+                       <div className="h-80 w-full">
+                           <ResponsiveContainer width="100%" height="100%">
+                               <RadarChart cx="50%" cy="50%" outerRadius="80%" data={stats.branchCountsAll}>
+                                   <PolarGrid />
+                                   <PolarAngleAxis dataKey="id" tick={{ fill: '#94a3b8', fontSize: 10 }} />
+                                   <PolarRadiusAxis angle={30} domain={[0, 'auto']} />
+                                   <Radar name="จำนวนผลงาน" dataKey="count" stroke="#0ea5e9" fill="#0ea5e9" fillOpacity={0.5} />
+                                   <RechartsTooltip 
+                                       contentStyle={{ borderRadius: '1rem', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                                   />
+                               </RadarChart>
+                           </ResponsiveContainer>
+                       </div>
+                   </div>
                </div>
            </section>
 

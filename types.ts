@@ -1,5 +1,5 @@
 
-export type SubmissionStatus = 'draft' | 'submitted' | 'reviewed' | 'accepted' | 'rejected';
+export type SubmissionStatus = 'draft' | 'submitted' | 'reviewed' | 'accepted' | 'rejected' | 'revision_requested';
 export type UserRole = 'user' | 'admin' | 'reviewer';
 
 export interface AuditLog {
@@ -39,6 +39,7 @@ export interface CoAuthor {
   lineId: string;
   photoUrl?: string;
   isVerified?: boolean;
+  isSystemUser?: boolean;
 }
 
 export interface UserProfile {

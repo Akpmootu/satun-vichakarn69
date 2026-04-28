@@ -53,6 +53,7 @@ const ReviewerPanel: React.FC<ReviewerPanelProps> = ({ submissions, settings, re
             <select id="swal-status" class="swal2-input">
                 <option value="accepted">ผ่านการคัดเลือก (Accept)</option>
                 <option value="rejected">ไม่ผ่านการคัดเลือก (Reject)</option>
+                <option value="revision_requested">ตีกลับแก้ไข (Rework)</option>
                 <option value="reviewed">รอแก้ไข/ตรวจสอบเพิ่มเติม (Review)</option>
             </select>
             <textarea id="swal-note" class="swal2-textarea" placeholder="ความคิดเห็นคณะกรรมการ..."></textarea>

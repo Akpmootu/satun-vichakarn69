@@ -71,7 +71,7 @@ export default function App() {
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(getCurrentUser());
 
   // Shared Data State
-  const [submissions, setSubmissions] = useState<Submission[]>([]);
+  const [allSubmissions, setAllSubmissions] = useState<Submission[]>([]);
   const [loading, setLoading] = useState(false);
 
   // Stats State
@@ -85,6 +85,11 @@ export default function App() {
   // Helper to check if special view
   const isAdmin = currentUser?.role === 'admin';
   const isReviewer = currentUser?.role === 'reviewer';
+
+  const mySubmissions = useMemo(() => {
+     if (!currentUser) return [];
+     return allSubmissions.filter(s => s.userId === currentUser.id);
+  }, [allSubmissions, currentUser]);
 
   // Apply Dark Mode Class
   useEffect(() => {
@@ -192,7 +197,7 @@ export default function App() {
   const performLogoutAction = useCallback((isAuto: boolean = false) => {
     logoutUser();
     setCurrentUser(null);
-    setSubmissions([]); 
+    setAllSubmissions([]); 
     setEditingSubmission(null);
     handleTabChange('home');
     setShowProfileMenu(false);
@@ -286,9 +291,8 @@ export default function App() {
   const loadData = async () => {
     setLoading(true);
     try {
-      const userId = (currentUser?.role === 'admin' || currentUser?.role === 'reviewer') ? undefined : currentUser?.id; 
-      const data = await apiListSubmissions(settings, userId);
-      setSubmissions(Array.isArray(data) ? data : []);
+      const data = await apiListSubmissions(settings, undefined);
+      setAllSubmissions(Array.isArray(data) ? data : []);
     } catch (e: any) {
       showToast({ type: "error", title: "Error loading data", message: e.message });
     } finally {
@@ -597,7 +601,7 @@ export default function App() {
                 />
             ) : (
                 <AdminPanel 
-                    submissions={submissions} 
+                    submissions={allSubmissions} 
                     settings={settings} 
                     refreshData={loadData} 
                     showToast={showToast}
@@ -614,7 +618,7 @@ export default function App() {
                 />
             ) : (
                 <ReviewerPanel 
-                    submissions={submissions} 
+                    submissions={allSubmissions} 
                     settings={settings} 
                     refreshData={loadData} 
                     showToast={showToast} 
@@ -627,7 +631,7 @@ export default function App() {
                         onNavigate={handleTabChange} 
                         currentUser={currentUser}
                         onLoginRequest={() => setShowAuth(true)}
-                        userSubmissions={submissions.filter(s => s.userId === currentUser?.id)}
+                        userSubmissions={mySubmissions}
                         showToast={showToast}
                         onOpenNews={handleOpenNews}
                         newsList={newsList}
@@ -651,7 +655,7 @@ export default function App() {
                 
                 {activeTab === 'history' && (
                     <History 
-                        submissions={submissions}
+                        submissions={mySubmissions}
                         loading={loading} 
                         refreshList={loadData} 
                         settings={settings} 
@@ -662,7 +666,7 @@ export default function App() {
                 
                 {activeTab === 'analytics' && (
                     <Dashboard 
-                        submissions={submissions} 
+                        submissions={allSubmissions} 
                         onViewAll={() => handleTabChange('history')}
                     />
                 )}
@@ -843,7 +847,7 @@ export default function App() {
               <div className="border-t border-slate-800 pt-8 flex flex-col md:flex-row justify-between items-center gap-4 text-xs font-medium text-slate-500">
                   <div className="flex items-center gap-2">
                        <i className="fa-solid fa-code text-sky-500"></i>
-                       <span>พัฒนาโดย IT SSJ Satun 2569 | v1.1.0</span>
+                       <span>พัฒนาโดย IT SSJ Satun 2569 | <a href="#" onClick={(e) => {e.preventDefault(); Swal.fire({title: 'รายละเอียดอัปเดต v1.2.0', html: '<ul class="text-left space-y-2"><li>📈 <b>Analytics Dashboard:</b> เพิ่มกราฟแยก 15 สาขา แบบ Real-time</li><li>✅ <b>ระบบส่งกลับแก้ไข:</b> ผู้ใช้ได้รับการแจ้งเตือนผลงานที่ถูกตีกลับ</li><li>🔒 <b>Co-Author Security:</b> ป้องกันการแก้ไขรายชื่อผู้ร่วมที่ลงทะเบียนในระบบ</li><li>🖼️ <b>Loading Screen:</b> เปลี่ยนโลโก้เป็นแบบใหม่ที่มี Animation</li><li>📊 <b>Export Data:</b> สามารถดาวน์โหลดรายการผลงานเป็น CSV ได้</li></ul>', icon: 'info', confirmButtonColor: '#0ea5e9'}); }}>v1.2.0</a></span>
                   </div>
                   <div className="flex gap-6">
                       <button onClick={() => setShowPrivacyPolicy(true)} className="hover:text-slate-300 transition">นโยบายความเป็นส่วนตัว</button>

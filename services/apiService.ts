@@ -281,6 +281,53 @@ export async function apiListSubmissions(settings: AppSettings, userId?: string)
     return data.map(mapSubmissionFromDB);
 }
 
+export async function apiSearchUsers(queryText: string): Promise<UserProfile[]> {
+    if (!queryText || queryText.trim() === '') return [];
+    const search = queryText.trim();
+    const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .or(`first_name.ilike.%${search}%,last_name.ilike.%${search}%`)
+        .limit(10);
+    
+    if (error) {
+        console.error("apiSearchUsers Error:", error);
+        return [];
+    }
+    return data ? data.map(mapProfileFromDB) : [];
+}
+
+export async function apiCheckTitleUnique(title: string, excludeSubmissionId?: string): Promise<boolean> {
+    let query = supabase.from('submissions').select('id', { count: 'exact', head: true }).eq('file_name', title);
+    if (excludeSubmissionId) {
+        query = query.neq('id', excludeSubmissionId);
+    }
+    const { count, error } = await query;
+    if (error) {
+        console.error("apiCheckTitleUnique Error:", error);
+        return true; 
+    }
+    return count === 0;
+}
+
+async function notifyTelegram(message: string, url?: string) {
+    try {
+        const payload: any = { text: message };
+        if (url) {
+            payload.reply_markup = {
+                inline_keyboard: [[{ text: "👉 ไปยังระบบหลังบ้าน", url: url }]]
+            };
+        }
+        await fetch('/api/notify-telegram', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+    } catch (e) {
+        console.error("Telegram notification failed:", e);
+    }
+}
+
 export async function apiCreateSubmission(settings: AppSettings, payload: Submission): Promise<Submission> {
     const dbPayload = {
         user_id: payload.userId, 
@@ -303,6 +350,13 @@ export async function apiCreateSubmission(settings: AppSettings, payload: Submis
     };
     const { data, error } = await supabase.from('submissions').insert([dbPayload]).select().single();
     if (error) throw new Error(error.message);
+    
+    // Send Telegram Notification
+    notifyTelegram(
+        `📝 <b>มีการส่งผลงานขิ้นใหม่!</b>\n\n<b>เรื่อง:</b> ${payload.fileName}\n<b>โดย:</b> ${payload.firstName} ${payload.lastName}\n<b>หน่วยงาน:</b> ${payload.organization}`,
+        `${window.location.origin}/dashboard`
+    );
+
     return mapSubmissionFromDB(data);
 }
 
@@ -326,6 +380,20 @@ export async function apiUpdateSubmission(settings: AppSettings, id: string, pat
 
     const { data, error } = await supabase.from('submissions').update(dbPatch).eq('id', id).select().single();
     if (error) throw new Error(error.message);
+    
+    // Telegram Notification if status changed
+    if (patch.status) {
+        let statusEmoji = '🔄';
+        if (patch.status === 'accepted') statusEmoji = '🎉';
+        if (patch.status === 'rejected') statusEmoji = '❌';
+        if (patch.status === 'revision_requested') statusEmoji = '⚠️';
+        
+        notifyTelegram(
+            `${statusEmoji} <b>อัปเดตสถานะผลงาน</b>\n\n<b>สถานะใหม่:</b> ${patch.status}`,
+            `${window.location.origin}/dashboard`
+        );
+    }
+
     return mapSubmissionFromDB(data);
 }
 

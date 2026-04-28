@@ -22,6 +22,7 @@ const STATUS_CONFIG: Record<SubmissionStatus, { label: string; tone: any; step: 
   submitted: { label: 'ส่งแล้ว (Submitted)', tone: 'navy', step: 2 },
   reviewed: { label: 'กำลังตรวจสอบ (Reviewing)', tone: 'indigo', step: 3 },
   accepted: { label: 'ผ่านการคัดเลือก (Accepted)', tone: 'green', step: 4 },
+  revision_requested: { label: 'ตีกลับแก้ไข (Rework)', tone: 'rose', step: 2 },
   rejected: { label: 'ไม่ผ่าน (Rejected)', tone: 'red', step: 4 },
 };
 
