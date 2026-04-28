@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import { LOADING_QUOTES } from '../../constants';
-const logoSrc = '/pic/logo.png';
 
 interface LoadingOverlayProps {
   isLoading: boolean;
@@ -36,9 +35,9 @@ const LoadingOverlay: React.FC<LoadingOverlayProps> = ({ isLoading }) => {
              
              {/* Main Image Logo */}
              <img 
-                 src={logoSrc} 
+                 src="/logo.png" 
                  alt="SKMS Logo" 
-                 className="w-24 h-24 object-contain animate-[pulse_3s_ease-in-out_infinite] drop-shadow-[0_0_15px_rgba(14,165,233,0.5)]" 
+                 className="w-24 h-24 object-contain drop-shadow-[0_0_15px_rgba(14,165,233,0.5)] animate-[pulse_2s_ease-in-out_infinite] scale-110" 
              />
           </div>
 

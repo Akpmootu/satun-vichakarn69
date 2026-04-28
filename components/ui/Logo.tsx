@@ -5,7 +5,7 @@ const Logo: React.FC<{ className?: string }> = ({ className = "h-12" }) => {
   return (
     <div className={`flex items-center gap-3 ${className}`}>
       <div className="relative h-12 w-12 md:h-14 md:w-14 shrink-0 group">
-         <img src="/pic/logo.png" alt="Logo" className="w-full h-full object-contain drop-shadow-md" />
+         <img src="/logo.png" alt="Logo" className="w-full h-full object-contain drop-shadow-md" />
       </div>
       <div className="flex flex-col justify-center">
          <h1 className="text-xl md:text-2xl font-black tracking-tight text-slate-900 dark:text-white leading-none group-hover:text-sky-600 transition truncate max-w-[200px] md:max-w-none">
