@@ -44,6 +44,12 @@ export const BRANCHES: BranchOption[] = [
   { id: 15, label: "ดิจิทัลสุขภาพ" },
 ];
 
+export const BRANCH_GROUPS = [
+    { label: "การแพทย์และสหวิชาชีพ", ids: [1, 2, 3, 4, 8, 9, 10, 11, 12, 13] },
+    { label: "การพยาบาล", ids: [5, 6, 7] },
+    { label: "บริหาร ยุทธศาสตร์ และดิจิทัล", ids: [14, 15] }
+];
+
 export const PR_NEWS: NewsItem[] = [
   {
     id: 1,

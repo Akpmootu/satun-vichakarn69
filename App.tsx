@@ -1,6 +1,6 @@
 
 import React, { useEffect, useState, useRef, useCallback, useMemo } from "react";
-import { BUDGET_YEAR } from "./constants";
+import { BUDGET_YEAR, BRANCHES } from "./constants";
 import { AppSettings, Submission, ToastMessage, UserProfile, VisitorStats, NewsItem } from "./types";
 import { apiListSubmissions, loadSettings, getCurrentUser, logoutUser, apiGetUserProfile, subscribeToVisitorPresence, subscribeToStatsUpdates, apiGetVisitorStats, apiRecordVisit, apiFetchNewsAsync } from "./services/apiService";
 
@@ -362,6 +362,7 @@ export default function App() {
     { id: "analytics", label: "วิเคราะห์", icon: "fa-chart-pie" },
     { id: "register", label: "ลงทะเบียนส่งผลงาน", icon: "fa-pen-to-square" },
     { id: "history", label: "ประวัติผลงาน", icon: "fa-clock-rotate-left" },
+    { id: "assessment", label: "ประเมินผลงาน", icon: "fa-clipboard-check" },
     { id: "settings", label: "ตั้งค่าระบบ", icon: "fa-gear" },
   ];
 
@@ -369,9 +370,15 @@ export default function App() {
   const navTabs = useMemo(() => {
       return allTabs.filter(tab => {
           if (tab.id === 'settings') return isAdmin;
+          if (tab.id === 'assessment') return isReviewer;
+          if (isReviewer) {
+              if (tab.id === 'register' || tab.id === 'history') return false;
+          } else {
+              if (tab.id === 'assessment') return false;
+          }
           return true;
       });
-  }, [isAdmin]);
+  }, [isAdmin, isReviewer]);
 
   return (
     <div className={`min-h-screen font-sans pb-10 flex flex-col transition-colors duration-300 ${darkMode ? 'bg-slate-950 text-slate-100' : 'bg-slate-50 text-slate-900'}`}>
@@ -411,7 +418,7 @@ export default function App() {
           </div>
           
           {/* 2. Desktop Navigation */}
-          {!isAdmin && !isReviewer && (
+          {!isAdmin && (
               <nav className="hidden lg:flex items-center gap-1">
                   {navTabs.map(tab => {
                       const isActive = activeTab === tab.id;
@@ -468,6 +475,10 @@ export default function App() {
                              `}>
                                  {currentUser.avatarUrl ? (
                                      <img src={currentUser.avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+                                 ) : currentUser.prefix === 'นาย' ? (
+                                     <i className="fa-solid fa-user-tie"></i>
+                                 ) : currentUser.prefix === 'นาง' || currentUser.prefix === 'นางสาว' ? (
+                                     <i className="fa-solid fa-user-nurse"></i>
                                  ) : (
                                      currentUser.firstName.charAt(0)
                                  )}
@@ -485,12 +496,17 @@ export default function App() {
                          {/* Text Info */}
                          <div className="text-right leading-tight hidden md:block">
                              <div className={`text-sm font-bold ${darkMode ? 'text-slate-200' : 'text-slate-800'}`}>
-                                 {currentUser.firstName} {currentUser.lastName}
+                                 {currentUser.prefix && `${currentUser.prefix} `}{currentUser.firstName} {currentUser.lastName}
                              </div>
                              <div className="text-[10px] text-slate-500 font-medium">
+                                 {currentUser.role === 'reviewer' && currentUser.branchId ? (
+                                    <span className="text-indigo-600 dark:text-indigo-400 font-bold block mb-0.5">
+                                        สาขา: {BRANCHES.find((b: any) => b.id.toString() === currentUser.branchId?.toString())?.label || currentUser.branchId}
+                                    </span>
+                                 ) : null}
                                  {currentUser.position || 'สมาชิกทั่วไป'}
                                  {currentUser.level && (
-                                     <span className="ml-1.5 text-indigo-600 dark:text-indigo-400 font-bold">
+                                     <span className="ml-1.5 text-sky-600 dark:text-sky-400 font-bold">
                                          {currentUser.level}
                                      </span>
                                  )}
@@ -628,20 +644,41 @@ export default function App() {
                 />
             )
         ) : isReviewer ? (
-             activeTab === 'profile' ? (
-                <ProfileSettings 
-                    currentUser={currentUser!} 
-                    onUpdateUser={handleUpdateUser} 
-                    showToast={showToast} 
-                />
-            ) : (
-                <ReviewerPanel 
-                    submissions={allSubmissions} 
-                    settings={settings} 
-                    refreshData={loadData} 
-                    showToast={showToast} 
-                />
-            )
+             <div className="min-h-[600px] animate-fade-in">
+                {activeTab === 'home' && (
+                    <Home 
+                        onNavigate={handleTabChange} 
+                        currentUser={currentUser}
+                        onLoginRequest={() => setShowAuth(true)}
+                        userSubmissions={mySubmissions}
+                        showToast={showToast}
+                        onOpenNews={handleOpenNews}
+                        newsList={newsList}
+                    />
+                )}
+                {activeTab === 'analytics' && (
+                    <Dashboard 
+                        submissions={allSubmissions} 
+                        onViewAll={() => handleTabChange('history')}
+                    />
+                )}
+                {activeTab === 'profile' && (
+                    <ProfileSettings 
+                        currentUser={currentUser!} 
+                        onUpdateUser={handleUpdateUser} 
+                        showToast={showToast} 
+                    />
+                )}
+                {activeTab === 'assessment' && (
+                    <ReviewerPanel 
+                        submissions={allSubmissions} 
+                        settings={settings} 
+                        refreshData={loadData} 
+                        showToast={showToast}
+                        currentUser={currentUser!}
+                    />
+                )}
+            </div>
         ) : (
             <div className="min-h-[600px] animate-fade-in">
                 {activeTab === 'home' && (
@@ -866,7 +903,7 @@ export default function App() {
               <div className="border-t border-slate-800 pt-8 flex flex-col md:flex-row justify-between items-center gap-4 text-xs font-medium text-slate-500">
                   <div className="flex items-center gap-2">
                        <i className="fa-solid fa-code text-sky-500"></i>
-                       <span>พัฒนาโดย IT SSJ Satun 2569 | <a href="#" onClick={(e) => {e.preventDefault(); Swal.fire({title: 'รายละเอียดอัปเดต v1.2.4', html: '<ul class="text-left space-y-2"><li>📈 <b>Analytics Dashboard:</b> เพิ่มกราฟแยก 15 สาขา แบบ Real-time</li><li>✅ <b>ระบบส่งกลับแก้ไข:</b> ผู้ใช้ได้รับการแจ้งเตือนผลงานที่ถูกตีกลับ</li><li>🔒 <b>Co-Author Security:</b> ป้องกันการแก้ไขรายชื่อผู้ร่วมที่ลงทะเบียนในระบบ</li><li>🖼️ <b>Loading Screen:</b> เปลี่ยนโลโก้เป็นแบบใหม่ที่มี Animation</li><li>🛡️ <b>Admin Panel:</b> แก้ไขการดึงฟิลด์ข้อมูลการยืนยันตัวตนและการอัปเดตรหัสผ่าน (v1.2.1)</li><li>🔑 <b>Security:</b> อัปเดตการรองรับ Service Role Key สำหรับรีเซ็ตรหัสผ่าน (v1.2.2)</li><li>☁️ <b>Cloud Storage:</b> ย้ายรูปโลโก้ไปดึงจาก Supabase Storage (v1.2.3)</li><li>🖼️ <b>UI:</b> แก้ไขปัญหาโลโก้ไม่แสดงผล (v1.2.4)</li></ul>', icon: 'info', confirmButtonColor: '#0ea5e9'}); }}>v1.2.4</a></span>
+                       <span>พัฒนาโดย IT SSJ Satun 2569 | <a href="#" onClick={(e) => {e.preventDefault(); Swal.fire({title: 'รายละเอียดอัปเดต v1.2.7', html: '<ul class="text-left space-y-2 text-sm"><li>📈 <b>Analytics Dashboard:</b> เพิ่มกราฟแยก 15 สาขา แบบ Real-time</li><li>✅ <b>ระบบส่งกลับแก้ไข:</b> ผู้ใช้ได้รับการแจ้งเตือนผลงานที่ถูกตีกลับ</li><li>🔒 <b>Co-Author Security:</b> ป้องกันการแก้ไขรายชื่อผู้ร่วมที่ลงทะเบียนในระบบ</li><li>🖼️ <b>Loading Screen:</b> เปลี่ยนโลโก้เป็นแบบใหม่ที่มี Animation</li><li>🛡️ <b>Admin Panel:</b> แก้ไขการดึงฟิลด์ข้อมูลการยืนยันตัวตนและการอัปเดตรหัสผ่าน (v1.2.1)</li><li>🔑 <b>Security:</b> อัปเดตการรองรับ Service Role Key สำหรับรีเซ็ตรหัสผ่าน (v1.2.2)</li><li>☁️ <b>Cloud Storage:</b> ย้ายรูปโลโก้ไปดึงจาก Supabase Storage (v1.2.3)</li><li>🖼️ <b>UI:</b> แก้ไขปัญหาโลโก้ไม่แสดงผล (v1.2.4)</li><li>🧑‍💼 <b>Reviewer:</b> เพิ่มระบบลงทะเบียนสำหรับคณะกรรมการ และแสดงสาขา/โลโก้พิเศษ (v1.2.5)</li><li>🧑‍⚖️ <b>Reviewer Form:</b> ปรับปรุงฟอร์มลงทะเบียนคณะกรรมการ ตัดการบังคับเติม @skms-reviewer.local และจัดกลุ่มสาขา (v1.2.6)</li><li>📊 <b>Reviewer Panel:</b> เพิ่มหน้า Assessment สำหรับคณะกรรมการ เพื่อให้คะแนนแยกตามเกณฑ์แต่ละหมวด (v1.2.7)</li></ul>', icon: 'info', confirmButtonColor: '#0ea5e9'}); }}>v1.2.7</a></span>
                   </div>
                   <div className="flex gap-6">
                       <button onClick={() => setShowPrivacyPolicy(true)} className="hover:text-slate-300 transition">นโยบายความเป็นส่วนตัว</button>

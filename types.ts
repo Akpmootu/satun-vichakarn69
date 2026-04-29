@@ -42,6 +42,16 @@ export interface CoAuthor {
   isSystemUser?: boolean;
 }
 
+export interface ReviewerScore {
+  id: string;
+  submissionId: string;
+  reviewerId: string;
+  workType: string;
+  scoreData: Record<string, { score: number; comment: string }>;
+  totalScore: number;
+  createdAt: string;
+}
+
 export interface UserProfile {
   id: string;
   firstName: string;
@@ -58,6 +68,9 @@ export interface UserProfile {
   isVerified?: boolean;
   verifiedBy?: string;
   verifiedAt?: string;
+  prefix?: string;
+  branchId?: string;
+  committeeRole?: string;
 }
 
 export interface Submission {

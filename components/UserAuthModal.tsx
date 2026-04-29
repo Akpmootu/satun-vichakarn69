@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { UserProfile, Education } from '../types';
 import { apiRegisterUser, apiLoginUser, apiUploadAvatar, apiUpdateUserProfile } from '../services/apiService';
-import { HEALTH_POSITIONS, JOB_LEVELS, EDUCATION_LEVELS } from '../constants';
+import { HEALTH_POSITIONS, JOB_LEVELS, EDUCATION_LEVELS, BRANCHES, BRANCH_GROUPS } from '../constants';
 import OrgAutocomplete from './ui/OrgAutocomplete';
 import UniversityAutocomplete from './ui/UniversityAutocomplete';
 import PasswordStrengthMeter from './ui/PasswordStrengthMeter';
@@ -14,7 +14,7 @@ interface UserAuthModalProps {
 }
 
 const UserAuthModal: React.FC<UserAuthModalProps> = ({ isOpen, onClose, onSuccess, showToast }) => {
-  const [mode, setMode] = useState<'login' | 'register'>('login');
+  const [mode, setMode] = useState<'login' | 'register' | 'register_reviewer'>('login');
   const [loading, setLoading] = useState(false);
   
   // Login State
@@ -24,8 +24,8 @@ const UserAuthModal: React.FC<UserAuthModalProps> = ({ isOpen, onClose, onSucces
 
   // Register State
   const [regForm, setRegForm] = useState({
-    firstName: "", lastName: "", email: "", organization: "", 
-    position: "", positionCustom: "", level: ""
+    prefix: "", firstName: "", lastName: "", email: "", organization: "", 
+    position: "", positionCustom: "", level: "", branchId: "", committeeRole: ""
   });
   
   // Phone Number State (10 Digits)
@@ -58,7 +58,7 @@ const UserAuthModal: React.FC<UserAuthModalProps> = ({ isOpen, onClose, onSucces
   useEffect(() => {
       if (!isOpen) {
           setLoginEmail(""); setLoginPassword("");
-          setRegForm({ firstName: "", lastName: "", email: "", organization: "", position: "", positionCustom: "", level: "" });
+          setRegForm({ prefix: "", firstName: "", lastName: "", email: "", organization: "", position: "", positionCustom: "", level: "", branchId: "", committeeRole: "" });
           setPhoneDigits(Array(10).fill("")); // Reset phone
           setRegAvatar(null); setRegAvatarPreview(null); // Reset avatar
           setEduForm({ id: 'primary', degree: '', major: '', institution: '', year: '' });
@@ -189,7 +189,7 @@ const UserAuthModal: React.FC<UserAuthModalProps> = ({ isOpen, onClose, onSucces
       }
 
       // 3. Education Validation
-      if (!eduForm.degree || !eduForm.institution || !eduForm.year || !eduForm.major) {
+      if (mode !== 'register_reviewer' && (!eduForm.degree || !eduForm.institution || !eduForm.year || !eduForm.major)) {
           showToast({ type: 'error', title: 'ข้อมูลการศึกษาไม่ครบ', message: 'กรุณากรอกประวัติการศึกษา (วุฒิสูงสุด)' });
           return;
       }
@@ -214,19 +214,35 @@ const UserAuthModal: React.FC<UserAuthModalProps> = ({ isOpen, onClose, onSucces
           // return;
       }
 
+      // 5. Reviewer Validation
+      if (mode === 'register_reviewer') {
+          if (!regForm.prefix || !regForm.branchId || !regForm.committeeRole) {
+              showToast({ type: 'error', title: 'ข้อมูลกรรมการไม่ครบ', message: 'กรุณาระบุคำนำหน้า สาขา และหน้าที่กรรมการ' });
+              return;
+          }
+      }
+
+      let formattedEmail = regForm.email.trim();
+      if (mode === 'register_reviewer' && !formattedEmail.includes('@')) {
+          formattedEmail = `${formattedEmail}@skms-reviewer.local`;
+      }
+
       setLoading(true);
       try {
           const newUser: UserProfile = {
               id: Date.now().toString(), // Temp ID
-              role: 'user',
+              role: mode === 'register_reviewer' ? 'reviewer' : 'user',
+              prefix: mode === 'register_reviewer' ? regForm.prefix : undefined,
               firstName: regForm.firstName,
               lastName: regForm.lastName,
-              email: regForm.email,
+              email: formattedEmail,
               phone: phoneNumber,
               organization: regForm.organization,
               position: finalPosition,
               level: regForm.level,
-              educationHistory: [eduForm] // Save initial education
+              educationHistory: mode === 'register_reviewer' ? [] : [eduForm],
+              branchId: mode === 'register_reviewer' ? regForm.branchId : undefined,
+              committeeRole: mode === 'register_reviewer' ? regForm.committeeRole : undefined
           };
           
           // 1. Create User
@@ -249,7 +265,11 @@ const UserAuthModal: React.FC<UserAuthModalProps> = ({ isOpen, onClose, onSucces
           }
 
       } catch (e: any) {
-          showToast({ type: 'error', title: 'ลงทะเบียนไม่สำเร็จ', message: e.message });
+          let errorMessage = e.message;
+          if (errorMessage === 'User already registered') {
+              errorMessage = 'Username หรืออีเมลนี้ มีในระบบแล้ว (User already registered)';
+          }
+          showToast({ type: 'error', title: 'ลงทะเบียนไม่สำเร็จ', message: errorMessage });
       } finally {
           setLoading(false);
       }
@@ -265,15 +285,21 @@ const UserAuthModal: React.FC<UserAuthModalProps> = ({ isOpen, onClose, onSucces
         <div className="flex border-b border-slate-100 dark:border-slate-800 shrink-0">
             <button 
                 onClick={() => setMode('login')}
-                className={`flex-1 py-4 text-sm font-bold transition ${mode === 'login' ? 'text-sky-600 bg-sky-50 dark:bg-sky-900/20 border-b-2 border-sky-600' : 'text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800'}`}
+                className={`py-4 text-sm font-bold transition px-4 ${mode === 'login' ? 'text-sky-600 bg-sky-50 dark:bg-sky-900/20 border-b-2 border-sky-600' : 'text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800'}`}
             >
-                <i className="fa-solid fa-right-to-bracket mr-2"></i> เข้าสู่ระบบ
+                <i className="fa-solid fa-right-to-bracket mr-1"></i> เข้าสู่ระบบ
             </button>
             <button 
                 onClick={() => setMode('register')}
-                className={`flex-1 py-4 text-sm font-bold transition ${mode === 'register' ? 'text-sky-600 bg-sky-50 dark:bg-sky-900/20 border-b-2 border-sky-600' : 'text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800'}`}
+                className={`flex-1 py-4 text-sm font-bold transition ${mode === 'register' ? 'text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20 border-b-2 border-emerald-600' : 'text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800'}`}
             >
-                <i className="fa-solid fa-user-plus mr-2"></i> ลงทะเบียนใหม่
+                <i className="fa-solid fa-user-plus mr-1"></i> ลงทะเบียนทั่วไป
+            </button>
+            <button 
+                onClick={() => setMode('register_reviewer')}
+                className={`flex-1 py-4 text-sm font-bold transition ${mode === 'register_reviewer' ? 'text-indigo-600 bg-indigo-50 dark:bg-indigo-900/20 border-b-2 border-indigo-600' : 'text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800'}`}
+            >
+                <i className="fa-solid fa-user-tie mr-1"></i> ลงทะเบียนกรรมการ
             </button>
         </div>
 
@@ -377,8 +403,26 @@ const UserAuthModal: React.FC<UserAuthModalProps> = ({ isOpen, onClose, onSucces
                             />
                         </div>
 
-                        <div className="grid grid-cols-2 gap-3 relative z-10">
-                            <div>
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-3 relative z-10">
+                            <div className="md:col-span-1">
+                                <label className="text-xs font-bold text-slate-700 dark:text-slate-300">คำนำหน้า <span className="text-rose-500">*</span></label>
+                                <div className="relative">
+                                  <select 
+                                      value={regForm.prefix}
+                                      onChange={(e) => setRegForm({...regForm, prefix: e.target.value})}
+                                      className="w-full rounded-xl border border-slate-200 dark:border-slate-700 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-sky-200 dark:bg-slate-800 dark:text-white appearance-none cursor-pointer"
+                                  >
+                                      <option value="">-- เลือก --</option>
+                                      <option value="นาย">นาย</option>
+                                      <option value="นาง">นาง</option>
+                                      <option value="นางสาว">นางสาว</option>
+                                  </select>
+                                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-slate-500">
+                                      <i className="fa-solid fa-chevron-down text-xs"></i>
+                                  </div>
+                                </div>
+                            </div>
+                            <div className="md:col-span-1 md:col-start-2 col-span-1">
                                 <label className="text-xs font-bold text-slate-700 dark:text-slate-300">ชื่อ <span className="text-rose-500">*</span></label>
                                 <input 
                                     value={regForm.firstName}
@@ -386,7 +430,7 @@ const UserAuthModal: React.FC<UserAuthModalProps> = ({ isOpen, onClose, onSucces
                                     className="w-full rounded-xl border border-slate-200 dark:border-slate-700 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-sky-200 dark:bg-slate-800 dark:text-white" 
                                 />
                             </div>
-                            <div>
+                            <div className="md:col-span-2">
                                 <label className="text-xs font-bold text-slate-700 dark:text-slate-300">นามสกุล <span className="text-rose-500">*</span></label>
                                 <input 
                                     value={regForm.lastName}
@@ -479,7 +523,63 @@ const UserAuthModal: React.FC<UserAuthModalProps> = ({ isOpen, onClose, onSucces
                         </div>
                     </div>
 
+                    {/* SECTION 2.5: Committee Info (Only for Reviewer) */}
+                    {mode === 'register_reviewer' && (
+                        <div className="relative p-4 rounded-2xl bg-indigo-50 dark:bg-indigo-800/30 border border-indigo-200 dark:border-indigo-700/50 z-25">
+                            <div className="absolute inset-0 overflow-hidden rounded-2xl pointer-events-none">
+                                <i className="fa-solid fa-gavel absolute -bottom-2 -right-2 text-8xl text-indigo-200/50 dark:text-indigo-800/30 transform -rotate-12"></i>
+                            </div>
+                            <h4 className="text-sm font-bold text-indigo-800 dark:text-indigo-300 mb-3 flex items-center gap-2 relative z-10">
+                                <i className="fa-solid fa-clipboard-user text-indigo-500"></i> ข้อมูลคณะกรรมการ
+                            </h4>
+                            
+                            <div className="space-y-3 relative z-10">
+                                <div>
+                                    <label className="text-xs font-bold text-slate-700 dark:text-slate-300">สาขาที่รับผิดชอบ <span className="text-rose-500">*</span></label>
+                                    <select 
+                                        value={regForm.branchId}
+                                        onChange={(e) => setRegForm({...regForm, branchId: e.target.value})}
+                                        className="w-full rounded-xl border border-slate-200 dark:border-slate-700 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-200 dark:bg-slate-800 dark:text-white cursor-pointer" 
+                                    >
+                                        <option value="">-- เลือกสาขา --</option>
+                                        {BRANCH_GROUPS.map((group, idx) => {
+                                            const branchesInGroup = group.ids
+                                                .map(id => BRANCHES.find(b => b.id === id))
+                                                .filter(Boolean);
+                                            
+                                            if (branchesInGroup.length === 0) return null;
+                                            
+                                            return (
+                                                <optgroup key={idx} label={group.label} className="font-bold bg-slate-50 dark:bg-slate-900 border-b border-slate-200">
+                                                    {branchesInGroup.map((b: any) => (
+                                                        <option key={b.id} value={b.id.toString()} className="font-normal bg-white dark:bg-slate-800">
+                                                            {String(b.id).padStart(2,'0')} - {b.label}
+                                                        </option>
+                                                    ))}
+                                                </optgroup>
+                                            )
+                                        })}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="text-xs font-bold text-slate-700 dark:text-slate-300">หน้าที่กรรมการ <span className="text-rose-500">*</span></label>
+                                    <select 
+                                        value={regForm.committeeRole}
+                                        onChange={(e) => setRegForm({...regForm, committeeRole: e.target.value})}
+                                        className="w-full rounded-xl border border-slate-200 dark:border-slate-700 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-200 dark:bg-slate-800 dark:text-white cursor-pointer" 
+                                    >
+                                        <option value="">-- เลือกหน้าที่ --</option>
+                                        <option value="ประธาน">ประธาน</option>
+                                        <option value="กรรมการ">กรรมการ</option>
+                                        <option value="กรรมการและเลขานุการ">กรรมการและเลขานุการ</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
                     {/* SECTION 3: Education Info (Contains Dropdown - Needs to float over Section 4) -> Z-20 */}
+                    {mode !== 'register_reviewer' && (
                     <div className="relative p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 z-20">
                         {/* Watermark Container */}
                         <div className="absolute inset-0 overflow-hidden rounded-2xl pointer-events-none">
@@ -535,6 +635,7 @@ const UserAuthModal: React.FC<UserAuthModalProps> = ({ isOpen, onClose, onSucces
                             </div>
                         </div>
                     </div>
+                    )}
 
                     {/* SECTION 4: Account Info -> Z-10 */}
                     <div className="relative p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 z-10">
@@ -549,13 +650,15 @@ const UserAuthModal: React.FC<UserAuthModalProps> = ({ isOpen, onClose, onSucces
                         <div className="space-y-3 relative z-10">
                             {/* ... Account Inputs ... */}
                             <div>
-                                <label className="text-xs font-bold text-slate-700 dark:text-slate-300">อีเมล (ใช้เป็น Username) <span className="text-rose-500">*</span></label>
+                                <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                                    {mode === 'register_reviewer' ? 'Username' : 'อีเมล (ใช้เป็น Username)'} <span className="text-rose-500">*</span>
+                                </label>
                                 <input 
-                                    type="email"
+                                    type={mode === 'register_reviewer' ? "text" : "email"}
                                     value={regForm.email}
                                     onChange={(e) => setRegForm({...regForm, email: e.target.value})}
-                                    className="w-full rounded-xl border border-slate-200 dark:border-slate-700 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-emerald-200 dark:bg-slate-800 dark:text-white"
-                                    placeholder="example@mail.com"
+                                    className={`w-full rounded-xl border border-slate-200 dark:border-slate-700 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-emerald-200 dark:bg-slate-800 dark:text-white ${mode === 'register_reviewer' ? 'lowercase' : ''}`}
+                                    placeholder={mode === 'register_reviewer' ? " reviewer123" : "example@mail.com"}
                                 />
                             </div>
 

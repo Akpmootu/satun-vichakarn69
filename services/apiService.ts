@@ -1,5 +1,5 @@
 
-import { AppSettings, Submission, UserProfile, NewsItem, UserRole, VisitorStats } from '../types';
+import { AppSettings, Submission, UserProfile, NewsItem, UserRole, VisitorStats, ReviewerScore } from '../types';
 import { supabase } from '../lib/supabaseClient';
 import { PR_NEWS } from '../constants';
 
@@ -42,7 +42,10 @@ const mapProfileFromDB = (data: any): UserProfile => ({
     educationHistory: data.education_history || [],
     isVerified: data.is_verified || false,
     verifiedBy: data.verified_by || undefined,
-    verifiedAt: data.verified_at || undefined
+    verifiedAt: data.verified_at || undefined,
+    prefix: data.prefix,
+    branchId: data.branch_id,
+    committeeRole: data.committee_role
 });
 
 // --- Auth Methods (Supabase Auth) ---
@@ -83,6 +86,10 @@ export async function apiUpdateUserProfile(userId: string, updates: Partial<User
     // JSON Columns
     if (updates.addressInfo !== undefined) dbPayload.address_info = updates.addressInfo;
     if (updates.educationHistory !== undefined) dbPayload.education_history = updates.educationHistory;
+
+    if (updates.prefix !== undefined) dbPayload.prefix = updates.prefix;
+    if (updates.branchId !== undefined) dbPayload.branch_id = updates.branchId;
+    if (updates.committeeRole !== undefined) dbPayload.committee_role = updates.committeeRole;
 
     const { data, error } = await supabase
         .from('profiles')
@@ -158,9 +165,13 @@ export async function apiRegisterUser(user: UserProfile, password?: string): Pro
         organization: user.organization,
         position: user.position,
         level: user.level || null, 
-        role: 'user',
-        address_info: {},
-        education_history: []
+        role: user.role || 'user',
+        avatar_url: user.avatarUrl || null,
+        address_info: user.addressInfo || {},
+        education_history: user.educationHistory || [],
+        prefix: user.prefix,
+        branch_id: user.branchId,
+        committee_role: user.committeeRole
     };
 
     const { error: dbError } = await supabase.from('profiles').insert([profilePayload]).select().single();
@@ -183,12 +194,21 @@ export async function apiRegisterUser(user: UserProfile, password?: string): Pro
 }
 
 export async function apiLoginUser(email: string, password?: string): Promise<UserProfile> {
+    let finalEmail = email.trim();
+    if (!finalEmail.includes('@')) {
+        finalEmail = `${finalEmail}@skms-reviewer.local`;
+    }
     const { data, error } = await supabase.auth.signInWithPassword({
-        email,
+        email: finalEmail,
         password: password || 'password123',
     });
 
-    if (error) throw new Error(error.message);
+    if (error) {
+        if (error.message.includes('Invalid login credentials')) {
+            throw new Error('อีเมล/ชื่อผู้ใช้ หรือรหัสผ่านไม่ถูกต้อง');
+        }
+        throw new Error(error.message);
+    }
     if (!data.user) throw new Error("ไม่พบผู้ใช้งาน");
 
     const { data: profileData, error: profileError } = await supabase
@@ -225,11 +245,14 @@ export async function apiUpdateUserPasswordAdmin(userId: string, newPassword?: s
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ targetUserId: userId, newPassword: passwordToSet })
         });
-        const data = await res.json();
+        const data = await res.json().catch(() => ({ error: 'Invalid response from server' }));
         if (!res.ok) {
             throw new Error(data.error || 'Failed to reset password');
         }
     } catch (e: any) {
+        if (e.message.includes('Failed to fetch')) {
+            throw new Error('ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้ (กรุณาตรวจสอบการเชื่อมต่ออินเทอร์เน็ต)');
+        }
         throw new Error(e.message || 'Failed to connect to reset password service');
     }
 }
@@ -243,6 +266,9 @@ export async function apiUpdateUserProfileAdmin(userId: string, updates: Partial
     if (updates.position !== undefined) dbPayload.position = updates.position;
     if (updates.level !== undefined) dbPayload.level = updates.level;
     if (updates.role !== undefined) dbPayload.role = updates.role;
+    if (updates.prefix !== undefined) dbPayload.prefix = updates.prefix;
+    if (updates.branchId !== undefined) dbPayload.branch_id = updates.branchId;
+    if (updates.committeeRole !== undefined) dbPayload.committee_role = updates.committeeRole;
     if (updates.isVerified !== undefined) {
         dbPayload.is_verified = updates.isVerified;
         if (updates.isVerified && updates.verifiedBy) {
@@ -347,13 +373,20 @@ async function notifyTelegram(message: string, url?: string) {
                 inline_keyboard: [[{ text: "👉 ไปยังระบบหลังบ้าน", url: url }]]
             };
         }
-        await fetch('/api/notify-telegram', {
+        const res = await fetch('/api/notify-telegram', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
         });
-    } catch (e) {
-        console.error("Telegram notification failed:", e);
+        if (!res.ok) {
+            console.warn("Telegram notification API returned non-OK status");
+        }
+    } catch (e: any) {
+        if (e && e.message && e.message.includes('Failed to fetch')) {
+            console.error("Telegram notification failed: Could not connect to the backend API.");
+        } else {
+            console.error("Telegram notification failed:", e);
+        }
     }
 }
 
@@ -424,6 +457,81 @@ export async function apiUpdateSubmission(settings: AppSettings, id: string, pat
     }
 
     return mapSubmissionFromDB(data);
+}
+
+// --- Reviewer Scoring API ---
+const mapReviewerScoreFromDB = (data: any): ReviewerScore => ({
+    id: data.id,
+    submissionId: data.submission_id,
+    reviewerId: data.reviewer_id,
+    workType: data.work_type,
+    scoreData: data.score_data || {},
+    totalScore: data.total_score,
+    createdAt: data.created_at
+});
+
+export async function apiGetAllScores(): Promise<ReviewerScore[]> {
+    const { data, error } = await supabase.from('submission_scores').select('*');
+    if (error) {
+        console.error("No scores table or error", error);
+        return [];
+    }
+    return data.map(mapReviewerScoreFromDB);
+}
+
+export async function apiGetScoresForSubmission(submissionId: string): Promise<ReviewerScore[]> {
+    const { data, error } = await supabase.from('submission_scores').select('*').eq('submission_id', submissionId);
+    if (error) {
+        console.error("No scores table or error", error);
+        return [];
+    }
+    return data.map(mapReviewerScoreFromDB);
+}
+
+export async function apiGetScoresByReviewer(reviewerId: string): Promise<ReviewerScore[]> {
+    const { data, error } = await supabase.from('submission_scores').select('*').eq('reviewer_id', reviewerId);
+    if (error) return [];
+    return data.map(mapReviewerScoreFromDB);
+}
+
+export async function apiSaveReviewerScore(payload: Omit<ReviewerScore, 'id' | 'createdAt'>): Promise<ReviewerScore> {
+    const dbPayload = {
+        submission_id: payload.submissionId,
+        reviewer_id: payload.reviewerId,
+        work_type: payload.workType,
+        score_data: payload.scoreData,
+        total_score: payload.totalScore
+    };
+    
+    // Upsert logic (checking if exists first to avoid complex on_conflict if not configured)
+    const { data: existing } = await supabase
+        .from('submission_scores')
+        .select('id')
+        .eq('submission_id', payload.submissionId)
+        .eq('reviewer_id', payload.reviewerId)
+        .single();
+        
+    let result;
+    if (existing) {
+        const { data, error } = await supabase
+            .from('submission_scores')
+            .update(dbPayload)
+            .eq('id', existing.id)
+            .select()
+            .single();
+        if (error) throw new Error(error.message);
+        result = data;
+    } else {
+        const { data, error } = await supabase
+            .from('submission_scores')
+            .insert([dbPayload])
+            .select()
+            .single();
+        if (error) throw new Error(error.message);
+        result = data;
+    }
+    
+    return mapReviewerScoreFromDB(result);
 }
 
 export async function apiDeleteSubmission(settings: AppSettings, id: string): Promise<void> {
