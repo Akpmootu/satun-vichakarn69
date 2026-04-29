@@ -1,6 +1,7 @@
 
 import { BranchOption, WorkTypeOption, NewsItem, HealthOrg } from './types';
 
+export const LOGO_URL = `https://qjkdjwqgnvfcfjsxjjpu.supabase.co/storage/v1/object/public/avatars/logo.png`;
 export const APP_NAME = "SKMS";
 export const BUDGET_YEAR = 2569;
 
