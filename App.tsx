@@ -372,13 +372,23 @@ export default function App() {
           if (tab.id === 'settings') return isAdmin;
           if (tab.id === 'assessment') return isReviewer;
           if (isReviewer) {
-              if (tab.id === 'register' || tab.id === 'history') return false;
+              if (tab.id === 'home' || tab.id === 'register' || tab.id === 'history') return false;
           } else {
               if (tab.id === 'assessment') return false;
           }
           return true;
       });
   }, [isAdmin, isReviewer]);
+
+  // Adjust active tab when role changes
+  useEffect(() => {
+      if (isReviewer && (activeTab === 'home' || activeTab === 'register' || activeTab === 'history')) {
+          setActiveTab('assessment');
+      }
+      if (isAdmin && activeTab === 'home') {
+          setActiveTab('settings');
+      }
+  }, [isReviewer, isAdmin, activeTab]);
 
   return (
     <div className={`min-h-screen font-sans pb-10 flex flex-col transition-colors duration-300 ${darkMode ? 'bg-slate-950 text-slate-100' : 'bg-slate-50 text-slate-900'}`}>
@@ -400,6 +410,11 @@ export default function App() {
         onSuccess={(user) => {
             setCurrentUser(user);
             setShowAuth(false);
+            if (user.role === 'reviewer') {
+                setActiveTab('assessment');
+            } else if (user.role === 'admin') {
+                setActiveTab('settings');
+            }
         }}
         showToast={showToast}
       />
@@ -903,7 +918,7 @@ export default function App() {
               <div className="border-t border-slate-800 pt-8 flex flex-col md:flex-row justify-between items-center gap-4 text-xs font-medium text-slate-500">
                   <div className="flex items-center gap-2">
                        <i className="fa-solid fa-code text-sky-500"></i>
-                       <span>พัฒนาโดย IT SSJ Satun 2569 | <a href="#" onClick={(e) => {e.preventDefault(); Swal.fire({title: 'รายละเอียดอัปเดต v1.2.7', html: '<ul class="text-left space-y-2 text-sm"><li>📈 <b>Analytics Dashboard:</b> เพิ่มกราฟแยก 15 สาขา แบบ Real-time</li><li>✅ <b>ระบบส่งกลับแก้ไข:</b> ผู้ใช้ได้รับการแจ้งเตือนผลงานที่ถูกตีกลับ</li><li>🔒 <b>Co-Author Security:</b> ป้องกันการแก้ไขรายชื่อผู้ร่วมที่ลงทะเบียนในระบบ</li><li>🖼️ <b>Loading Screen:</b> เปลี่ยนโลโก้เป็นแบบใหม่ที่มี Animation</li><li>🛡️ <b>Admin Panel:</b> แก้ไขการดึงฟิลด์ข้อมูลการยืนยันตัวตนและการอัปเดตรหัสผ่าน (v1.2.1)</li><li>🔑 <b>Security:</b> อัปเดตการรองรับ Service Role Key สำหรับรีเซ็ตรหัสผ่าน (v1.2.2)</li><li>☁️ <b>Cloud Storage:</b> ย้ายรูปโลโก้ไปดึงจาก Supabase Storage (v1.2.3)</li><li>🖼️ <b>UI:</b> แก้ไขปัญหาโลโก้ไม่แสดงผล (v1.2.4)</li><li>🧑‍💼 <b>Reviewer:</b> เพิ่มระบบลงทะเบียนสำหรับคณะกรรมการ และแสดงสาขา/โลโก้พิเศษ (v1.2.5)</li><li>🧑‍⚖️ <b>Reviewer Form:</b> ปรับปรุงฟอร์มลงทะเบียนคณะกรรมการ ตัดการบังคับเติม @skms-reviewer.local และจัดกลุ่มสาขา (v1.2.6)</li><li>📊 <b>Reviewer Panel:</b> เพิ่มหน้า Assessment สำหรับคณะกรรมการ เพื่อให้คะแนนแยกตามเกณฑ์แต่ละหมวด (v1.2.7)</li></ul>', icon: 'info', confirmButtonColor: '#0ea5e9'}); }}>v1.2.7</a></span>
+                       <span>พัฒนาโดย IT SSJ Satun 2569 | <a href="#" onClick={(e) => {e.preventDefault(); Swal.fire({title: 'รายละเอียดอัปเดต v1.2.8', html: '<ul class="text-left space-y-2 text-sm"><li>📈 <b>Analytics Dashboard:</b> เพิ่มกราฟแยก 15 สาขา แบบ Real-time</li><li>✅ <b>ระบบส่งกลับแก้ไข:</b> ผู้ใช้ได้รับการแจ้งเตือนผลงานที่ถูกตีกลับ</li><li>🔒 <b>Co-Author Security:</b> ป้องกันการแก้ไขรายชื่อผู้ร่วมที่ลงทะเบียนในระบบ</li><li>🖼️ <b>Loading Screen:</b> เปลี่ยนโลโก้เป็นแบบใหม่ที่มี Animation</li><li>🛡️ <b>Admin Panel:</b> แก้ไขการดึงฟิลด์ข้อมูลการยืนยันตัวตนและการอัปเดตรหัสผ่าน (v1.2.1)</li><li>🔑 <b>Security:</b> อัปเดตการรองรับ Service Role Key สำหรับรีเซ็ตรหัสผ่าน (v1.2.2)</li><li>☁️ <b>Cloud Storage:</b> ย้ายรูปโลโก้ไปดึงจาก Supabase Storage (v1.2.3)</li><li>🖼️ <b>UI:</b> แก้ไขปัญหาโลโก้ไม่แสดงผล (v1.2.4)</li><li>🧑‍💼 <b>Reviewer:</b> เพิ่มระบบลงทะเบียนสำหรับคณะกรรมการ และแสดงสาขา/โลโก้พิเศษ (v1.2.5)</li><li>🧑‍⚖️ <b>Reviewer Form:</b> ปรับปรุงฟอร์มลงทะเบียนคณะกรรมการ ไม่บังคับเติม @skms-reviewer.local และจัดกลุ่มสาขา (v1.2.6)</li><li>📊 <b>Reviewer Panel:</b> เพิ่มหน้า Assessment สำหรับคณะกรรมการ ให้คะแนนแยกตามเกณฑ์แต่ละหมวด (v1.2.7)</li><li>✨ <b>Reviewer UX:</b> ปรับแต่งหน้า Landing Page, ไล่สีปุ่มให้คะแนน, แจ้งเตือนสาขา, รองรับลิงก์ Canva/Google Drive (v1.2.8)</li></ul>', icon: 'info', confirmButtonColor: '#0ea5e9'}); }}>v1.2.8</a></span>
                   </div>
                   <div className="flex gap-6">
                       <button onClick={() => setShowPrivacyPolicy(true)} className="hover:text-slate-300 transition">นโยบายความเป็นส่วนตัว</button>

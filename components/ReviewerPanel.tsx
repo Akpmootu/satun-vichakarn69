@@ -51,17 +51,27 @@ const parseAttachments = (fileUrl?: string) => {
 };
 
 const ScoreSelector = ({ value, onChange }: { value: number, onChange: (v: number) => void }) => {
+    const getColorClass = (v: number, isSelected: boolean) => {
+        if (!isSelected) {
+            return 'bg-slate-100 text-slate-400 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-500 hover:text-slate-700';
+        }
+        switch(v) {
+            case 1: return 'bg-rose-500 text-white shadow-md shadow-rose-200 dark:shadow-none';
+            case 2: return 'bg-orange-500 text-white shadow-md shadow-orange-200 dark:shadow-none';
+            case 3: return 'bg-amber-500 text-white shadow-md shadow-amber-200 dark:shadow-none';
+            case 4: return 'bg-lime-500 text-white shadow-md shadow-lime-200 dark:shadow-none';
+            case 5: return 'bg-emerald-500 text-white shadow-md shadow-emerald-200 dark:shadow-none';
+            default: return 'bg-sky-500 text-white';
+        }
+    };
+
     return (
         <div className="flex gap-2 items-center flex-wrap">
             {[1, 2, 3, 4, 5].map(v => (
                 <button
                     key={v}
                     onClick={() => onChange(v)}
-                    className={`h-10 w-10 shrink-0 rounded-xl font-bold flex items-center justify-center transition-all ${
-                        value === v 
-                        ? 'bg-sky-500 text-white shadow-md shadow-sky-200 dark:shadow-none' 
-                        : 'bg-slate-100 text-slate-400 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-500 hover:text-sky-600'
-                    }`}
+                    className={`h-10 w-10 shrink-0 rounded-xl font-bold flex items-center justify-center transition-all ${getColorClass(v, value === v)}`}
                 >
                     {v}
                 </button>
@@ -152,12 +162,18 @@ const ReviewerPanel: React.FC<ReviewerPanelProps> = ({ submissions, settings, re
           const total = calculateTotal(activeSubmission.workType, currentScoreData);
           
           const { isConfirmed } = await Swal.fire({
-              title: 'สรุปคะแนน',
-              html: `<div class="text-left mb-6 bg-slate-50 p-4 rounded-xl border border-slate-100">${summaryHtml}</div><div class="text-2xl font-black text-sky-600 dark:text-sky-400 bg-sky-50 dark:bg-sky-900/30 p-4 rounded-xl">คะแนนรวม ${total} / 100</div>`,
+              title: 'สรุปคะแนนประเมิน',
+              html: `<div class="text-left mb-6 bg-slate-50 p-4 rounded-xl border border-slate-100 max-h-60 overflow-y-auto">${summaryHtml}</div>
+                     <div class="text-center font-black text-sky-600 dark:text-sky-400 bg-sky-50 dark:bg-sky-900/30 p-6 rounded-2xl border-2 border-sky-200 dark:border-sky-800 shadow-inner">
+                        <div class="text-sm text-sky-500 mb-1 font-bold uppercase tracking-widest">คะแนนรวมที่ได้</div>
+                        <span class="text-6xl drop-shadow-md">${total}</span> <span class="text-3xl text-sky-300">/ 100</span>
+                     </div>`,
               showCancelButton: true,
               confirmButtonText: 'ยืนยันการส่งคะแนน',
-              cancelButtonText: 'แก้ไข',
-              confirmButtonColor: '#0ea5e9'
+              cancelButtonText: 'กลับไปแก้ไข',
+              confirmButtonColor: '#10b981',
+              cancelButtonColor: '#64748b',
+              width: '32em'
           });
           if (!isConfirmed) return;
       }
@@ -188,7 +204,14 @@ const ReviewerPanel: React.FC<ReviewerPanelProps> = ({ submissions, settings, re
                 <i className="fa-solid fa-chart-bar absolute -bottom-5 -right-5 text-8xl opacity-20 transform -rotate-12"></i>
                 <div className="relative z-10">
                     <h2 className="font-black text-2xl mb-1"><i className="fa-solid fa-list-check opacity-70 mr-2"></i>รายชื่อผลงานที่รับผิดชอบ</h2>
-                    <p className="text-sky-100 font-medium">หมวด: {BRANCHES.find((b: any) => b.id.toString() === currentUser.branchId?.toString())?.label || currentUser.branchId}</p>
+                    <p className="text-sky-100 font-medium mb-4">หมวด: {BRANCHES.find((b: any) => b.id.toString() === currentUser.branchId?.toString())?.label || currentUser.branchId}</p>
+                    
+                    {branchSubmissions.length > 0 && (
+                        <div className="inline-flex items-center gap-2 bg-white/20 px-4 py-2 rounded-xl backdrop-blur-sm border border-white/10 text-sm font-bold shadow-sm">
+                            <i className="fa-solid fa-bell text-yellow-300 animate-pulse"></i> 
+                            มีผู้เสนอส่งผลงานมา จำนวน {branchSubmissions.length} รายการ
+                        </div>
+                    )}
                 </div>
             </div>
             
@@ -302,16 +325,35 @@ const ReviewerPanel: React.FC<ReviewerPanelProps> = ({ submissions, settings, re
                                   <i className="fa-solid fa-external-link-alt text-sm"></i>
                               </a>
                           </div>
-                          {mainPdf.value.includes('.pdf') ? (
-                              <iframe src={mainPdf.value} className="w-full h-full flex-1 border-0 bg-white" title="PDF Viewer" />
-                          ) : (
-                              <div className="p-8 text-center m-auto text-slate-400">
-                                  <i className="fa-solid fa-file-image text-7xl mb-6 opacity-30"></i>
-                                  <div className="font-semibold text-lg text-white mb-2">ไม่สามารถแสดงตัวอย่างได้บนหน้านี้</div>
-                                  <p className="text-sm mb-6 max-w-xs mx-auto">ระบบรองรับการพรีวิวไฟล์ PDF เท่านั้น โปรดเปิดไฟล์แนบผ่านลิงก์ด้านล่างเพื่อตรวจสอบ</p>
-                                  <a href={mainPdf.value} target="_blank" className="px-6 py-2.5 bg-sky-500 text-white rounded-xl font-bold hover:bg-sky-400 transition inline-block">เปิดไฟล์ในแท็บใหม่</a>
-                              </div>
-                          )}
+                          {(() => {
+                              let embedUrl = mainPdf.value;
+                              let canEmbed = false;
+                              
+                              if (embedUrl.includes('.pdf') || embedUrl.startsWith('blob:')) {
+                                  canEmbed = true;
+                              } else if (embedUrl.includes('drive.google.com/file/d/')) {
+                                  embedUrl = embedUrl.replace(/\/view.*$/, '/preview');
+                                  canEmbed = true;
+                              } else if (embedUrl.includes('canva.com/design/')) {
+                                  canEmbed = true;
+                              } else if (embedUrl.startsWith('http')) {
+                                  // As a fallback, we allow embedding any HTTP link just in case it works.
+                                  canEmbed = true;
+                              }
+
+                              if (canEmbed) {
+                                  return <iframe src={embedUrl} className="w-full h-full flex-1 border-0 bg-white" title="Document Viewer" />;
+                              } else {
+                                  return (
+                                      <div className="p-8 text-center m-auto text-slate-400">
+                                          <i className="fa-solid fa-file-image text-7xl mb-6 opacity-30"></i>
+                                          <div className="font-semibold text-lg text-white mb-2">ไม่สามารถแสดงตัวอย่างได้บนหน้านี้</div>
+                                          <p className="text-sm mb-6 max-w-xs mx-auto">ระบบไม่สามารถพรีวิวลิงก์หรือไฟล์รูปแบบนี้ได้ โปรดเปิดผ่านลิงก์ด้านล่าง</p>
+                                          <a href={mainPdf.value} target="_blank" className="px-6 py-2.5 bg-sky-500 text-white rounded-xl font-bold hover:bg-sky-400 transition inline-block">เปิดไฟล์ในแท็บใหม่</a>
+                                      </div>
+                                  );
+                              }
+                          })()}
                       </div>
                   ) : (
                        <div className="flex-1 min-h-[300px] border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-3xl flex flex-col items-center justify-center bg-slate-50 dark:bg-slate-800/50 text-slate-400 p-8 text-center">
@@ -333,6 +375,10 @@ const ReviewerPanel: React.FC<ReviewerPanelProps> = ({ submissions, settings, re
                               <i className="fa-solid fa-clipboard-check text-emerald-500"></i> ให้คะแนน 
                               <span className="text-sm font-bold bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-300 px-3 py-1 rounded-full uppercase tracking-widest">{activeSubmission.workType}</span>
                           </h3>
+                          <div className="bg-emerald-50 dark:bg-emerald-900/30 border border-emerald-100 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400 px-4 py-2 rounded-xl shadow-sm text-center">
+                              <div className="text-[10px] font-black uppercase tracking-wider mb-0.5 opacity-80">คะแนนรวมขณะนี้</div>
+                              <div className="text-2xl font-black leading-none">{calculateTotal(activeSubmission.workType, currentScoreData)}<span className="text-base text-emerald-500 dark:text-emerald-600">/100</span></div>
+                          </div>
                       </div>
                       
                       <div className="space-y-8 relative z-10 flex-1 overflow-y-auto pb-10 pr-2 custom-scrollbar">
