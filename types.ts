@@ -79,6 +79,7 @@ export interface UserProfile {
   isVerified?: boolean;
   verifiedBy?: string;
   verifiedAt?: string;
+  createdAt?: string;
   prefix?: string;
   branchId?: string;
   committeeRole?: string;

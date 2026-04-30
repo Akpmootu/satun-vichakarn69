@@ -100,14 +100,25 @@ const Dashboard: React.FC<DashboardProps> = ({ submissions, onViewAll }) => {
   }, []);
 
   const feedbackStats = useMemo(() => {
-      if (feedbacks.length === 0) return { avg: 0, total: 0, distribution: [] };
+      if (feedbacks.length === 0) return { avg: 0, total: 0, distribution: [], avgEase: 0, avgDesign: 0, avgContent: 0 };
       const avg = feedbacks.reduce((acc, curr) => acc + curr.rating, 0) / feedbacks.length;
+      const easeSums = feedbacks.reduce((acc, curr) => acc + (curr.ratingEase || curr.rating), 0);
+      const designSums = feedbacks.reduce((acc, curr) => acc + (curr.ratingDesign || curr.rating), 0);
+      const contentSums = feedbacks.reduce((acc, curr) => acc + (curr.ratingContent || curr.rating), 0);
+      
       const distribution = [5, 4, 3, 2, 1].map(r => ({
           rating: r,
           count: feedbacks.filter(f => f.rating === r).length,
           percentage: (feedbacks.filter(f => f.rating === r).length / feedbacks.length) * 100
       }));
-      return { avg: avg.toFixed(1), total: feedbacks.length, distribution };
+      return { 
+          avg: avg.toFixed(1), 
+          total: feedbacks.length, 
+          distribution,
+          avgEase: (easeSums / feedbacks.length).toFixed(1),
+          avgDesign: (designSums / feedbacks.length).toFixed(1),
+          avgContent: (contentSums / feedbacks.length).toFixed(1)
+      };
   }, [feedbacks]);
 
   const { stats, orgOptions, monthlyData, tableData, userCounts, donutGradient } = useMemo(() => {
@@ -628,7 +639,7 @@ const Dashboard: React.FC<DashboardProps> = ({ submissions, onViewAll }) => {
            {/* SECTION 5: FEEDBACK RATING STATS */}
            <section>
                <SectionHeader title="ผลการประเมินเว็บไซต์" subtitle="Website Feedback & Satisfaction" icon="fa-star" />
-               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                    <div className="bg-gradient-to-br from-amber-50 to-amber-100 dark:from-slate-800 dark:to-slate-800 rounded-3xl p-8 shadow-sm border border-amber-200 dark:border-slate-700 flex flex-col justify-center items-center relative overflow-hidden group text-center">
                         <div className="absolute -right-12 -top-12 w-40 h-40 rounded-full opacity-20 group-hover:opacity-30 transition-opacity pointer-events-none bg-amber-400"></div>
                         <h4 className="font-bold text-amber-800 dark:text-amber-400 mb-2 relative z-10 text-lg">คะแนนเฉลี่ย</h4>
@@ -641,6 +652,46 @@ const Dashboard: React.FC<DashboardProps> = ({ submissions, onViewAll }) => {
                            ))}
                         </div>
                         <p className="text-amber-700 dark:text-amber-200/50 relative z-10 text-sm mt-2">จากผู้ประเมินทั้งหมด {feedbackStats.total} คน</p>
+                   </div>
+
+                   <div className="bg-white dark:bg-slate-800 rounded-3xl p-6 shadow-sm border border-slate-100 dark:border-slate-700 flex flex-col justify-center space-y-4">
+                        <h4 className="font-bold text-slate-800 dark:text-white mb-2">คะแนนแยกรายข้อ</h4>
+                        
+                        <div className="bg-slate-50 dark:bg-slate-900/50 rounded-xl p-3 border border-slate-100 dark:border-slate-700 flex justify-between items-center">
+                            <div>
+                                <div className="text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-1">1. ความง่ายและสะดวกในการใช้งาน</div>
+                                <div className="flex gap-1 text-xs">
+                                    {[1, 2, 3, 4, 5].map((star) => (
+                                        <i key={`ease-${star}`} className={`fa-solid fa-star ${Number(feedbackStats.avgEase) >= star ? 'text-sky-500' : Number(feedbackStats.avgEase) >= star - 0.5 ? 'fa-star-half-stroke text-sky-500' : 'text-slate-200 dark:text-slate-700'}`}></i>
+                                    ))}
+                                </div>
+                            </div>
+                            <div className="text-xl font-black text-sky-600 dark:text-sky-400">{feedbackStats.avgEase}</div>
+                        </div>
+                        
+                        <div className="bg-slate-50 dark:bg-slate-900/50 rounded-xl p-3 border border-slate-100 dark:border-slate-700 flex justify-between items-center">
+                            <div>
+                                <div className="text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-1">2. ความสวยงามและเป็นระเบียบ</div>
+                                <div className="flex gap-1 text-xs">
+                                    {[1, 2, 3, 4, 5].map((star) => (
+                                        <i key={`ds-${star}`} className={`fa-solid fa-star ${Number(feedbackStats.avgDesign) >= star ? 'text-pink-500' : Number(feedbackStats.avgDesign) >= star - 0.5 ? 'fa-star-half-stroke text-pink-500' : 'text-slate-200 dark:text-slate-700'}`}></i>
+                                    ))}
+                                </div>
+                            </div>
+                            <div className="text-xl font-black text-pink-600 dark:text-pink-400">{feedbackStats.avgDesign}</div>
+                        </div>
+                        
+                        <div className="bg-slate-50 dark:bg-slate-900/50 rounded-xl p-3 border border-slate-100 dark:border-slate-700 flex justify-between items-center">
+                            <div>
+                                <div className="text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-1">3. ความครบถ้วนของเนื้อหา</div>
+                                <div className="flex gap-1 text-xs">
+                                    {[1, 2, 3, 4, 5].map((star) => (
+                                        <i key={`ct-${star}`} className={`fa-solid fa-star ${Number(feedbackStats.avgContent) >= star ? 'text-emerald-500' : Number(feedbackStats.avgContent) >= star - 0.5 ? 'fa-star-half-stroke text-emerald-500' : 'text-slate-200 dark:text-slate-700'}`}></i>
+                                    ))}
+                                </div>
+                            </div>
+                            <div className="text-xl font-black text-emerald-600 dark:text-emerald-400">{feedbackStats.avgContent}</div>
+                        </div>
                    </div>
                    
                    <div className="bg-white dark:bg-slate-800 rounded-3xl p-6 shadow-sm border border-slate-100 dark:border-slate-700 flex flex-col justify-center">
@@ -664,6 +715,39 @@ const Dashboard: React.FC<DashboardProps> = ({ submissions, onViewAll }) => {
                             ))}
                         </div>
                    </div>
+               </div>
+           </section>
+
+           {/* Feedback Comments List */}
+           <section className="mt-6">
+               <div className="bg-white dark:bg-slate-800 rounded-3xl p-6 shadow-sm border border-slate-100 dark:border-slate-700">
+                    <h4 className="font-bold text-slate-800 dark:text-white mb-6">ข้อเสนอแนะล่าสุดจากผู้ใช้งาน</h4>
+                    {feedbacks.filter(f => f.comment).length === 0 ? (
+                        <div className="text-center text-slate-400 py-4 text-sm mt-4 border-t border-slate-100 dark:border-slate-700 pt-8">
+                            ไม่มีข้อเสนอแนะเพิ่มเติม
+                        </div>
+                    ) : (
+                        <div className="space-y-4 max-h-[400px] overflow-y-auto custom-scrollbar pr-2 mt-4">
+                            {feedbacks.filter(f => f.comment).map((f, i) => (
+                                <div key={i} className="bg-slate-50 dark:bg-slate-900/50 p-4 rounded-2xl border border-slate-100 dark:border-slate-700">
+                                    <div className="flex flex-col gap-2 relative">
+                                       <div className="flex gap-4 items-center">
+                                           <div className="text-amber-500 font-bold text-lg">{f.rating} <i className="fa-solid fa-star text-sm"></i></div>
+                                           <div className="flex text-[10px] sm:text-xs gap-3">
+                                                <div className="text-sky-600 dark:text-sky-400 font-bold"><span className="text-slate-500 font-normal">ใช้งานง่าย:</span> {f.ratingEase || f.rating}</div>
+                                                <div className="text-pink-600 dark:text-pink-400 font-bold"><span className="text-slate-500 font-normal">สวยงาม:</span> {f.ratingDesign || f.rating}</div>
+                                                <div className="text-emerald-600 dark:text-emerald-400 font-bold"><span className="text-slate-500 font-normal">เนื้อหา:</span> {f.ratingContent || f.rating}</div>
+                                           </div>
+                                       </div>
+                                       <p className="text-slate-700 dark:text-slate-300 text-sm mt-1 bg-white dark:bg-slate-800 p-3 rounded-xl border border-slate-200 dark:border-slate-700">{f.comment}</p>
+                                       <div className="text-[10px] text-slate-400 mt-1">
+                                           {f.createdAt ? new Date(f.createdAt).toLocaleDateString('th-TH', { year: '2-digit', month: 'short', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : '-'}
+                                       </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
                </div>
            </section>
 

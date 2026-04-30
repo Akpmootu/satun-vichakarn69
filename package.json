@@ -1,7 +1,7 @@
 {
   "name": "satun-vichakarn",
   "private": true,
-  "version": "1.0.0",
+  "version": "1.0.1",
   "type": "module",
   "scripts": {
     "dev": "tsx server.ts",
@@ -12,12 +12,14 @@
   "dependencies": {
     "@supabase/supabase-js": "^2.39.7",
     "express": "^5.2.1",
+    "node-cron": "^4.2.1",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "recharts": "^3.8.1"
   },
   "devDependencies": {
     "@types/express": "^5.0.6",
+    "@types/node-cron": "^3.0.11",
     "@types/react": "^18.2.64",
     "@types/react-dom": "^18.2.21",
     "@vitejs/plugin-react": "^4.2.1",

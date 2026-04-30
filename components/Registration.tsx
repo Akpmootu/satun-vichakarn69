@@ -47,6 +47,13 @@ const toThaiDate = (date: Date = new Date()) => {
     return `${toThaiNum(day)} ${month} ${toThaiNum(year)}`;
 };
 
+// Helper for Print Fill (Moved outside to prevent re-mounting)
+const Fill = ({ t, w }: { t: any, w?: string }) => (
+    <span className="print-fill" style={{ minWidth: w }}>
+        {t || "\u00A0"}
+    </span>
+);
+
 // --- Branch Group Data for Combobox ---
 const BRANCH_GROUPS = [
     { label: "การแพทย์และสหวิชาชีพ", ids: [1, 2, 3, 4, 10, 11, 12] },
@@ -188,6 +195,7 @@ const Registration: React.FC<RegistrationProps> = ({ settings, onSuccess, showTo
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const [showCoAuthorSearch, setShowCoAuthorSearch] = useState(false);
+  const [confirmModalState, setConfirmModalState] = useState<{isOpen: boolean, mode: 'submit' | 'draft' | null}>({isOpen: false, mode: null});
 
   // Initialize Data
   useEffect(() => {
@@ -293,7 +301,6 @@ const Registration: React.FC<RegistrationProps> = ({ settings, onSuccess, showTo
   const removeAttachment = (index: number) => { setAttachments(prev => prev.filter((_, i) => i !== index)); };
 
   // --- Validate & Submit ---
-  const [confirmModalState, setConfirmModalState] = useState<{isOpen: boolean, mode: 'submit' | 'draft' | null}>({isOpen: false, mode: null});
 
   const validateForm = () => {
     const e: Record<string, string> = {};
@@ -367,7 +374,7 @@ const Registration: React.FC<RegistrationProps> = ({ settings, onSuccess, showTo
       if (editingSubmission) {
            let action = mode === 'submit' ? 'UPDATE_SUBMIT' : 'UPDATE_DRAFT';
            let note = mode === 'submit' ? 'แก้ไขและส่งผลงาน' : 'แก้ไขฉบับร่าง';
-           if (editingSubmission.status === 'reviewed' && mode === 'submit') { action = 'USER_FIXED'; note = 'แก้ไขงานตามข้อเสนอแนะ'; payload.status = 'submitted'; }
+           if (editingSubmission.status === 'revision_requested' && mode === 'submit') { action = 'USER_FIXED'; note = 'ส่งผลงานที่คลายล็อค/แก้ไขแล้ว'; payload.status = 'submitted'; }
            const newAudit = [...(editingSubmission.audit || []), { at: nowISO(), action, note }];
            await apiUpdateSubmission(settings, editingSubmission.id, { ...payload, audit: newAudit });
       } else {
@@ -393,13 +400,6 @@ const Registration: React.FC<RegistrationProps> = ({ settings, onSuccess, showTo
       }
       window.print();
   };
-
-  // Helper for Print Fill
-  const Fill = ({ t, w }: { t: any, w?: string }) => (
-    <span className="print-fill" style={{ minWidth: w }}>
-        {t || "\u00A0"}
-    </span>
-  );
 
   return (
     <>

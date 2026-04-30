@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Submission, AppSettings, UserProfile, ReviewerScore } from '../types';
 import { apiGetAllScores, apiSaveReviewerScore, apiUpdateSubmission } from '../services/apiService';
-import { WORK_TYPES, BRANCHES } from '../constants';
+import { WORK_TYPES, BRANCHES, BRANCH_GROUPS } from '../constants';
 import Pagination from './ui/Pagination';
 
 declare const Swal: any;

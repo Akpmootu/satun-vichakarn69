@@ -1,9 +1,9 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, Legend } from 'recharts';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, Legend, BarChart, Bar, XAxis, YAxis, CartesianGrid, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar } from 'recharts';
 import { Submission, NewsItem, AppSettings, SubmissionStatus, UserProfile, UserRole } from '../types';
 import { apiUpdateSubmission, apiDeleteSubmission, apiGetNews, apiAddNews, apiDeleteNews, apiUpdateNews, apiGetAllUsers, apiUpdateUserProfileAdmin, apiDeleteUserProfile, apiGetUsersByRole } from '../services/apiService';
-import { BRANCHES, WORK_TYPES, HEALTH_POSITIONS, JOB_LEVELS, EDUCATION_LEVELS } from '../constants';
+import { BRANCHES, WORK_TYPES, HEALTH_POSITIONS, JOB_LEVELS, EDUCATION_LEVELS, BRANCH_GROUPS } from '../constants';
 import Badge from './ui/Badge';
 import OrgAutocomplete from './ui/OrgAutocomplete';
 import UniversityAutocomplete from './ui/UniversityAutocomplete';
@@ -50,7 +50,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ submissions, settings, refreshD
 
   // --- Manage Submission Modal State ---
   const [selectedSubmission, setSelectedSubmission] = useState<Submission | null>(null);
-  const [docsVerified, setDocsVerified] = useState(false);
+  const [docsStatus, setDocsStatus] = useState<'pending' | 'verified' | 'incomplete'>('pending');
+  const [reworkComment, setReworkComment] = useState('');
   const [selectedReviewers, setSelectedReviewers] = useState<string[]>([]);
 
   // Initial Data Load
@@ -100,6 +101,14 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ submissions, settings, refreshD
       });
   }, [userList, userFilter]);
 
+  const getBranchLabel = (id?: number) => {
+      const b = BRANCHES.find(x => x.id === Number(id));
+      if (!b) return id ? String(id) : "-";
+      const groupRow = BRANCH_GROUPS.find(g => g.ids.includes(b.id));
+      const groupName = groupRow ? `(กลุ่ม: ${groupRow.label})` : '';
+      return `สาขาที่ ${b.id}: ${b.label} ${groupName}`;
+  };
+
   const paginatedSubmissions = useMemo(() => {
       const start = (submissionPage - 1) * ITEMS_PER_PAGE;
       return filteredSubmissions.slice(start, start + ITEMS_PER_PAGE);
@@ -123,7 +132,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ submissions, settings, refreshD
       setSelectedSubmission(s);
       // Logic: If status is 'reviewed' or beyond, docs are assumed verified
       const isVerified = ['reviewed', 'scored', 'accepted', 'rejected'].includes(s.status);
-      setDocsVerified(isVerified); 
+      setDocsStatus(isVerified ? 'verified' : 'pending');
+      setReworkComment('');
       setSelectedReviewers(s.reviewerIds || (s.reviewerId ? [s.reviewerId] : []));
   };
 
@@ -150,8 +160,33 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ submissions, settings, refreshD
   const handleAssignAndSave = async () => {
       if (!selectedSubmission) return;
 
-      if (!docsVerified) {
-          showToast({ type: 'error', title: 'ยังไม่ยืนยัน', message: 'กรุณาตรวจสอบและยืนยันความถูกต้องของเอกสาร' });
+      if (docsStatus === 'incomplete') {
+          if (!reworkComment.trim()) {
+              showToast({ type: 'warning', title: 'ข้อมูลไม่ครบ', message: 'กรุณาระบุความคิดเห็นเพื่อแจ้งให้ผู้ส่งผลงานแก้ไข' });
+              return;
+          }
+          
+          try {
+              const audit = selectedSubmission.audit || [];
+              await apiUpdateSubmission(settings, selectedSubmission.id, {
+                  status: 'revision_requested',
+                  audit: [...audit, {
+                      at: new Date().toISOString(),
+                      action: 'ADMIN_REJECT',
+                      note: `เอกสารไม่ครบถ้วนส่งกลับแก้ไข: ${reworkComment}`
+                  }]
+              });
+              showToast({ type: 'success', title: 'สำเร็จ', message: 'ส่งกลับให้แก้ไขเรียบร้อยแล้ว' });
+              refreshData();
+              setSelectedSubmission(null);
+          } catch (e: any) {
+              showToast({ type: 'error', title: 'ผิดพลาด', message: e.message });
+          }
+          return;
+      }
+
+      if (docsStatus !== 'verified') {
+          showToast({ type: 'error', title: 'ยังไม่ยืนยัน', message: 'กรุณาตรวจสอบและยืนยันความถูกต้องของเอกสาร หรือ ระบุว่าเอกสารไม่ครบถ้วน' });
           return;
       }
       
@@ -232,6 +267,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ submissions, settings, refreshD
           phone: user.phone || '',
           organization: user.organization || '',
           position: user.position || '',
+          level: user.level || '',
           role: user.role,
           isVerified: user.isVerified || false,
           educationHistory: user.educationHistory || []
@@ -450,11 +486,60 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ submissions, settings, refreshD
     }
   };
 
+  const handleSendTelegramSummary = async () => {
+    try {
+        const today = new Date();
+        const todayString = today.toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' });
+        
+        // Since the requirement didn't specify only "today" but "ใช้คำสรุปเดียวกับที่ตั้ง cronjob เลย แต่ สร้างปุ่มนี้ไว้กรณี ต้องการยอดสรุปเลย"
+        // Let's summarize the current data. The cron job sends "Today's new users".
+        // Wait, if I just send today's summary.
+        const todayISO = today.toISOString().split('T')[0];
+        const todaySubmissions = submissions.filter(s => s.createdAt && s.createdAt.startsWith(todayISO));
+        const newUsersCount = todaySubmissions.length;
+        
+        if (newUsersCount === 0) {
+            const msg = `📊 <b>สรุปรายงานผู้ส่งผลงานประจำวันที่ ${todayString}</b>\n\nยังไม่มีผู้ส่งผลงานใหม่ในวันนี้`;
+            await fetch('/api/notify-telegram', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: msg }) });
+        } else {
+            const typeCount: Record<string, number> = {};
+            const branchCount: Record<string, number> = {};
+
+            todaySubmissions.forEach(sub => {
+                const w = WORK_TYPES.find(w => w.id === sub.workType)?.label || sub.workType;
+                typeCount[w] = (typeCount[w] || 0) + 1;
+                branchCount[sub.branchId] = (branchCount[sub.branchId] || 0) + 1;
+            });
+
+            let typeMsg = '';
+            for (const [k, v] of Object.entries(typeCount)) {
+                typeMsg += `- ${k}: ${v} ผลงาน\n`;
+            }
+
+            let branchMsg = '';
+            for (const [k, v] of Object.entries(branchCount)) {
+                const label = BRANCHES.find(b => b.id.toString() === k.toString())?.label || k;
+                branchMsg += `- สาขาที่ ${k}: ${label} (${v} ผลงาน)\n`;
+            }
+
+            const msg = `📊 <b>สรุปรายงานผู้ส่งผลงานประจำวันที่ ${todayString}</b>\n\n` +
+                        `👥 <b>ผู้ส่งผลงานใหม่วันนี้:</b> ${newUsersCount} ราย\n\n` +
+                        `🏷️ <b>แยกตามประเภทผลงาน:</b>\n${typeMsg}\n` +
+                        `📂 <b>แยกตามสาขาการประกวด:</b>\n${branchMsg}`;
+            
+            await fetch('/api/notify-telegram', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: msg }) });
+        }
+        showToast({ type: 'success', title: 'ส่งสำเร็จ', message: 'ส่งรายงานสรุปไปที่ Telegram แบบ Real-time แล้ว' });
+    } catch (e: any) {
+        showToast({ type: 'error', title: 'ผิดพลาด', message: 'ไม่สามารถส่งรายงานไปยัง Telegram ได้' });
+    }
+  };
+
   const handleExportCSV = () => {
     try {
       const headers = ['ลำดับ', 'สาขา', 'ชื่อผลงาน', 'รายชื่อผู้แต่ง', 'ตำแหน่ง', 'หน่วยงาน', 'ลิงก์ผลงาน', 'สถานะ'];
       const rows = filteredSubmissions.map((s, index) => {
-        const branchName = BRANCHES.find(b => b.id === s.branchId)?.label || s.branchId;
+        const branchName = getBranchLabel(s.branchId);
         const mainAuthor = `${s.firstName} ${s.lastName}`;
         const coAuthorsList = (s.coAuthors || []).map((c: any) => `${c.firstName} ${c.lastName}`).join(', ');
         const allAuthors = coAuthorsList ? `${mainAuthor}, ${coAuthorsList}` : mainAuthor;
@@ -529,41 +614,134 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ submissions, settings, refreshD
 
         {activeTab === 'dashboard' && (
             <div className="space-y-6">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white dark:bg-slate-800 p-6 rounded-3xl shadow-sm ring-1 ring-slate-200 dark:ring-slate-700">
+                    <div>
+                        <h2 className="text-xl font-black text-slate-800 dark:text-white"><i className="fa-solid fa-chart-line text-indigo-500 mr-2"></i> ภาพรวมระบบ (Overview)</h2>
+                        <p className="text-sm text-slate-500 mt-1">ข้อมูลเชิงสถิติและการจัดการระบบ</p>
+                    </div>
+                    <button 
+                        onClick={handleSendTelegramSummary}
+                        className="bg-[#0088cc] hover:bg-[#0077b3] text-white px-5 py-2.5 rounded-xl font-bold transition flex items-center gap-2 shadow-sm"
+                    >
+                        <i className="fa-brands fa-telegram text-xl"></i> ส่งสรุปเข้า Telegram
+                    </button>
+                </div>
+
+                <div className="flex flex-col md:flex-row gap-4">
+                    <div className="flex-1 relative">
+                        <i className="fa-solid fa-magnifying-glass absolute left-4 top-3 text-slate-400"></i>
+                        <input 
+                            placeholder="ค้นหาชื่อ, หน่วยงาน..." 
+                            className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 outline-none focus:ring-2 focus:ring-slate-900 dark:text-white"
+                            value={filter.q}
+                            onChange={e => setFilter({...filter, q: e.target.value})}
+                        />
+                    </div>
+                    <select 
+                        className="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 outline-none dark:text-white"
+                        value={filter.branch}
+                        onChange={e => setFilter({...filter, branch: e.target.value})}
+                    >
+                        <option value="all">ทุกสาขา</option>
+                        {BRANCH_GROUPS.map(group => (
+                            <optgroup key={group.label} label={group.label}>
+                                {BRANCHES.filter(b => group.ids.includes(b.id)).map(b => (
+                                    <option key={b.id} value={b.id}>
+                                        สาขาที่ {b.id}: {b.label}
+                                    </option>
+                                ))}
+                            </optgroup>
+                        ))}
+                    </select>
+                    <select 
+                        className="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 outline-none dark:text-white"
+                        value={filter.status}
+                        onChange={e => setFilter({...filter, status: e.target.value})}
+                    >
+                        <option value="all">ทุกสถานะ</option>
+                        <option value="draft">ฉบับร่าง (Draft)</option>
+                        <option value="submitted">รอตรวจสอบ (Submitted)</option>
+                        <option value="reviewed">กำลังพิจารณา (Under Review)</option>
+                        <option value="scored">ให้คะแนนแล้ว (Scored)</option>
+                        <option value="accepted">ผ่านการคัดเลือก (Accepted)</option>
+                        <option value="revision_requested">ตีกลับแก้ไข (Rework)</option>
+                        <option value="rejected">ไม่ผ่าน (Rejected)</option>
+                    </select>
+                </div>
+
                 <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
                     <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl shadow-sm ring-1 ring-slate-200 dark:ring-slate-700 flex flex-col items-center justify-center">
                         <i className="fa-solid fa-file-contract text-4xl text-sky-500 mb-2"></i>
-                        <div className="text-3xl font-black text-slate-800 dark:text-white">{submissions.length}</div>
-                        <div className="text-sm font-bold text-slate-500">ทั้งหมด</div>
+                        <div className="text-3xl font-black text-slate-800 dark:text-white">{filteredSubmissions.length}</div>
+                        <div className="text-sm font-bold text-slate-500">ที่กรองพบ</div>
                     </div>
                     <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl shadow-sm ring-1 ring-slate-200 dark:ring-slate-700 flex flex-col items-center justify-center">
                         <i className="fa-solid fa-paper-plane text-4xl text-amber-500 mb-2"></i>
-                        <div className="text-3xl font-black text-slate-800 dark:text-white">{submissions.filter(s => s.status === 'submitted').length}</div>
+                        <div className="text-3xl font-black text-slate-800 dark:text-white">{filteredSubmissions.filter(s => s.status === 'submitted').length}</div>
                         <div className="text-sm font-bold text-slate-500 text-center">รอตรวจสอบ<br/><span className="text-[10px]">(Submitted)</span></div>
                     </div>
                     <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl shadow-sm ring-1 ring-slate-200 dark:ring-slate-700 flex flex-col items-center justify-center">
                         <i className="fa-solid fa-star text-4xl text-purple-500 mb-2"></i>
-                        <div className="text-3xl font-black text-slate-800 dark:text-white">{submissions.filter(s => s.status === 'scored').length}</div>
+                        <div className="text-3xl font-black text-slate-800 dark:text-white">{filteredSubmissions.filter(s => s.status === 'scored').length}</div>
                         <div className="text-sm font-bold text-slate-500 text-center">ให้คะแนนแล้ว<br/><span className="text-[10px]">(Scored)</span></div>
                     </div>
                     <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl shadow-sm ring-1 ring-slate-200 dark:ring-slate-700 flex flex-col items-center justify-center">
                         <i className="fa-solid fa-check-circle text-4xl text-emerald-500 mb-2"></i>
-                        <div className="text-3xl font-black text-slate-800 dark:text-white">{submissions.filter(s => s.status === 'accepted').length}</div>
+                        <div className="text-3xl font-black text-slate-800 dark:text-white">{filteredSubmissions.filter(s => s.status === 'accepted').length}</div>
                         <div className="text-sm font-bold text-slate-500 text-center">อนุมัติผ่าน<br/><span className="text-[10px]">(Accepted)</span></div>
                     </div>
                     <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl shadow-sm ring-1 ring-slate-200 dark:ring-slate-700 flex flex-col items-center justify-center col-span-2 lg:col-span-1">
                         <i className="fa-solid fa-user-clock text-4xl text-rose-500 mb-2"></i>
-                        <div className="text-3xl font-black text-slate-800 dark:text-white">{submissions.filter(s => s.status === 'revision_requested').length}</div>
+                        <div className="text-3xl font-black text-slate-800 dark:text-white">{filteredSubmissions.filter(s => s.status === 'revision_requested').length}</div>
                         <div className="text-sm font-bold text-slate-500 text-center">ตีกลับแก้ไข<br/><span className="text-[10px]">(Rework)</span></div>
                     </div>
                 </div>
 
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl shadow-sm ring-1 ring-slate-200 dark:ring-slate-700 flex flex-col">
+                        <h3 className="font-black text-slate-800 dark:text-white mb-6 text-lg"><i className="fa-solid fa-chart-column text-sky-500 mr-2"></i> จำนวนผลงานแยกตามสาขา (Bar Chart)</h3>
+                        <div className="h-80 w-full">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <BarChart data={BRANCHES.map(b => ({ name: `สาขา ${b.id}`, fullLabel: b.label, value: filteredSubmissions.filter(s => s.branchId === b.id).length }))} margin={{ top: 20, right: 30, left: 0, bottom: 5 }}>
+                                    <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
+                                    <XAxis dataKey="name" tick={{fontSize: 10}} interval={0} angle={-45} textAnchor="end" height={60} />
+                                    <YAxis />
+                                    <RechartsTooltip 
+                                        contentStyle={{ borderRadius: '1rem', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)' }}
+                                        labelFormatter={(label, payload) => payload?.[0]?.payload?.fullLabel || label}
+                                    />
+                                    <Bar dataKey="value" fill="#0ea5e9" radius={[4, 4, 0, 0]} name="ผลงาน (เรื่อง)" />
+                                </BarChart>
+                            </ResponsiveContainer>
+                        </div>
+                    </div>
+
+                    <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl shadow-sm ring-1 ring-slate-200 dark:ring-slate-700 flex flex-col">
+                        <h3 className="font-black text-slate-800 dark:text-white mb-6 text-lg"><i className="fa-solid fa-spider text-amber-500 mr-2"></i> ความสนใจรายสาขา (Radar Chart)</h3>
+                        <div className="h-80 w-full">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <RadarChart cx="50%" cy="50%" outerRadius="70%" data={BRANCHES.map(b => ({ name: `สาขา ${b.id}`, fullLabel: b.label, value: filteredSubmissions.filter(s => s.branchId === b.id).length }))}>
+                                    <PolarGrid strokeOpacity={0.2} />
+                                    <PolarAngleAxis dataKey="name" tick={{fontSize: 10}} />
+                                    <PolarRadiusAxis angle={30} domain={[0, 'dataMax']} />
+                                    <Radar name="จำนวนผลงาน" dataKey="value" stroke="#f59e0b" fill="#f59e0b" fillOpacity={0.3} />
+                                    <RechartsTooltip 
+                                        contentStyle={{ borderRadius: '1rem', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)' }}
+                                        labelFormatter={(label, payload) => payload?.[0]?.payload?.fullLabel || label}
+                                    />
+                                </RadarChart>
+                            </ResponsiveContainer>
+                        </div>
+                    </div>
+                </div>
+
                 <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl shadow-sm ring-1 ring-slate-200 dark:ring-slate-700">
-                    <h3 className="font-black text-slate-800 dark:text-white mb-6 text-lg"><i className="fa-solid fa-chart-pie text-amber-500 mr-2"></i> สัดส่วนผลงานจำแนกตามสาขา (15 สาขา)</h3>
+                    <h3 className="font-black text-slate-800 dark:text-white mb-6 text-lg"><i className="fa-solid fa-chart-pie text-purple-500 mr-2"></i> สัดส่วนผลงานจำแนกตามสาขา (Pie Chart)</h3>
                     <div className="h-80 w-full">
                         <ResponsiveContainer width="100%" height="100%">
                             <PieChart>
                                 <Pie 
-                                  data={BRANCHES.map(b => ({ name: b.label, value: submissions.filter(s => s.branchId === b.id).length })).filter(d => d.value > 0)} 
+                                  data={BRANCHES.map(b => ({ name: b.label, value: filteredSubmissions.filter(s => s.branchId === b.id).length })).filter(d => d.value > 0)} 
                                   dataKey="value" 
                                   nameKey="name" 
                                   cx="50%" 
@@ -608,7 +786,18 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ submissions, settings, refreshD
                         onChange={e => setFilter({...filter, branch: e.target.value})}
                     >
                         <option value="all">ทุกสาขา</option>
-                        {BRANCHES.map(b => <option key={b.id} value={b.id}>{b.label}</option>)}
+                        {BRANCH_GROUPS.map(group => (
+                            <optgroup key={group.label} label={group.label}>
+                                {BRANCHES.filter(b => group.ids.includes(b.id)).map(b => {
+                                    const count = submissions.filter(s => s.branchId === b.id).length;
+                                    return (
+                                        <option key={b.id} value={b.id}>
+                                            สาขาที่ {b.id}: {b.label} ({count} ผลงาน)
+                                        </option>
+                                    );
+                                })}
+                            </optgroup>
+                        ))}
                     </select>
                     <select 
                         className="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 outline-none dark:text-white"
@@ -656,9 +845,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ submissions, settings, refreshD
                                     </td>
                                     <td className="p-4 max-w-xs">
                                         <div className="flex flex-wrap gap-1 mb-1">
-                                            <Badge tone="slate">{WORK_TYPES.find(w => w.id === s.workType)?.label}</Badge>
+                                            <Badge tone={s.workType === 'oral' ? 'sky' : s.workType === 'eposter' ? 'purple' : 'green'}>
+                                                {WORK_TYPES.find(w => w.id === s.workType)?.label}
+                                            </Badge>
                                         </div>
-                                        <div className="text-xs text-slate-600 dark:text-slate-300">{BRANCHES.find(b => b.id === s.branchId)?.label}</div>
+                                        <div className="text-xs text-slate-600 dark:text-slate-300">{getBranchLabel(s.branchId)}</div>
                                         
                                         {attachments.length > 0 && (
                                             <div className="mt-1 flex flex-col gap-1">
@@ -675,15 +866,25 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ submissions, settings, refreshD
                                         <select 
                                             value={s.status} 
                                             onChange={(e) => handleUpdateStatus(s.id, e.target.value)}
-                                            className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold font-sans outline-none focus:ring-2 focus:ring-sky-200 cursor-pointer"
+                                            className={`px-3 py-1.5 rounded-xl border text-xs font-bold font-sans outline-none focus:ring-2 focus:ring-sky-200 cursor-pointer text-center
+                                                ${s.status === 'draft' ? 'bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800' :
+                                                  s.status === 'submitted' ? 'bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-400' :
+                                                  s.status === 'reviewed' ? 'bg-sky-100 text-sky-700 border-sky-200 dark:bg-sky-900/30 dark:text-sky-400' :
+                                                  s.status === 'scored' ? 'bg-purple-100 text-purple-700 border-purple-200 dark:bg-purple-900/30 dark:text-purple-400' :
+                                                  s.status === 'accepted' ? 'bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400' :
+                                                  s.status === 'revision_requested' ? 'bg-rose-100 text-rose-700 border-rose-200 dark:bg-rose-900/30 dark:text-rose-400' :
+                                                  s.status === 'rejected' ? 'bg-red-100 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-400' :
+                                                  'bg-white dark:bg-slate-800 text-slate-800 border-slate-200'
+                                                }
+                                            `}
                                         >
-                                            <option value="draft">Draft</option>
-                                            <option value="submitted">Submitted</option>
-                                            <option value="reviewed">Under Review</option>
-                                            <option value="scored">Scored</option>
-                                            <option value="accepted">Accepted</option>
-                                            <option value="revision_requested">Rework</option>
-                                            <option value="rejected">Rejected</option>
+                                            <option value="draft">ฉบับร่าง (Draft)</option>
+                                            <option value="submitted">รอตรวจสอบ (Submitted)</option>
+                                            <option value="reviewed">กำลังพิจารณา (Under Review)</option>
+                                            <option value="scored">ให้คะแนนแล้ว (Scored)</option>
+                                            <option value="accepted">ผ่านการคัดเลือก (Accepted)</option>
+                                            <option value="revision_requested">ตีกลับแก้ไข (Rework)</option>
+                                            <option value="rejected">ไม่ผ่าน (Rejected)</option>
                                         </select>
                                     </td>
                                     <td className="p-4">
@@ -774,7 +975,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ submissions, settings, refreshD
                                 <th className="p-4 rounded-l-xl">ชื่อ-สกุล</th>
                                 <th className="p-4">หน่วยงาน/ติดต่อ</th>
                                 <th className="p-4">สิทธิ์การใช้งาน (Role)</th>
-                                <th className="p-4 rounded-r-xl text-right">วันที่สมัคร</th>
+                                <th className="p-4 rounded-r-xl text-right">วันที่สมัคร / จัดการ</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
@@ -839,12 +1040,15 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ submissions, settings, refreshD
                                             )}
                                         </div>
                                     </td>
-                                    <td className="p-4 text-right text-xs text-slate-400">
+                                    <td className="p-4 text-right">
+                                        <div className="text-xs text-slate-400 mb-2">
+                                            {u.createdAt ? new Date(u.createdAt).toLocaleDateString('th-TH') : '-'}
+                                        </div>
                                         <div className="flex justify-end gap-2">
-                                            <button onClick={() => handleEditUser(u)} className="h-8 w-8 rounded-lg bg-slate-100 text-slate-500 hover:bg-sky-100 hover:text-sky-600 transition flex items-center justify-center" title="แก้ไขข้อมูล">
+                                            <button onClick={() => handleEditUser(u)} className="h-8 w-8 rounded-lg bg-amber-100 text-amber-600 hover:bg-amber-200 transition flex items-center justify-center" title="แก้ไขข้อมูล">
                                                 <i className="fa-solid fa-pen-to-square"></i>
                                             </button>
-                                            <button onClick={() => handleDeleteUser(u)} className="h-8 w-8 rounded-lg bg-slate-100 text-slate-500 hover:bg-rose-100 hover:text-rose-600 transition flex items-center justify-center" title="ลบผู้ใช้งาน">
+                                            <button onClick={() => handleDeleteUser(u)} className="h-8 w-8 rounded-lg bg-rose-100 text-rose-600 hover:bg-rose-200 transition flex items-center justify-center" title="ลบผู้ใช้งาน">
                                                 <i className="fa-solid fa-trash-can"></i>
                                             </button>
                                         </div>
@@ -942,13 +1146,26 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ submissions, settings, refreshD
                           </div>
 
                           {/* 1. Submission Info */}
-                          <div className="bg-slate-50 dark:bg-slate-800/50 p-5 rounded-2xl mb-6 border border-slate-100 dark:border-slate-700">
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                                  <div>
-                                      <div className="text-xs font-bold text-slate-400 uppercase">ผู้ส่งผลงาน</div>
-                                      <div className="font-bold text-slate-800 dark:text-white text-lg">{selectedSubmission.firstName} {selectedSubmission.lastName}</div>
-                                      <div className="text-slate-500">{selectedSubmission.position}</div>
-                                  </div>
+                          {(() => {
+                              const senderProfile = userList.find(u => u.id === selectedSubmission.userId);
+                              return (
+                              <div className="bg-slate-50 dark:bg-slate-800/50 p-5 rounded-2xl mb-6 border border-slate-100 dark:border-slate-700">
+                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                                      <div className="flex gap-4">
+                                          {senderProfile?.avatarUrl ? (
+                                              <img src={senderProfile.avatarUrl} alt="Avatar" className="w-14 h-14 rounded-full object-cover shadow-sm bg-white" crossOrigin="anonymous" referrerPolicy="no-referrer" />
+                                          ) : (
+                                              <div className="w-14 h-14 rounded-full bg-sky-100 text-sky-600 dark:bg-slate-700 dark:text-sky-400 flex items-center justify-center font-bold text-xl shadow-inner">
+                                                  {selectedSubmission.firstName.charAt(0)}{selectedSubmission.lastName.charAt(0)}
+                                              </div>
+                                          )}
+                                          <div>
+                                              <div className="text-xs font-bold text-slate-400 uppercase">ผู้ส่งผลงาน</div>
+                                              <div className="font-bold text-slate-800 dark:text-white text-lg">{selectedSubmission.firstName} {selectedSubmission.lastName}</div>
+                                              <div className="text-slate-500">{selectedSubmission.position}</div>
+                                              <div className="text-slate-400 text-xs">{senderProfile?.email}</div>
+                                          </div>
+                                      </div>
                                   <div>
                                       <div className="text-xs font-bold text-slate-400 uppercase">หน่วยงาน</div>
                                       <div className="font-bold text-slate-800 dark:text-white">{selectedSubmission.organization}</div>
@@ -959,7 +1176,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ submissions, settings, refreshD
                                   </div>
                                   <div>
                                       <div className="text-xs font-bold text-slate-400 uppercase">สาขา</div>
-                                      <div className="font-bold text-slate-800 dark:text-white">{BRANCHES.find(b => b.id === selectedSubmission.branchId)?.label}</div>
+                                      <div className="font-bold text-slate-800 dark:text-white">{getBranchLabel(selectedSubmission.branchId)}</div>
                                   </div>
                               </div>
                               
@@ -979,25 +1196,54 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ submissions, settings, refreshD
                                   </div>
                               </div>
                           </div>
+                          );
+                          })()}
 
                           {/* 2. Verification */}
                           <div className="mb-6">
                               <h4 className="font-bold text-slate-800 dark:text-white mb-3">1. ตรวจสอบเอกสาร</h4>
-                              <label className={`flex items-center gap-3 p-4 rounded-xl border transition cursor-pointer select-none
-                                  ${docsVerified ? 'bg-emerald-50 border-emerald-200 ring-1 ring-emerald-200' : 'bg-white border-slate-200 hover:border-sky-300'}
-                              `}>
-                                  <div className={`h-6 w-6 rounded flex items-center justify-center transition ${docsVerified ? 'bg-emerald-500 text-white' : 'bg-slate-200 text-transparent'}`}>
-                                      <i className="fa-solid fa-check text-sm"></i>
-                                  </div>
-                                  <input type="checkbox" checked={docsVerified} onChange={e => setDocsVerified(e.target.checked)} className="hidden" />
-                                  <div>
-                                      <div className={`font-bold text-sm ${docsVerified ? 'text-emerald-700' : 'text-slate-700'}`}>ยืนยันเอกสารครบถ้วน</div>
-                                      <div className="text-xs text-slate-500">ตรวจสอบไฟล์แนบและรายละเอียดว่าถูกต้องตามเกณฑ์</div>
-                                  </div>
-                              </label>
+                              <div className="space-y-3">
+                                  <label className={`flex items-center gap-3 p-4 rounded-xl border transition cursor-pointer select-none
+                                      ${docsStatus === 'verified' ? 'bg-emerald-50 border-emerald-200 ring-1 ring-emerald-200' : 'bg-white border-slate-200 hover:border-sky-300'}
+                                  `}>
+                                      <div className={`h-6 w-6 rounded flex items-center justify-center transition ${docsStatus === 'verified' ? 'bg-emerald-500 text-white' : 'bg-slate-200 text-transparent'}`}>
+                                          <i className="fa-solid fa-check text-sm"></i>
+                                      </div>
+                                      <input type="radio" checked={docsStatus === 'verified'} onChange={() => setDocsStatus('verified')} className="hidden" name="docVerifyStatus" />
+                                      <div>
+                                          <div className={`font-bold text-sm ${docsStatus === 'verified' ? 'text-emerald-700' : 'text-slate-700'}`}>ยืนยันเอกสารครบถ้วน</div>
+                                          <div className="text-xs text-slate-500">ตรวจสอบไฟล์แนบและรายละเอียดว่าถูกต้องตามเกณฑ์</div>
+                                      </div>
+                                  </label>
+
+                                  <label className={`flex items-start gap-3 p-4 rounded-xl border transition cursor-pointer select-none
+                                      ${docsStatus === 'incomplete' ? 'bg-rose-50 border-rose-200 ring-1 ring-rose-200' : 'bg-white border-slate-200 hover:border-rose-300'}
+                                  `}>
+                                      <div className={`mt-0.5 h-6 w-6 rounded flex items-center justify-center transition shrink-0 ${docsStatus === 'incomplete' ? 'bg-rose-500 text-white' : 'bg-slate-200 text-transparent'}`}>
+                                          <i className="fa-solid fa-xmark text-sm"></i>
+                                      </div>
+                                      <input type="radio" checked={docsStatus === 'incomplete'} onChange={() => setDocsStatus('incomplete')} className="hidden" name="docVerifyStatus" />
+                                      <div className="flex-1 w-full">
+                                          <div className={`font-bold text-sm ${docsStatus === 'incomplete' ? 'text-rose-700' : 'text-slate-700'}`}>เอกสารไม่ครบถ้วน / ส่งกลับแก้ไข</div>
+                                          <div className="text-xs text-slate-500 mb-2">ระบุสิ่งที่ต้องแก้ไข เพื่อให้ผู้ส่งผลงานเข้าไปดำเนินการแก้ไขเพิ่มเติม</div>
+                                          
+                                          {docsStatus === 'incomplete' && (
+                                              <div className="mt-3 animate-fade-in" onClick={e => e.stopPropagation()}>
+                                                  <textarea 
+                                                      value={reworkComment}
+                                                      onChange={e => setReworkComment(e.target.value)}
+                                                      placeholder="ระบุความคิดเห็น เช่น ลิงก์ Drive เข้าไม่ได้, ขาดเอกสารรับรอง..."
+                                                      className="w-full p-3 rounded-lg border border-rose-200 focus:ring-2 focus:ring-rose-200 outline-none text-sm resize-none bg-white h-24 text-slate-700"
+                                                  ></textarea>
+                                              </div>
+                                          )}
+                                      </div>
+                                  </label>
+                              </div>
                           </div>
 
                           {/* 3. Assign Reviewer */}
+                          {docsStatus !== 'incomplete' && (
                           <div className="mb-6">
                               <h4 className="font-bold text-slate-800 dark:text-white mb-3">2. มอบหมายคณะกรรมการ (Assign Reviewer)</h4>
                               {reviewerList.length === 0 ? (
@@ -1038,6 +1284,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ submissions, settings, refreshD
                                   </div>
                               )}
                           </div>
+                          )}
                       </div>
 
                       {/* Footer Actions */}
@@ -1050,12 +1297,14 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ submissions, settings, refreshD
                               <i className="fa-solid fa-trash-can mr-1"></i> ลบข้อมูล
                           </button>
 
-                          <button 
-                              onClick={handleRequestRevision}
-                              className="px-4 py-2 rounded-xl border border-rose-200 text-rose-600 bg-white font-bold text-sm hover:bg-rose-50 transition"
-                          >
-                              <i className="fa-solid fa-unlock-keyhole mr-1"></i> ปลดล็อคให้แก้ไข (Rework)
-                          </button>
+                          {docsStatus !== 'incomplete' && (
+                              <button 
+                                  onClick={handleRequestRevision}
+                                  className="px-4 py-2 rounded-xl border border-rose-200 text-rose-600 bg-white font-bold text-sm hover:bg-rose-50 transition"
+                              >
+                                  <i className="fa-solid fa-unlock-keyhole mr-1"></i> ปลดล็อคให้แก้ไข (Rework)
+                              </button>
+                          )}
 
                           <button 
                               onClick={() => setSelectedSubmission(null)}
@@ -1065,9 +1314,17 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ submissions, settings, refreshD
                           </button>
                           <button 
                               onClick={handleAssignAndSave}
-                              className="px-6 py-2 rounded-xl bg-slate-900 dark:bg-sky-600 text-white font-bold text-sm hover:bg-slate-800 dark:hover:bg-sky-500 transition shadow-lg shadow-slate-200 dark:shadow-none flex items-center gap-2"
+                              className={`px-6 py-2 rounded-xl text-white font-bold text-sm transition shadow-lg flex items-center gap-2 ${
+                                  docsStatus === 'incomplete' 
+                                      ? 'bg-rose-500 hover:bg-rose-600 shadow-rose-200 dark:shadow-none' 
+                                      : 'bg-slate-900 hover:bg-slate-800 dark:bg-sky-600 dark:hover:bg-sky-500 shadow-slate-200 dark:shadow-none'
+                              }`}
                           >
-                              <i className="fa-solid fa-floppy-disk"></i> บันทึกและส่งตรวจสอบ
+                              {docsStatus === 'incomplete' ? (
+                                  <><i className="fa-solid fa-paper-plane"></i> ส่งกลับให้แก้ไข</>
+                              ) : (
+                                  <><i className="fa-solid fa-floppy-disk"></i> บันทึกและส่งตรวจสอบ</>
+                              )}
                           </button>
                       </div>
                  </div>
@@ -1075,19 +1332,28 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ submissions, settings, refreshD
         )}
         {/* --- USER EDIT MODAL --- */}
         {showUserModal && editingUser && (
-            <div className="fixed inset-0 z-[200] flex items-center justify-center px-4 animate-fade-in">
+            <div className="fixed inset-0 z-[200] flex items-center justify-center px-4 py-8 animate-fade-in">
                 <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" onClick={() => setShowUserModal(false)}></div>
-                <div className="relative bg-white dark:bg-slate-900 rounded-3xl shadow-2xl max-w-lg w-full p-6 ring-1 ring-slate-200 dark:ring-slate-700 animate-bounce-in">
-                    <div className="flex justify-between items-center mb-6">
-                        <h3 className="text-xl font-black text-slate-900 dark:text-white flex items-center gap-2">
-                            <i className="fa-solid fa-user-pen text-sky-500"></i> แก้ไขข้อมูลผู้ใช้งาน
-                        </h3>
+                <div className="relative bg-white dark:bg-slate-900 rounded-3xl shadow-2xl max-w-lg w-full flex flex-col max-h-[90vh] ring-1 ring-slate-200 dark:ring-slate-700 animate-bounce-in">
+                    <div className="flex justify-between items-center p-6 border-b border-slate-100 dark:border-slate-800 shrink-0">
+                        <div className="flex items-center gap-4">
+                            {editingUser?.avatarUrl ? (
+                                <img src={editingUser.avatarUrl} alt={editingUser.firstName} className="h-10 w-10 shrink-0 border border-slate-200 dark:border-slate-700 bg-white object-cover rounded-full object-center" />
+                            ) : (
+                                <div className={`h-10 w-10 shrink-0 rounded-full flex items-center justify-center text-lg font-bold bg-sky-100 text-sky-600`}>
+                                    {editingUser.firstName?.charAt(0)}
+                                </div>
+                            )}
+                            <h3 className="text-xl font-black text-slate-900 dark:text-white flex items-center gap-2">
+                                <i className="fa-solid fa-user-pen text-sky-500"></i> แก้ไขข้อมูลผู้ใช้งาน
+                            </h3>
+                        </div>
                         <button onClick={() => setShowUserModal(false)} className="h-8 w-8 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 flex items-center justify-center hover:bg-rose-100 hover:text-rose-500 transition">
                             <i className="fa-solid fa-xmark"></i>
                         </button>
                     </div>
                     
-                    <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar">
+                    <div className="p-6 space-y-4 overflow-y-auto flex-1 custom-scrollbar">
                         <div className="grid grid-cols-2 gap-4">
                             <div>
                                 <label className="text-xs font-bold text-slate-500 mb-1 block">ชื่อ</label>
@@ -1282,9 +1548,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ submissions, settings, refreshD
                              </button>
                         </div>
                     </div>
-
-                    <div className="flex justify-end gap-2 mt-8">
-                        <button onClick={() => setShowUserModal(false)} className="px-4 py-2 rounded-xl text-slate-500 font-bold hover:bg-slate-100 transition">ยกเลิก</button>
+                    
+                    <div className="flex justify-end gap-2 p-6 border-t border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 rounded-b-3xl shrink-0">
+                        <button onClick={() => setShowUserModal(false)} className="px-4 py-2 rounded-xl text-slate-500 font-bold hover:bg-slate-200 transition">ยกเลิก</button>
                         <button onClick={handleSaveUser} className="px-6 py-2 rounded-xl bg-slate-900 dark:bg-sky-600 text-white font-bold hover:bg-slate-800 dark:hover:bg-sky-500 transition shadow-lg shadow-slate-200 dark:shadow-none">
                             บันทึกการเปลี่ยนแปลง
                         </button>

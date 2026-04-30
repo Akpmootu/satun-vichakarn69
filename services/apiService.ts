@@ -39,11 +39,12 @@ const mapProfileFromDB = (data: any): UserProfile => ({
     level: data.level, 
     role: data.role || 'user',
     avatarUrl: data.avatar_url || null,
-    addressInfo: data.address_info || {}, // Map JSONB
+    addressInfo: data.address_info || {}, 
     educationHistory: data.education_history || [],
     isVerified: data.is_verified || false,
     verifiedBy: data.verified_by || undefined,
     verifiedAt: data.verified_at || undefined,
+    createdAt: data.created_at || new Date().toISOString(),
     prefix: data.prefix,
     branchId: data.branch_id,
     committeeRole: data.committee_role
@@ -318,9 +319,13 @@ export async function apiDeleteNews(id: number): Promise<void> {
 }
 
 export async function apiDeleteUserProfile(userId: string): Promise<void> {
-    // Note: This only deletes the profile. Auth user deletion requires service role.
-    const { error } = await supabase.from('profiles').delete().eq('id', userId);
-    if (error) throw new Error(error.message);
+    const res = await fetch(`/api/admin/delete-user/${userId}`, {
+        method: 'DELETE'
+    });
+    const data = await res.json();
+    if (!res.ok) {
+        throw new Error(data.error || 'Failed to delete user');
+    }
 }
 
 // --- Settings Helpers ---
@@ -421,14 +426,23 @@ export async function apiCreateSubmission(settings: AppSettings, payload: Submis
     try {
         const branchName = BRANCHES.find((b: any) => b.id.toString() === newSubData.branchId?.toString())?.label || newSubData.branchId || '-';
         const workTypeName = WORK_TYPES.find((w: any) => w.id === newSubData.workType)?.label || newSubData.workType || '-';
+        
+        let userLevel = '';
+        if (newSubData.userId) {
+            const { data: userProfile } = await supabase.from('profiles').select('level').eq('id', newSubData.userId).single();
+            if (userProfile && userProfile.level) {
+                userLevel = ` ระดับ ${userProfile.level}`;
+            }
+        }
+
         notifyTelegram(
-            `📝 <b>มีการส่งผลงานชิ้นใหม่!</b>\n\n` +
-            `🏷️ <b>ประเภทผลงาน:</b> ${workTypeName}\n` +
-            `📂 <b>สาขา:</b> ${branchName}\n` +
-            `📌 <b>เรื่อง:</b> ${newSubData.fileName || '-'}\n` +
-            `👤 <b>โดย:</b> ${newSubData.firstName} ${newSubData.lastName}\n` +
-            `📞 <b>เบอร์โทร:</b> ${newSubData.phone || '-'}\n` +
-            `🏢 <b>หน่วยงาน:</b> ${newSubData.organization}`,
+            `<b>มีการลงทะเบียนส่งผลงาน</b>\n` +
+            `<b>ชื่อเรื่องผลงาน:</b> ${newSubData.fileName || '-'}\n` +
+            `<b>เบอร์โทรศัพท์ ของผู้ส่งผลงาน:</b> ${newSubData.phone || '-'}\n` +
+            `<b>หน่วยงาน/สังกัด ของผู้ส่งผลงาน:</b> ${newSubData.organization || '-'}\n` +
+            `<b>ตำแหน่ง ของผู้ส่งผลงาน:</b> ${newSubData.position || '-'}${userLevel}\n` +
+            `<b>ประเภท ของการส่งเข้าประกวด:</b> ${workTypeName}\n` +
+            `<b>สาขา ที่ส่งเข้าประกวด:</b> ${branchName}`,
             `https://moph.link/stnvichakarn69`
         );
     } catch(e) {
@@ -473,12 +487,17 @@ export async function apiUpdateSubmission(settings: AppSettings, id: string, pat
         if (patch.status === 'reviewed') { statusEmoji = '🔍'; statusWord = 'กำลังตรวจสอบ (รับเรื่อง)'; }
         
         const branchName = BRANCHES.find((b: any) => b.id.toString() === updatedSub.branchId?.toString())?.label || updatedSub.branchId || '-';
+        const workTypeName = WORK_TYPES.find((w: any) => w.id === updatedSub.workType)?.label || updatedSub.workType || '-';
+        const filePayload = updatedSub.fileUrl ? (() => { try { const arr = JSON.parse(updatedSub.fileUrl); return arr.map((a: any) => `<a href="${a.value}">${a.name}</a>`).join(', '); } catch { return updatedSub.fileUrl; } })() : '-';
         notifyTelegram(
             `${statusEmoji} <b>อัปเดตสถานะผลงาน</b>\n\n` +
-            `📌 <b>เรื่อง:</b> ${updatedSub.fileName || '-'}\n` +
-            `📂 <b>สาขา:</b> ${branchName}\n` +
-            `👤 <b>ผู้ส่ง:</b> ${updatedSub.firstName} ${updatedSub.lastName}\n` +
-            `🏢 <b>หน่วยงาน:</b> ${updatedSub.organization}\n` +
+            `📌 <b>ชื่อเรื่องผลงาน:</b> ${updatedSub.fileName || '-'}\n` +
+            `📞 <b>เบอร์โทรศัพท์:</b> ${updatedSub.phone || '-'}\n` +
+            `🏢 <b>หน่วยงาน/สังกัด:</b> ${updatedSub.organization || '-'}\n` +
+            `💼 <b>ตำแหน่ง:</b> ${updatedSub.position || '-'}\n` +
+            `🏷️ <b>ประเภทผลงาน:</b> ${workTypeName}\n` +
+            `📂 <b>สาขาการประกวด:</b> ${branchName}\n` +
+            `📎 <b>ไฟล์แนบผลงาน:</b> ${filePayload}\n` +
             `🔔 <b>สถานะใหม่:</b> ${statusWord}`,
             `https://moph.link/stnvichakarn69`
         );

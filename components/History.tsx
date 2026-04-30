@@ -1,7 +1,7 @@
 
 import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { Submission, AppSettings, SubmissionStatus, AuditLog, UserProfile } from '../types';
-import { BRANCHES, WORK_TYPES, BUDGET_YEAR } from '../constants';
+import { BRANCHES, WORK_TYPES, BUDGET_YEAR, BRANCH_GROUPS } from '../constants';
 import Badge from './ui/Badge';
 
 import Pagination from './ui/Pagination';
@@ -222,7 +222,13 @@ const History: React.FC<HistoryProps> = ({ submissions, loading, refreshList, se
   }, [activeMenuId]);
 
   const workTypeLabel = (id: string) => WORK_TYPES.find((x) => x.id === id)?.label || "-";
-  const branchLabel = (id: number) => BRANCHES.find((x) => x.id === Number(id))?.label || "-";
+  const branchLabel = (id: number) => {
+      const b = BRANCHES.find((x) => x.id === Number(id));
+      if (!b) return "-";
+      const groupRow = BRANCH_GROUPS.find(g => g.ids.includes(b.id));
+      const groupName = groupRow ? `(กลุ่ม: ${groupRow.label})` : '';
+      return `สาขาที่ ${b.id}: ${b.label} ${groupName}`;
+  };
   
   // --- New: Color Helper for Work Types ---
   const getWorkTypeStyle = (typeId: string) => {
@@ -445,9 +451,23 @@ const History: React.FC<HistoryProps> = ({ submissions, loading, refreshList, se
               const isOwner = currentUser?.id === s.userId;
               const isLocked = !isOwner || ['reviewed', 'scored', 'accepted', 'rejected'].includes(s.status);
               const isMenuOpen = activeMenuId === s.id;
+              const rejectLog = s.status === 'revision_requested' ? [...auditLogs].reverse().find(log => log.action === 'ADMIN_REJECT') : null;
 
               return (
-                <div key={s.id} className="rounded-3xl bg-white dark:bg-slate-800 ring-1 ring-slate-200 dark:ring-slate-700 shadow-sm overflow-hidden transition hover:shadow-md">
+                <div key={s.id} className={`rounded-3xl bg-white dark:bg-slate-800 shadow-sm overflow-hidden transition hover:shadow-md border-2 ${s.status === 'revision_requested' ? 'border-rose-400' : 'border-transparent ring-1 ring-slate-200 dark:ring-slate-700'}`}>
+                  {rejectLog && (
+                    <div className="bg-rose-50 dark:bg-rose-900/30 border-b border-rose-200 dark:border-rose-800 p-4">
+                        <div className="flex gap-3">
+                            <div className="mt-0.5 text-rose-500">
+                                <i className="fa-solid fa-circle-exclamation"></i>
+                            </div>
+                            <div>
+                                <div className="font-bold text-rose-700 dark:text-rose-400 text-sm">แอดมินแจ้งให้แก้ไข:</div>
+                                <div className="text-rose-600 dark:text-rose-300 text-sm whitespace-pre-wrap">{rejectLog.note.replace('เอกสารไม่ครบถ้วนส่งกลับแก้ไข: ', '')}</div>
+                            </div>
+                        </div>
+                    </div>
+                  )}
                   <div className="grid grid-cols-1 lg:grid-cols-12 min-h-[220px]">
                       
                       {/* Left Column: Details (70%) */}
