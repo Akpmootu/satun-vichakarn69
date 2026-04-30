@@ -319,8 +319,12 @@ export async function apiDeleteNews(id: number): Promise<void> {
 }
 
 export async function apiDeleteUserProfile(userId: string): Promise<void> {
-    const res = await fetch(`/api/admin/delete-user/${userId}`, {
-        method: 'DELETE'
+    const res = await fetch(`/api/admin-delete-user`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ targetUserId: userId })
     });
     const data = await res.json();
     if (!res.ok) {

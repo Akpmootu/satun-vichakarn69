@@ -98,7 +98,7 @@ async function startServer() {
     }
   };
 
-  app.delete('/api/admin/delete-user/:id', async (req, res) => {
+  app.post('/api/admin-delete-user', async (req, res) => {
       try {
           const url = process.env.VITE_SUPABASE_URL;
           const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -107,10 +107,12 @@ async function startServer() {
           const { createClient } = await import('@supabase/supabase-js');
           const supabaseAdmin = createClient(url, key, { auth: { autoRefreshToken: false, persistSession: false } });
           
-          const userId = req.params.id;
+          const { targetUserId } = req.body;
+          if (!targetUserId) return res.status(400).json({ error: 'Missing targetUserId' });
+
           // Delete from auth.users (this should cascade to profiles if DB is set up with cascading deletes, otherwise delete profiles first)
-          await supabaseAdmin.from('profiles').delete().eq('id', userId);
-          const { error } = await supabaseAdmin.auth.admin.deleteUser(userId);
+          await supabaseAdmin.from('profiles').delete().eq('id', targetUserId);
+          const { error } = await supabaseAdmin.auth.admin.deleteUser(targetUserId);
           
           if (error) {
               return res.status(400).json({ error: error.message });

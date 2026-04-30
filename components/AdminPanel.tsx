@@ -701,7 +701,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ submissions, settings, refreshD
                     <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl shadow-sm ring-1 ring-slate-200 dark:ring-slate-700 flex flex-col">
                         <h3 className="font-black text-slate-800 dark:text-white mb-6 text-lg"><i className="fa-solid fa-chart-column text-sky-500 mr-2"></i> จำนวนผลงานแยกตามสาขา (Bar Chart)</h3>
                         <div className="h-80 w-full">
-                            <ResponsiveContainer width="100%" height="100%">
+                            <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
                                 <BarChart data={BRANCHES.map(b => ({ name: `สาขา ${b.id}`, fullLabel: b.label, value: filteredSubmissions.filter(s => s.branchId === b.id).length }))} margin={{ top: 20, right: 30, left: 0, bottom: 5 }}>
                                     <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
                                     <XAxis dataKey="name" tick={{fontSize: 10}} interval={0} angle={-45} textAnchor="end" height={60} />
@@ -719,7 +719,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ submissions, settings, refreshD
                     <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl shadow-sm ring-1 ring-slate-200 dark:ring-slate-700 flex flex-col">
                         <h3 className="font-black text-slate-800 dark:text-white mb-6 text-lg"><i className="fa-solid fa-spider text-amber-500 mr-2"></i> ความสนใจรายสาขา (Radar Chart)</h3>
                         <div className="h-80 w-full">
-                            <ResponsiveContainer width="100%" height="100%">
+                            <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
                                 <RadarChart cx="50%" cy="50%" outerRadius="70%" data={BRANCHES.map(b => ({ name: `สาขา ${b.id}`, fullLabel: b.label, value: filteredSubmissions.filter(s => s.branchId === b.id).length }))}>
                                     <PolarGrid strokeOpacity={0.2} />
                                     <PolarAngleAxis dataKey="name" tick={{fontSize: 10}} />
@@ -738,7 +738,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ submissions, settings, refreshD
                 <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl shadow-sm ring-1 ring-slate-200 dark:ring-slate-700">
                     <h3 className="font-black text-slate-800 dark:text-white mb-6 text-lg"><i className="fa-solid fa-chart-pie text-purple-500 mr-2"></i> สัดส่วนผลงานจำแนกตามสาขา (Pie Chart)</h3>
                     <div className="h-80 w-full">
-                        <ResponsiveContainer width="100%" height="100%">
+                        <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
                             <PieChart>
                                 <Pie 
                                   data={BRANCHES.map(b => ({ name: b.label, value: filteredSubmissions.filter(s => s.branchId === b.id).length })).filter(d => d.value > 0)} 
