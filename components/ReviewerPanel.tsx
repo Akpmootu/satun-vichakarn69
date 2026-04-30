@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Submission, AppSettings, UserProfile, ReviewerScore } from '../types';
-import { apiGetAllScores, apiSaveReviewerScore } from '../services/apiService';
+import { apiGetAllScores, apiSaveReviewerScore, apiUpdateSubmission } from '../services/apiService';
 import { WORK_TYPES, BRANCHES } from '../constants';
+import Pagination from './ui/Pagination';
 
 declare const Swal: any;
 
@@ -11,6 +12,7 @@ interface ReviewerPanelProps {
   refreshData: () => void;
   showToast: (t: any) => void;
   currentUser: UserProfile;
+  onTriggerFeedback?: () => void;
 }
 
 interface CriteriaItem {
@@ -81,7 +83,7 @@ const ScoreSelector = ({ value, onChange }: { value: number, onChange: (v: numbe
     );
 };
 
-const ReviewerPanel: React.FC<ReviewerPanelProps> = ({ submissions, settings, refreshData, showToast, currentUser }) => {
+const ReviewerPanel: React.FC<ReviewerPanelProps> = ({ submissions, settings, refreshData, showToast, currentUser, onTriggerFeedback }) => {
   const [allScores, setAllScores] = useState<ReviewerScore[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeSubmission, setActiveSubmission] = useState<Submission | null>(null);
@@ -103,11 +105,25 @@ const ReviewerPanel: React.FC<ReviewerPanelProps> = ({ submissions, settings, re
       loadScores();
   }, [submissions]);
 
-  // Only show submissions that belong to reviewer's branch
+  // Only show submissions explicitly assigned to this reviewer, or fallback to branch logic if we want, but explicit assignment is better.
   const branchSubmissions = useMemo(() => {
-      if (!currentUser.branchId) return [];
-      return submissions.filter(s => Array.isArray(currentUser.branchId) || s.branchId?.toString() === currentUser.branchId?.toString());
+      return submissions.filter(s => {
+          const isAssigned = (s.reviewerIds || []).includes(currentUser.id) || s.reviewerId === currentUser.id;
+          if (isAssigned) return true;
+          // If no specific assignments exist, maybe it shouldn't show? Let's just strictly show what is assigned to them
+          return isAssigned;
+      });
   }, [submissions, currentUser]);
+
+  const [submissionPage, setSubmissionPage] = useState(1);
+  const ITEMS_PER_PAGE = 10;
+  
+  const paginatedSubmissions = useMemo(() => {
+      const start = (submissionPage - 1) * ITEMS_PER_PAGE;
+      return branchSubmissions.slice(start, start + ITEMS_PER_PAGE);
+  }, [branchSubmissions, submissionPage]);
+
+  const totalPages = Math.ceil(branchSubmissions.length / ITEMS_PER_PAGE);
 
   const handleOpenAssessment = (sub: Submission) => {
       setActiveSubmission(sub);
@@ -188,6 +204,23 @@ const ReviewerPanel: React.FC<ReviewerPanelProps> = ({ submissions, settings, re
               scoreData: currentScoreData,
               totalScore: totalScore
           });
+          
+          if (activeSubmission.status === 'reviewed') {
+              const audit = activeSubmission.audit || [];
+              await apiUpdateSubmission(settings, activeSubmission.id, {
+                  status: 'scored',
+                  audit: [
+                      ...audit,
+                      {
+                          at: new Date().toISOString(),
+                          action: 'SCORED',
+                          note: `กรรมการ (${currentUser.firstName}) ให้คะแนนเรียบร้อยแล้ว`
+                      }
+                  ]
+              });
+              refreshData(); // To refresh submissions list from parent
+          }
+          
           await loadScores();
           showToast({ type: 'success', title: 'บันทึกสำเร็จ', message: 'บันทึกคะแนนเรียบร้อยแล้วคะค่ะ' });
           setActiveSubmission(null);
@@ -204,7 +237,9 @@ const ReviewerPanel: React.FC<ReviewerPanelProps> = ({ submissions, settings, re
                 <i className="fa-solid fa-chart-bar absolute -bottom-5 -right-5 text-8xl opacity-20 transform -rotate-12"></i>
                 <div className="relative z-10">
                     <h2 className="font-black text-2xl mb-1"><i className="fa-solid fa-list-check opacity-70 mr-2"></i>รายชื่อผลงานที่รับผิดชอบ</h2>
-                    <p className="text-sky-100 font-medium mb-4">หมวด: {BRANCHES.find((b: any) => b.id.toString() === currentUser.branchId?.toString())?.label || currentUser.branchId}</p>
+                    <p className="text-sky-100 font-medium mb-4">
+                        คุณมีผลงานที่ได้รับมอบหมายทั้งหมด {branchSubmissions.length} รายการ
+                    </p>
                     
                     {branchSubmissions.length > 0 && (
                         <div className="inline-flex items-center gap-2 bg-white/20 px-4 py-2 rounded-xl backdrop-blur-sm border border-white/10 text-sm font-bold shadow-sm">
@@ -233,7 +268,7 @@ const ReviewerPanel: React.FC<ReviewerPanelProps> = ({ submissions, settings, re
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                            {branchSubmissions.map((s, idx) => {
+                            {paginatedSubmissions.map((s, idx) => {
                                 const subScores = allScores.filter(sc => sc.submissionId === s.id);
                                 const myScore = subScores.find(sc => sc.reviewerId === currentUser.id);
                                 const totalSc = subScores.reduce((acc, cr) => acc + cr.totalScore, 0);
@@ -242,7 +277,7 @@ const ReviewerPanel: React.FC<ReviewerPanelProps> = ({ submissions, settings, re
                                 
                                 return (
                                     <tr key={s.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition group">
-                                        <td className="px-5 py-4">{(idx + 1).toString().padStart(2, '0')}</td>
+                                        <td className="px-5 py-4">{((submissionPage - 1) * ITEMS_PER_PAGE + idx + 1).toString().padStart(2, '0')}</td>
                                         <td className="px-5 py-4 font-medium text-slate-700 dark:text-slate-200">{workTypeName}</td>
                                         <td className="px-5 py-4 font-mono text-xs">{s.id.substring(0,8)}</td>
                                         <td className="px-5 py-4 max-w-[200px] truncate" title={s.fileName}>{s.fileName}</td>
@@ -254,12 +289,18 @@ const ReviewerPanel: React.FC<ReviewerPanelProps> = ({ submissions, settings, re
                                         <td className="px-5 py-4 text-center">{subScores.length > 0 ? subScores.length : <span className="text-slate-300">-</span>}</td>
                                         <td className="px-5 py-4 text-center font-black text-emerald-600">{avgSc}</td>
                                         <td className="px-5 py-4 text-center">
-                                            <button 
-                                                onClick={() => handleOpenAssessment(s)}
-                                                className="px-4 py-2 bg-slate-100 text-slate-600 hover:bg-emerald-500 hover:text-white hover:shadow-lg hover:shadow-emerald-200 dark:bg-slate-800/80 dark:hover:bg-emerald-500 dark:hover:shadow-none rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 mx-auto w-full md:w-auto"
-                                            >
-                                                <i className="fa-regular fa-pen-to-square"></i> ให้คะแนน
-                                            </button>
+                                            {s.status === 'accepted' || s.status === 'reviewed' ? (
+                                                <button 
+                                                    onClick={() => handleOpenAssessment(s)}
+                                                    className="px-4 py-2 bg-slate-100 text-slate-600 hover:bg-emerald-500 hover:text-white hover:shadow-lg hover:shadow-emerald-200 dark:bg-slate-800/80 dark:hover:bg-emerald-500 dark:hover:shadow-none rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 mx-auto w-full md:w-auto"
+                                                >
+                                                    <i className="fa-regular fa-pen-to-square"></i> {myScore ? 'แก้ไขคะแนน' : 'ให้คะแนน'}
+                                                </button>
+                                            ) : (
+                                                <div className="px-3 py-2 text-xs font-bold text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-slate-800 rounded-xl inline-flex items-center justify-center gap-1.5 whitespace-nowrap mx-auto w-full md:w-auto text-center" title="รอแอดมินยืนยันความสมบูรณ์ของเอกสารก่อน จึงจะสามารถให้คะแนนได้">
+                                                    <i className="fa-solid fa-lock opacity-50"></i> แอดมินยังไม่ยืนยัน
+                                                </div>
+                                            )}
                                         </td>
                                     </tr>
                                 )
@@ -275,6 +316,15 @@ const ReviewerPanel: React.FC<ReviewerPanelProps> = ({ submissions, settings, re
                         </tbody>
                     </table>
                 </div>
+                {totalPages > 1 && (
+                    <div className="p-4 border-t border-slate-100 dark:border-slate-800 flex justify-center">
+                        <Pagination 
+                            currentPage={submissionPage} 
+                            totalPages={totalPages} 
+                            onPageChange={setSubmissionPage} 
+                        />
+                    </div>
+                )}
             </div>
       </div>
   );
@@ -428,7 +478,7 @@ const ReviewerPanel: React.FC<ReviewerPanelProps> = ({ submissions, settings, re
                           })}
                       </div>
 
-                      <div className="pt-6 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 z-20 flex gap-3">
+                      <div className="pt-6 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 z-20 flex flex-col gap-4">
                           <button 
                               onClick={handleSaveScore}
                               className="w-full py-4 bg-slate-900 text-white rounded-2xl font-black text-lg hover:bg-slate-800 transition flex items-center justify-center gap-3 shadow-xl dark:bg-sky-600 dark:hover:bg-sky-500 focus:ring-4 focus:ring-sky-100"

@@ -1,5 +1,5 @@
 
-export type SubmissionStatus = 'draft' | 'submitted' | 'reviewed' | 'accepted' | 'rejected' | 'revision_requested';
+export type SubmissionStatus = 'draft' | 'submitted' | 'reviewed' | 'accepted' | 'rejected' | 'revision_requested' | 'scored';
 export type UserRole = 'user' | 'admin' | 'reviewer';
 
 export interface AuditLog {
@@ -52,6 +52,17 @@ export interface ReviewerScore {
   createdAt: string;
 }
 
+export interface AppFeedback {
+  id?: string;
+  userId: string;
+  rating: number;
+  ratingEase?: number;
+  ratingDesign?: number;
+  ratingContent?: number;
+  comment: string;
+  createdAt?: string;
+}
+
 export interface UserProfile {
   id: string;
   firstName: string;
@@ -76,7 +87,8 @@ export interface UserProfile {
 export interface Submission {
   id: string;
   userId?: string; 
-  reviewerId?: string; 
+  reviewerId?: string; // deprecated, use reviewerIds
+  reviewerIds?: string[];
   budgetYear: number;
   firstName: string;
   lastName: string;

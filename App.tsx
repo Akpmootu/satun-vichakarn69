@@ -14,6 +14,7 @@ import ReviewerPanel from "./components/ReviewerPanel";
 import ProfileSettings from "./components/ProfileSettings";
 import NewsModal from "./components/NewsModal";
 import UserAuthModal from "./components/UserAuthModal";
+import FeedbackModal from "./components/FeedbackModal";
 import Toast from "./components/ui/Toast";
 import Logo from "./components/ui/Logo";
 import LoadingOverlay from "./components/ui/LoadingOverlay";
@@ -31,6 +32,7 @@ export default function App() {
   const [newsStartIndex, setNewsStartIndex] = useState(0);
   const [newsList, setNewsList] = useState<NewsItem[]>([]); // News State
   const [showAuth, setShowAuth] = useState(false);
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
   const [isPageLoading, setIsPageLoading] = useState(false);
   // ...
 
@@ -419,6 +421,16 @@ export default function App() {
         showToast={showToast}
       />
 
+      {/* Feedback Modal */}
+      {currentUser && (
+          <FeedbackModal 
+            isOpen={showFeedbackModal} 
+            onClose={() => setShowFeedbackModal(false)} 
+            userId={currentUser.id} 
+            showToast={showToast} 
+          />
+      )}
+
       {/* --- Sticky Top Header --- */}
       <header className={`sticky top-0 z-50 transition-all duration-300 ${darkMode ? 'bg-slate-900/90 border-slate-800' : 'bg-white/90 border-slate-200'} border-b backdrop-blur-md`}>
         {/* ... Header Content ... */}
@@ -691,6 +703,7 @@ export default function App() {
                         refreshData={loadData} 
                         showToast={showToast}
                         currentUser={currentUser!}
+                        onTriggerFeedback={() => setShowFeedbackModal(true)}
                     />
                 )}
             </div>
@@ -918,7 +931,7 @@ export default function App() {
               <div className="border-t border-slate-800 pt-8 flex flex-col md:flex-row justify-between items-center gap-4 text-xs font-medium text-slate-500">
                   <div className="flex items-center gap-2">
                        <i className="fa-solid fa-code text-sky-500"></i>
-                       <span>พัฒนาโดย IT SSJ Satun 2569 | <a href="#" onClick={(e) => {e.preventDefault(); Swal.fire({title: 'รายละเอียดอัปเดต v1.2.8', html: '<ul class="text-left space-y-2 text-sm"><li>📈 <b>Analytics Dashboard:</b> เพิ่มกราฟแยก 15 สาขา แบบ Real-time</li><li>✅ <b>ระบบส่งกลับแก้ไข:</b> ผู้ใช้ได้รับการแจ้งเตือนผลงานที่ถูกตีกลับ</li><li>🔒 <b>Co-Author Security:</b> ป้องกันการแก้ไขรายชื่อผู้ร่วมที่ลงทะเบียนในระบบ</li><li>🖼️ <b>Loading Screen:</b> เปลี่ยนโลโก้เป็นแบบใหม่ที่มี Animation</li><li>🛡️ <b>Admin Panel:</b> แก้ไขการดึงฟิลด์ข้อมูลการยืนยันตัวตนและการอัปเดตรหัสผ่าน (v1.2.1)</li><li>🔑 <b>Security:</b> อัปเดตการรองรับ Service Role Key สำหรับรีเซ็ตรหัสผ่าน (v1.2.2)</li><li>☁️ <b>Cloud Storage:</b> ย้ายรูปโลโก้ไปดึงจาก Supabase Storage (v1.2.3)</li><li>🖼️ <b>UI:</b> แก้ไขปัญหาโลโก้ไม่แสดงผล (v1.2.4)</li><li>🧑‍💼 <b>Reviewer:</b> เพิ่มระบบลงทะเบียนสำหรับคณะกรรมการ และแสดงสาขา/โลโก้พิเศษ (v1.2.5)</li><li>🧑‍⚖️ <b>Reviewer Form:</b> ปรับปรุงฟอร์มลงทะเบียนคณะกรรมการ ไม่บังคับเติม @skms-reviewer.local และจัดกลุ่มสาขา (v1.2.6)</li><li>📊 <b>Reviewer Panel:</b> เพิ่มหน้า Assessment สำหรับคณะกรรมการ ให้คะแนนแยกตามเกณฑ์แต่ละหมวด (v1.2.7)</li><li>✨ <b>Reviewer UX:</b> ปรับแต่งหน้า Landing Page, ไล่สีปุ่มให้คะแนน, แจ้งเตือนสาขา, รองรับลิงก์ Canva/Google Drive (v1.2.8)</li></ul>', icon: 'info', confirmButtonColor: '#0ea5e9'}); }}>v1.2.8</a></span>
+                       <span>พัฒนาโดย IT SSJ Satun 2569 | <a href="#" onClick={(e) => {e.preventDefault(); Swal.fire({title: 'รายละเอียดอัปเดต v1.3.3', html: '<ul class="text-left space-y-2 text-sm"><li>📈 <b>Analytics Dashboard:</b> เพิ่มกราฟแยก 15 สาขา แบบ Real-time</li><li>✅ <b>ระบบส่งกลับแก้ไข:</b> ผู้ใช้ได้รับการแจ้งเตือนผลงานที่ถูกตีกลับ</li><li>🔒 <b>Co-Author Security:</b> ป้องกันการแก้ไขรายชื่อผู้ร่วมที่ลงทะเบียนในระบบ</li><li>🖼️ <b>Loading Screen:</b> เปลี่ยนโลโก้เป็นแบบใหม่ที่มี Animation</li><li>🛡️ <b>Admin Panel:</b> แก้ไขการดึงฟิลด์ข้อมูลการยืนยันตัวตนและการอัปเดตรหัสผ่าน (v1.2.1)</li><li>🔑 <b>Security:</b> อัปเดตการรองรับ Service Role Key สำหรับรีเซ็ตรหัสผ่าน (v1.2.2)</li><li>☁️ <b>Cloud Storage:</b> ย้ายรูปโลโก้ไปดึงจาก Supabase Storage (v1.2.3)</li><li>🖼️ <b>UI:</b> แก้ไขปัญหาโลโก้ไม่แสดงผล (v1.2.4)</li><li>🧑‍💼 <b>Reviewer:</b> เพิ่มระบบลงทะเบียนสำหรับคณะกรรมการ และแสดงสาขา/โลโก้พิเศษ (v1.2.5)</li><li>🧑‍⚖️ <b>Reviewer Form:</b> ปรับปรุงฟอร์มลงทะเบียนคณะกรรมการ ไม่บังคับเติม @skms-reviewer.local และจัดกลุ่มสาขา (v1.2.6)</li><li>📊 <b>Reviewer Panel:</b> เพิ่มหน้า Assessment สำหรับคณะกรรมการ ให้คะแนนแยกตามเกณฑ์แต่ละหมวด (v1.2.7)</li><li>✨ <b>Reviewer UX:</b> ปรับแต่งหน้า Landing Page, ไล่สีปุ่มให้คะแนน, แจ้งเตือนสาขา, รองรับลิงก์ Canva/Google Drive (v1.2.8)</li><li>💬 <b>Feedback System:</b> เพิ่มระบบประเมินความพึงพอใจการใช้งานเว็บไซต์ พร้อม Pop-up ก่อนส่งคะแนนประเมิน (v1.2.9)</li><li>🔧 <b>Admin Update:</b> แจ้งเตือนเปลี่ยนสถานะ, Dropdown สถานะแบบปรับเอง, ค้นหาจากชื่อไฟล์ (v1.3.0)</li><li>🖼️ <b>UI & UX Update:</b> เพิ่มระบบแบ่งหน้า (Pagination) ในตารางแสดงผล, แสดงรูปโปรไฟล์ในตารางผู้ใช้, ปรับปรุง Popup ให้เลื่อนได้เพื่อการแสดงผลบนหน้าจอขนาดเล็ก (v1.3.1)</li><li>📋 <b>Feedback Update:</b> ปรับปรุงหน้าต่างฟอร์มประเมินความพึงพอใจ, เพิ่มรายละเอียดคำถามและเครดิตโลโก้ (v1.3.2)</li><li>📋 <b>Feedback v2:</b> เพิ่มแบบสอบถามความพึงพอใจแยกเป็น 3 ส่วน (ความง่าย, ความสวยงาม, ความครบถ้วน) พร้อมส่งฐานข้อมูลแบบแยกฟิลด์และรวมเฉลี่ย (v1.3.3)</li></ul>', icon: 'info', confirmButtonColor: '#0ea5e9'}); }}>v1.3.3</a></span>
                   </div>
                   <div className="flex gap-6">
                       <button onClick={() => setShowPrivacyPolicy(true)} className="hover:text-slate-300 transition">นโยบายความเป็นส่วนตัว</button>
@@ -928,6 +941,25 @@ export default function App() {
               </div>
           </div>
       </footer>
+
+      <div className="fixed bottom-6 right-6 z-40 flex flex-col gap-3 items-center">
+        {currentUser && currentUser.role !== 'reviewer' && (
+          <button 
+              onClick={() => setShowFeedbackModal(true)}
+              className="w-12 h-12 bg-emerald-500 hover:bg-emerald-600 text-white rounded-full shadow-lg hover:shadow-emerald-300 transition-all hover:-translate-y-1 flex items-center justify-center border-2 border-white/20 tooltip-trigger"
+              title="ประเมินความพึงพอใจการใช้งาน"
+          >
+              <i className="fa-regular fa-comment-dots text-xl"></i>
+          </button>
+        )}
+        <button
+          onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+          className={`w-12 h-12 rounded-full bg-slate-900 dark:bg-sky-600 text-white shadow-xl hover:shadow-2xl hover:-translate-y-1 active:translate-y-0 transition-all duration-300 flex items-center justify-center border-2 border-white/20 ${showScrollTop ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10 pointer-events-none'}`}
+          title="เลื่อนขึ้นบนสุด"
+        >
+          <i className="fa-solid fa-arrow-up text-lg"></i>
+        </button>
+      </div>
 
       <Toast toast={toast} onClose={() => setToast(null)} />
     </div>

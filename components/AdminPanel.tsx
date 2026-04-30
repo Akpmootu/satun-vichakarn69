@@ -7,6 +7,7 @@ import { BRANCHES, WORK_TYPES, HEALTH_POSITIONS, JOB_LEVELS, EDUCATION_LEVELS } 
 import Badge from './ui/Badge';
 import OrgAutocomplete from './ui/OrgAutocomplete';
 import UniversityAutocomplete from './ui/UniversityAutocomplete';
+import Pagination from './ui/Pagination';
 
 declare const Swal: any;
 
@@ -30,9 +31,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ submissions, settings, refreshD
 
   // Submissions Filter State
   const [filter, setFilter] = useState({ q: '', branch: 'all', status: 'all' });
+  const [submissionPage, setSubmissionPage] = useState(1);
   
   // User Filter State
   const [userFilter, setUserFilter] = useState({ q: '', role: 'all' });
+  const [userPage, setUserPage] = useState(1);
+  const ITEMS_PER_PAGE = 10;
 
   // News Form State
   const [newsForm, setNewsForm] = useState({ id: 0, title: '', desc: '', type: 'news', imageUrl: '', fileType: '' });
@@ -47,7 +51,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ submissions, settings, refreshD
   // --- Manage Submission Modal State ---
   const [selectedSubmission, setSelectedSubmission] = useState<Submission | null>(null);
   const [docsVerified, setDocsVerified] = useState(false);
-  const [selectedReviewer, setSelectedReviewer] = useState<string>('');
+  const [selectedReviewers, setSelectedReviewers] = useState<string[]>([]);
 
   // Initial Data Load
   useEffect(() => {
@@ -80,7 +84,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ submissions, settings, refreshD
   // --- Filter Logic ---
   const filteredSubmissions = useMemo(() => {
       return submissions.filter(s => {
-          const matchQ = (s.firstName + s.lastName + s.organization).toLowerCase().includes(filter.q.toLowerCase());
+          const searchString = (s.fileName || '') + s.firstName + s.lastName + (s.organization || '');
+          const matchQ = searchString.toLowerCase().includes(filter.q.toLowerCase());
           const matchBranch = filter.branch === 'all' || s.branchId.toString() === filter.branch;
           const matchStatus = filter.status === 'all' || s.status === filter.status;
           return matchQ && matchBranch && matchStatus;
@@ -95,6 +100,20 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ submissions, settings, refreshD
       });
   }, [userList, userFilter]);
 
+  const paginatedSubmissions = useMemo(() => {
+      const start = (submissionPage - 1) * ITEMS_PER_PAGE;
+      return filteredSubmissions.slice(start, start + ITEMS_PER_PAGE);
+  }, [filteredSubmissions, submissionPage]);
+
+  const submissionTotalPages = Math.ceil(filteredSubmissions.length / ITEMS_PER_PAGE);
+
+  const paginatedUsers = useMemo(() => {
+      const start = (userPage - 1) * ITEMS_PER_PAGE;
+      return filteredUsers.slice(start, start + ITEMS_PER_PAGE);
+  }, [filteredUsers, userPage]);
+
+  const userTotalPages = Math.ceil(filteredUsers.length / ITEMS_PER_PAGE);
+
   // --- Action Handlers ---
 
   const handleOpenManageModal = (s: Submission) => {
@@ -103,9 +122,29 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ submissions, settings, refreshD
       
       setSelectedSubmission(s);
       // Logic: If status is 'reviewed' or beyond, docs are assumed verified
-      const isVerified = ['reviewed', 'accepted', 'rejected'].includes(s.status);
+      const isVerified = ['reviewed', 'scored', 'accepted', 'rejected'].includes(s.status);
       setDocsVerified(isVerified); 
-      setSelectedReviewer(s.reviewerId || '');
+      setSelectedReviewers(s.reviewerIds || (s.reviewerId ? [s.reviewerId] : []));
+  };
+
+  const handleUpdateStatus = async (id: string, newStatus: string) => {
+      try {
+          const submission = submissions.find(s => s.id === id);
+          if (!submission) return;
+          const audit = submission.audit || [];
+          await apiUpdateSubmission(settings, id, {
+              status: newStatus as SubmissionStatus,
+              audit: [...audit, {
+                  at: new Date().toISOString(),
+                  action: 'MANUAL_STATUS_UPDATE',
+                  note: `แอดมินเปลี่ยนสถานะเป็น: ${newStatus}`
+              }]
+          });
+          showToast({ type: 'success', title: 'สำเร็จ', message: `เปลี่ยนสถานะเป็น ${newStatus} เรียบร้อยแล้ว` });
+          refreshData();
+      } catch (e: any) {
+          showToast({ type: 'error', title: 'เกิดข้อผิดพลาด', message: e.message });
+      }
   };
 
   const handleAssignAndSave = async () => {
@@ -116,8 +155,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ submissions, settings, refreshD
           return;
       }
       
-      if (!selectedReviewer) {
-          showToast({ type: 'error', title: 'ยังไม่เลือกกรรมการ', message: 'กรุณาเลือกคณะกรรมการเพื่อมอบหมายงาน' });
+      if (selectedReviewers.length === 0) {
+          showToast({ type: 'error', title: 'ยังไม่เลือกกรรมการ', message: 'กรุณาเลือกคณะกรรมการเพื่อมอบหมายงานอย่างน้อย 1 ท่าน' });
           return;
       }
 
@@ -126,15 +165,15 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ submissions, settings, refreshD
       
       try {
           const audit = selectedSubmission.audit || [];
-          const reviewerName = reviewerList.find(r => r.id === selectedReviewer)?.firstName || 'Unknown';
+          const reviewerNames = selectedReviewers.map(id => reviewerList.find(r => r.id === id)?.firstName || 'Unknown').join(', ');
           
           await apiUpdateSubmission(settings, selectedSubmission.id, {
-              reviewerId: selectedReviewer,
+              reviewerIds: selectedReviewers,
               status: newStatus,
               audit: [...audit, { 
                   at: new Date().toISOString(), 
                   action: 'ADMIN_ASSIGN', 
-                  note: `เอกสารครบถ้วน มอบหมายให้: ${reviewerName}` 
+                  note: `เอกสารครบถ้วน มอบหมายให้: ${reviewerNames}` 
               }]
           });
 
@@ -150,14 +189,14 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ submissions, settings, refreshD
       if (!selectedSubmission) return;
 
       const result = await Swal.fire({
-          title: 'ตีกลับให้แก้ไข?',
+          title: 'ปลดล็อคให้แก้ไข?',
           text: 'คุณต้องการส่งผลงานนี้กลับไปให้ผู้ใช้งานแก้ไขใช่หรือไม่? (เช่น ลิงก์ไม่ถูกต้อง, ไฟล์แนบมีปัญหา)',
           icon: 'warning',
           input: 'text',
           inputPlaceholder: 'ระบุเหตุผลที่ให้แก้ไข...',
           showCancelButton: true,
           confirmButtonColor: '#f43f5e',
-          confirmButtonText: 'ยืนยันตีกลับแก้ไข',
+          confirmButtonText: 'ยืนยันปลดล็อค',
           cancelButtonText: 'ยกเลิก',
           customClass: { popup: 'rounded-3xl' }
       });
@@ -170,11 +209,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ submissions, settings, refreshD
                   audit: [...audit, { 
                       at: new Date().toISOString(), 
                       action: 'REVISION_REQUESTED', 
-                      note: `แอดมินตีกลับให้แก้ไข: ${result.value || 'ไม่ระบุเหตุผล'}` 
+                      note: `แอดมินปลดล็อคให้แก้ไข: ${result.value || 'ไม่ระบุเหตุผล'}` 
                   }]
               });
 
-              showToast({ type: 'success', title: 'สำเร็จ', message: 'เปลี่ยนสถานะเป็น "ตีกลับให้แก้ไข" เรียบร้อยแล้ว' });
+              showToast({ type: 'success', title: 'สำเร็จ', message: 'ปลดล็อคให้แก้ไขเรียบร้อยแล้ว' });
               refreshData();
               setSelectedSubmission(null);
           } catch (e: any) {
@@ -490,26 +529,31 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ submissions, settings, refreshD
 
         {activeTab === 'dashboard' && (
             <div className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
                     <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl shadow-sm ring-1 ring-slate-200 dark:ring-slate-700 flex flex-col items-center justify-center">
                         <i className="fa-solid fa-file-contract text-4xl text-sky-500 mb-2"></i>
                         <div className="text-3xl font-black text-slate-800 dark:text-white">{submissions.length}</div>
-                        <div className="text-sm font-bold text-slate-500">ผลงานทั้งหมด</div>
+                        <div className="text-sm font-bold text-slate-500">ทั้งหมด</div>
                     </div>
                     <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl shadow-sm ring-1 ring-slate-200 dark:ring-slate-700 flex flex-col items-center justify-center">
                         <i className="fa-solid fa-paper-plane text-4xl text-amber-500 mb-2"></i>
                         <div className="text-3xl font-black text-slate-800 dark:text-white">{submissions.filter(s => s.status === 'submitted').length}</div>
-                        <div className="text-sm font-bold text-slate-500">รอตรวจสอบ (Submitted)</div>
+                        <div className="text-sm font-bold text-slate-500 text-center">รอตรวจสอบ<br/><span className="text-[10px]">(Submitted)</span></div>
+                    </div>
+                    <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl shadow-sm ring-1 ring-slate-200 dark:ring-slate-700 flex flex-col items-center justify-center">
+                        <i className="fa-solid fa-star text-4xl text-purple-500 mb-2"></i>
+                        <div className="text-3xl font-black text-slate-800 dark:text-white">{submissions.filter(s => s.status === 'scored').length}</div>
+                        <div className="text-sm font-bold text-slate-500 text-center">ให้คะแนนแล้ว<br/><span className="text-[10px]">(Scored)</span></div>
                     </div>
                     <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl shadow-sm ring-1 ring-slate-200 dark:ring-slate-700 flex flex-col items-center justify-center">
                         <i className="fa-solid fa-check-circle text-4xl text-emerald-500 mb-2"></i>
                         <div className="text-3xl font-black text-slate-800 dark:text-white">{submissions.filter(s => s.status === 'accepted').length}</div>
-                        <div className="text-sm font-bold text-slate-500">อนุมัติแล้ว/ผ่าน (Accepted)</div>
+                        <div className="text-sm font-bold text-slate-500 text-center">อนุมัติผ่าน<br/><span className="text-[10px]">(Accepted)</span></div>
                     </div>
-                    <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl shadow-sm ring-1 ring-slate-200 dark:ring-slate-700 flex flex-col items-center justify-center">
+                    <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl shadow-sm ring-1 ring-slate-200 dark:ring-slate-700 flex flex-col items-center justify-center col-span-2 lg:col-span-1">
                         <i className="fa-solid fa-user-clock text-4xl text-rose-500 mb-2"></i>
                         <div className="text-3xl font-black text-slate-800 dark:text-white">{submissions.filter(s => s.status === 'revision_requested').length}</div>
-                        <div className="text-sm font-bold text-slate-500">ตีกลับแก้ไข (Rework)</div>
+                        <div className="text-sm font-bold text-slate-500 text-center">ตีกลับแก้ไข<br/><span className="text-[10px]">(Rework)</span></div>
                     </div>
                 </div>
 
@@ -552,7 +596,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ submissions, settings, refreshD
                     <div className="flex-1 relative">
                         <i className="fa-solid fa-magnifying-glass absolute left-4 top-3 text-slate-400"></i>
                         <input 
-                            placeholder="ค้นหาชื่อ, หน่วยงาน..." 
+                            placeholder="ค้นหาชื่อ, หน่วยงาน, ชื่อไฟล์..." 
                             className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 outline-none focus:ring-2 focus:ring-slate-900 dark:text-white"
                             value={filter.q}
                             onChange={e => setFilter({...filter, q: e.target.value})}
@@ -572,8 +616,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ submissions, settings, refreshD
                         onChange={e => setFilter({...filter, status: e.target.value})}
                     >
                         <option value="all">ทุกสถานะ</option>
+                        <option value="draft">ฉบับร่าง (Draft)</option>
                         <option value="submitted">รอตรวจสอบ (Submitted)</option>
                         <option value="reviewed">กำลังพิจารณา (Under Review)</option>
+                        <option value="scored">ให้คะแนนแล้ว (Scored)</option>
                         <option value="accepted">ผ่านการคัดเลือก (Accepted)</option>
                         <option value="revision_requested">ตีกลับแก้ไข (Rework)</option>
                         <option value="rejected">ไม่ผ่าน (Rejected)</option>
@@ -598,9 +644,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ submissions, settings, refreshD
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
-                            {filteredSubmissions.map(s => {
+                            {paginatedSubmissions.map(s => {
                                 const attachments = parseAttachments(s.fileUrl);
-                                const assignedReviewer = reviewerList.find(r => r.id === s.reviewerId);
+                                const assignedReviewers = (s.reviewerIds || (s.reviewerId ? [s.reviewerId] : [])).map(id => reviewerList.find(r => r.id === id));
                                 return (
                                 <tr key={s.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/50 transition">
                                     <td className="p-4">
@@ -626,17 +672,31 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ submissions, settings, refreshD
                                         )}
                                     </td>
                                     <td className="p-4">
-                                        <Badge tone={s.status === 'accepted' ? 'green' : s.status === 'rejected' ? 'red' : s.status === 'reviewed' ? 'indigo' : 'navy'}>
-                                            {s.status === 'reviewed' ? 'Under Review' : s.status}
-                                        </Badge>
+                                        <select 
+                                            value={s.status} 
+                                            onChange={(e) => handleUpdateStatus(s.id, e.target.value)}
+                                            className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold font-sans outline-none focus:ring-2 focus:ring-sky-200 cursor-pointer"
+                                        >
+                                            <option value="draft">Draft</option>
+                                            <option value="submitted">Submitted</option>
+                                            <option value="reviewed">Under Review</option>
+                                            <option value="scored">Scored</option>
+                                            <option value="accepted">Accepted</option>
+                                            <option value="revision_requested">Rework</option>
+                                            <option value="rejected">Rejected</option>
+                                        </select>
                                     </td>
                                     <td className="p-4">
-                                         {assignedReviewer ? (
-                                             <div className="flex items-center gap-2">
-                                                 <div className="h-6 w-6 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center text-xs font-bold">
-                                                     {assignedReviewer.firstName.charAt(0)}
-                                                 </div>
-                                                 <span className="text-slate-700 dark:text-slate-300 text-xs font-bold">{assignedReviewer.firstName} {assignedReviewer.lastName}</span>
+                                         {assignedReviewers.length > 0 ? (
+                                             <div className="flex flex-col gap-1">
+                                                 {assignedReviewers.filter(Boolean).map((r, i) => (
+                                                     <div key={i} className="flex items-center gap-2">
+                                                         <div className="h-6 w-6 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center text-xs font-bold">
+                                                             {r?.firstName?.charAt(0)}
+                                                         </div>
+                                                         <span className="text-slate-700 dark:text-slate-300 text-xs font-bold">{r?.firstName} {r?.lastName}</span>
+                                                     </div>
+                                                 ))}
                                              </div>
                                          ) : (
                                              <span className="text-xs text-slate-400 italic">ยังไม่มอบหมาย</span>
@@ -657,6 +717,16 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ submissions, settings, refreshD
                         </tbody>
                     </table>
                     {filteredSubmissions.length === 0 && <div className="text-center p-8 text-slate-400">ไม่พบข้อมูล</div>}
+                    
+                    {submissionTotalPages > 1 && (
+                        <div className="p-4 border-t border-slate-100 dark:border-slate-700">
+                            <Pagination 
+                                currentPage={submissionPage} 
+                                totalPages={submissionTotalPages} 
+                                onPageChange={setSubmissionPage} 
+                            />
+                        </div>
+                    )}
                 </div>
             </div>
         )}
@@ -708,15 +778,19 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ submissions, settings, refreshD
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
-                            {filteredUsers.map(u => (
+                            {paginatedUsers.map(u => (
                                 <tr key={u.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/50 transition group">
                                     <td className="p-4">
                                         <div className="flex items-center gap-3">
-                                            <div className={`h-10 w-10 rounded-full flex items-center justify-center text-lg font-bold
-                                                ${u.role === 'admin' ? 'bg-rose-100 text-rose-600' : u.role === 'reviewer' ? 'bg-indigo-100 text-indigo-600' : 'bg-slate-100 text-slate-500'}
-                                            `}>
-                                                {u.firstName.charAt(0)}
-                                            </div>
+                                            {u.avatarUrl ? (
+                                                <img src={u.avatarUrl} alt={u.firstName} className="h-10 w-10 shrink-0 border border-slate-200 dark:border-slate-700 bg-white object-cover rounded-full object-center" />
+                                            ) : (
+                                                <div className={`h-10 w-10 shrink-0 rounded-full flex items-center justify-center text-lg font-bold
+                                                    ${u.role === 'admin' ? 'bg-rose-100 text-rose-600' : u.role === 'reviewer' ? 'bg-indigo-100 text-indigo-600' : 'bg-slate-100 dark:bg-slate-800 text-slate-500'}
+                                                `}>
+                                                    {u.firstName.charAt(0)}
+                                                </div>
+                                            )}
                                             <div>
                                                 <div className="font-bold text-slate-900 dark:text-white flex items-center gap-2">
                                                     {u.firstName} {u.lastName}
@@ -780,6 +854,16 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ submissions, settings, refreshD
                         </tbody>
                     </table>
                      {filteredUsers.length === 0 && <div className="text-center p-12 text-slate-400">ไม่พบข้อมูลผู้ใช้งาน</div>}
+                     
+                     {userTotalPages > 1 && (
+                         <div className="p-4 border-t border-slate-100 dark:border-slate-700">
+                             <Pagination 
+                                 currentPage={userPage} 
+                                 totalPages={userTotalPages} 
+                                 onPageChange={setUserPage} 
+                             />
+                         </div>
+                     )}
                 </div>
              </div>
         )}
@@ -916,29 +1000,41 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ submissions, settings, refreshD
                           {/* 3. Assign Reviewer */}
                           <div className="mb-6">
                               <h4 className="font-bold text-slate-800 dark:text-white mb-3">2. มอบหมายคณะกรรมการ (Assign Reviewer)</h4>
-                              <div className="relative">
-                                  <i className="fa-solid fa-user-tie absolute left-4 top-3.5 text-slate-400"></i>
-                                  <select
-                                      value={selectedReviewer}
-                                      onChange={e => setSelectedReviewer(e.target.value)}
-                                      disabled={reviewerList.length === 0}
-                                      className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 dark:text-white pl-10 pr-4 py-3 outline-none focus:ring-2 focus:ring-indigo-200 appearance-none cursor-pointer disabled:bg-slate-100 disabled:text-slate-400"
-                                  >
-                                      <option value="">
-                                          {reviewerList.length === 0 ? '-- ไม่พบรายชื่อ Reviewer (กรุณาเพิ่มสิทธิ์ก่อน) --' : '-- เลือกคณะกรรมการ --'}
-                                      </option>
-                                      {reviewerList.map(r => (
-                                          <option key={r.id} value={r.id}>{r.firstName} {r.lastName} ({r.position || 'Reviewer'})</option>
-                                      ))}
-                                  </select>
-                                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-slate-500">
-                                      <i className="fa-solid fa-chevron-down text-xs"></i>
-                                  </div>
-                              </div>
-                              {reviewerList.length === 0 && (
+                              {reviewerList.length === 0 ? (
                                   <div className="text-xs text-rose-500 mt-2 flex items-center gap-1 bg-rose-50 p-2 rounded-lg border border-rose-100">
                                       <i className="fa-solid fa-triangle-exclamation"></i> 
                                       <b>ไม่พบรายชื่อคณะกรรมการ</b> กรุณาไปที่เมนู "จัดการผู้ใช้งาน" และเปลี่ยนสิทธิ์ User ให้เป็น Reviewer ก่อน
+                                  </div>
+                              ) : (
+                                  <div className="max-h-48 overflow-y-auto space-y-2 pr-2 custom-scrollbar">
+                                      {reviewerList.map(r => {
+                                          const isChecked = selectedReviewers.includes(r.id);
+                                          return (
+                                              <label key={r.id} className={`flex items-center gap-3 p-3 rounded-xl border transition cursor-pointer select-none
+                                                  ${isChecked ? 'bg-indigo-50 border-indigo-200 ring-1 ring-indigo-200' : 'bg-white border-slate-200 hover:border-sky-300 dark:bg-slate-800 dark:border-slate-700'}
+                                              `}>
+                                                  <div className={`h-6 w-6 rounded flex items-center justify-center transition shrink-0 ${isChecked ? 'bg-indigo-500 text-white' : 'bg-slate-200 text-transparent'}`}>
+                                                      <i className="fa-solid fa-check text-sm"></i>
+                                                  </div>
+                                                  <input 
+                                                      type="checkbox" 
+                                                      checked={isChecked} 
+                                                      onChange={(e) => {
+                                                          if (e.target.checked) {
+                                                              setSelectedReviewers([...selectedReviewers, r.id]);
+                                                          } else {
+                                                              setSelectedReviewers(selectedReviewers.filter(id => id !== r.id));
+                                                          }
+                                                      }} 
+                                                      className="hidden" 
+                                                  />
+                                                  <div>
+                                                      <div className={`font-bold text-sm ${isChecked ? 'text-indigo-800' : 'text-slate-700 dark:text-white'}`}>{r.firstName} {r.lastName}</div>
+                                                      <div className="text-xs text-slate-500">{r.position || 'Reviewer'}</div>
+                                                  </div>
+                                              </label>
+                                          );
+                                      })}
                                   </div>
                               )}
                           </div>
@@ -958,7 +1054,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ submissions, settings, refreshD
                               onClick={handleRequestRevision}
                               className="px-4 py-2 rounded-xl border border-rose-200 text-rose-600 bg-white font-bold text-sm hover:bg-rose-50 transition"
                           >
-                              <i className="fa-solid fa-rotate-left mr-1"></i> ตีกลับให้แก้ไข
+                              <i className="fa-solid fa-unlock-keyhole mr-1"></i> ปลดล็อคให้แก้ไข (Rework)
                           </button>
 
                           <button 
@@ -991,7 +1087,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ submissions, settings, refreshD
                         </button>
                     </div>
                     
-                    <div className="space-y-4">
+                    <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar">
                         <div className="grid grid-cols-2 gap-4">
                             <div>
                                 <label className="text-xs font-bold text-slate-500 mb-1 block">ชื่อ</label>

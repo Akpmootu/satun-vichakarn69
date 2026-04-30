@@ -4,6 +4,8 @@ import { Submission, AppSettings, SubmissionStatus, AuditLog, UserProfile } from
 import { BRANCHES, WORK_TYPES, BUDGET_YEAR } from '../constants';
 import Badge from './ui/Badge';
 
+import Pagination from './ui/Pagination';
+
 // Declare Swal globally since it's loaded via CDN
 declare const Swal: any;
 
@@ -22,6 +24,7 @@ const STATUS_CONFIG: Record<SubmissionStatus, { label: string; tone: any; step: 
   draft: { label: 'ฉบับร่าง (Draft)', tone: 'amber', step: 1 },
   submitted: { label: 'ส่งแล้ว (Submitted)', tone: 'navy', step: 2 },
   reviewed: { label: 'กำลังตรวจสอบ (Reviewing)', tone: 'indigo', step: 3 },
+  scored: { label: 'ให้คะแนนเรียบร้อย (Scored)', tone: 'purple', step: 3 },
   accepted: { label: 'ผ่านการคัดเลือก (Accepted)', tone: 'green', step: 4 },
   revision_requested: { label: 'ตีกลับแก้ไข (Rework)', tone: 'rose', step: 2 },
   rejected: { label: 'ไม่ผ่าน (Rejected)', tone: 'red', step: 4 },
@@ -440,7 +443,7 @@ const History: React.FC<HistoryProps> = ({ submissions, loading, refreshList, se
               
               // Edit Lock Logic
               const isOwner = currentUser?.id === s.userId;
-              const isLocked = !isOwner || ['reviewed', 'accepted', 'rejected'].includes(s.status);
+              const isLocked = !isOwner || ['reviewed', 'scored', 'accepted', 'rejected'].includes(s.status);
               const isMenuOpen = activeMenuId === s.id;
 
               return (
@@ -607,9 +610,11 @@ const History: React.FC<HistoryProps> = ({ submissions, loading, refreshList, se
           <div className="flex flex-col md:flex-row items-center justify-between gap-4 mt-6 pt-6 border-t border-slate-100 dark:border-slate-700">
               <div className="text-sm text-slate-500 dark:text-slate-400 font-medium">แสดง {((currentPage - 1) * itemsPerPage) + 1} ถึง {Math.min(currentPage * itemsPerPage, totalItems)} จาก {totalItems} รายการ</div>
               <div className="flex items-center gap-2">
-                  <button disabled={currentPage === 1} onClick={() => setCurrentPage(p => p - 1)} className="h-9 w-9 rounded-lg border border-slate-200 dark:border-slate-700 flex items-center justify-center hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50 transition text-slate-600 dark:text-slate-300"><i className="fa-solid fa-chevron-left text-xs"></i></button>
-                  <div className="flex items-center gap-1">{getPageNumbers().map((p, i) => (typeof p === 'number' ? (<button key={i} onClick={() => setCurrentPage(p)} className={`h-9 w-9 rounded-lg font-bold text-sm transition ${currentPage === p ? 'bg-slate-900 text-white shadow-md dark:bg-sky-600' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700'}`}>{p}</button>) : <span key={i} className="h-9 w-9 flex items-center justify-center text-slate-400">...</span>))}</div>
-                  <button disabled={currentPage === totalPages} onClick={() => setCurrentPage(p => p + 1)} className="h-9 w-9 rounded-lg border border-slate-200 dark:border-slate-700 flex items-center justify-center hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50 transition text-slate-600 dark:text-slate-300"><i className="fa-solid fa-chevron-right text-xs"></i></button>
+                  <Pagination 
+                      currentPage={currentPage}
+                      totalPages={totalPages}
+                      onPageChange={setCurrentPage}
+                  />
               </div>
               
               <div className="flex items-center gap-2">

@@ -2,10 +2,11 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { BRANCHES, BUDGET_YEAR, WORK_TYPES, HEALTH_POSITIONS, JOB_LEVELS } from '../constants';
 import { AppSettings, Submission, UserProfile, SubmissionStatus, CoAuthor } from '../types';
-import { apiCreateSubmission, apiUpdateSubmission, nowISO, apiCheckTitleUnique, apiSearchUsers } from '../services/apiService';
+import { apiCreateSubmission, apiUpdateSubmission, nowISO, apiCheckTitleUnique, apiSearchUsers, apiSubmitFeedback } from '../services/apiService';
 import Badge from './ui/Badge';
 import OrgAutocomplete from './ui/OrgAutocomplete';
 import { CoAuthorSearchModal } from './CoAuthorSearchModal';
+import SubmitConfirmModal from './SubmitConfirmModal';
 
 // Declare Swal globally since it's loaded via CDN
 declare const Swal: any;
@@ -292,6 +293,8 @@ const Registration: React.FC<RegistrationProps> = ({ settings, onSuccess, showTo
   const removeAttachment = (index: number) => { setAttachments(prev => prev.filter((_, i) => i !== index)); };
 
   // --- Validate & Submit ---
+  const [confirmModalState, setConfirmModalState] = useState<{isOpen: boolean, mode: 'submit' | 'draft' | null}>({isOpen: false, mode: null});
+
   const validateForm = () => {
     const e: Record<string, string> = {};
     if (!form.workType) e.workType = "กรุณาเลือกประเภทผลงาน";
@@ -319,14 +322,28 @@ const Registration: React.FC<RegistrationProps> = ({ settings, onSuccess, showTo
          }
     }
 
-    const confirmText = mode === 'submit' ? (editingSubmission ? 'ยืนยันการแก้ไขและส่งผลงาน?' : 'ยืนยันการส่งผลงาน?') : 'บันทึกแบบร่างไว้ทำต่อภายหลัง?';
-    const result = await Swal.fire({ title: confirmText, text: mode === 'submit' ? 'กรุณาตรวจสอบความถูกต้องของข้อมูล' : '', icon: 'question', showCancelButton: true, confirmButtonColor: mode === 'submit' ? '#0f172a' : '#64748b', confirmButtonText: mode === 'submit' ? 'ยืนยันส่งผลงาน' : 'บันทึกร่าง', cancelButtonText: 'ยกเลิก', customClass: { popup: 'rounded-3xl' } });
-    if (!result.isConfirmed) {
+    if (mode === 'submit') {
         setSaving(false);
-        return;
+        setConfirmModalState({ isOpen: true, mode });
+    } else {
+        const confirmText = 'บันทึกแบบร่างไว้ทำต่อภายหลัง?';
+        const result = await Swal.fire({ title: confirmText, icon: 'question', showCancelButton: true, confirmButtonColor: '#64748b', confirmButtonText: 'บันทึกร่าง', cancelButtonText: 'ยกเลิก', customClass: { popup: 'rounded-3xl' } });
+        if (!result.isConfirmed) {
+            setSaving(false);
+            return;
+        }
+        processSubmit('draft');
     }
+  };
 
+  const processSubmit = async (mode: 'draft' | 'submit', rating?: number, ratingEase?: number, ratingDesign?: number, ratingContent?: number, comment?: string) => {
+    setConfirmModalState({ isOpen: false, mode: null });
+    setSaving(true);
     try {
+      if (mode === 'submit' && rating && ratingEase && ratingDesign && ratingContent) {
+          try { await apiSubmitFeedback(currentUser.id, rating, ratingEase, ratingDesign, ratingContent, comment || ''); } catch (err) { console.error('Feedback save error', err); }
+      }
+
       const filePayload = attachments.length > 0 ? JSON.stringify(attachments) : "";
       const nextStatus: SubmissionStatus = mode === 'submit' ? 'submitted' : 'draft';
       const payload = {
@@ -871,6 +888,18 @@ const Registration: React.FC<RegistrationProps> = ({ settings, onSuccess, showTo
              onAddManual={addCoAuthorManual}
         />
     )}
+
+    <SubmitConfirmModal 
+        isOpen={confirmModalState.isOpen}
+        title={editingSubmission ? 'ยืนยันการแก้ไขและส่งผลงาน?' : 'ยืนยันการส่งผลงาน?'}
+        text="กรุณาตรวจสอบความถูกต้องของข้อมูล (หลังส่งแล้วจะไม่สามารถแก้ไขได้อีก)"
+        confirmText="ยืนยันส่งผลงาน"
+        cancelText="ยกเลิก"
+        saving={saving}
+        requireFeedback={true}
+        onConfirm={(rating, ratingEase, ratingDesign, ratingContent, comment) => processSubmit(confirmModalState.mode!, rating, ratingEase, ratingDesign, ratingContent, comment)}
+        onCancel={() => setConfirmModalState({ isOpen: false, mode: null })}
+    />
 
     <datalist id="health-positions">
         {HEALTH_POSITIONS.map(p => <option key={p} value={p} />)}

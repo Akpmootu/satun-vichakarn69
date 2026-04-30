@@ -1,9 +1,10 @@
 
-import React, { useMemo, useState } from 'react';
-import { Submission, SubmissionStatus } from '../types';
+import React, { useMemo, useState, useEffect } from 'react';
+import { Submission, SubmissionStatus, AppFeedback } from '../types';
 import { BRANCHES, WORK_TYPES, BUDGET_YEAR } from '../constants';
 import Badge from './ui/Badge';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, Legend, Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis } from 'recharts';
+import { apiGetFeedbacks } from '../services/apiService';
 
 // --- UI Components ---
 
@@ -92,6 +93,22 @@ const Dashboard: React.FC<DashboardProps> = ({ submissions, onViewAll }) => {
   const [filterOrg, setFilterOrg] = useState<string>('all');
   const [tableSearch, setTableSearch] = useState('');
   const [tableFilterStatus, setTableFilterStatus] = useState('all');
+  const [feedbacks, setFeedbacks] = useState<AppFeedback[]>([]);
+
+  useEffect(() => {
+    apiGetFeedbacks().then(data => setFeedbacks(data)).catch(err => console.error("Error loading feedbacks:", err));
+  }, []);
+
+  const feedbackStats = useMemo(() => {
+      if (feedbacks.length === 0) return { avg: 0, total: 0, distribution: [] };
+      const avg = feedbacks.reduce((acc, curr) => acc + curr.rating, 0) / feedbacks.length;
+      const distribution = [5, 4, 3, 2, 1].map(r => ({
+          rating: r,
+          count: feedbacks.filter(f => f.rating === r).length,
+          percentage: (feedbacks.filter(f => f.rating === r).length / feedbacks.length) * 100
+      }));
+      return { avg: avg.toFixed(1), total: feedbacks.length, distribution };
+  }, [feedbacks]);
 
   const { stats, orgOptions, monthlyData, tableData, userCounts, donutGradient } = useMemo(() => {
     // 0. Pre-process
@@ -608,7 +625,49 @@ const Dashboard: React.FC<DashboardProps> = ({ submissions, onViewAll }) => {
                </div>
            </section>
 
-           {/* SECTION 5: SNAPSHOT TABLE (Refined Context) */}
+           {/* SECTION 5: FEEDBACK RATING STATS */}
+           <section>
+               <SectionHeader title="ผลการประเมินเว็บไซต์" subtitle="Website Feedback & Satisfaction" icon="fa-star" />
+               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                   <div className="bg-gradient-to-br from-amber-50 to-amber-100 dark:from-slate-800 dark:to-slate-800 rounded-3xl p-8 shadow-sm border border-amber-200 dark:border-slate-700 flex flex-col justify-center items-center relative overflow-hidden group text-center">
+                        <div className="absolute -right-12 -top-12 w-40 h-40 rounded-full opacity-20 group-hover:opacity-30 transition-opacity pointer-events-none bg-amber-400"></div>
+                        <h4 className="font-bold text-amber-800 dark:text-amber-400 mb-2 relative z-10 text-lg">คะแนนเฉลี่ย</h4>
+                        <div className="text-6xl font-black text-amber-600 dark:text-amber-500 relative z-10 flex items-end justify-center mb-4">
+                            {feedbackStats.avg} <span className="text-xl font-bold text-amber-800/50 dark:text-amber-600/50 ml-1 mb-1">/ 5</span>
+                        </div>
+                        <div className="flex justify-center gap-1 mb-2 relative z-10 text-2xl">
+                           {[1, 2, 3, 4, 5].map((star) => (
+                               <i key={star} className={`fa-solid fa-star ${Number(feedbackStats.avg) >= star ? 'text-amber-500' : Number(feedbackStats.avg) >= star - 0.5 ? 'fa-star-half-stroke text-amber-500' : 'text-amber-200 dark:text-slate-600'}`}></i>
+                           ))}
+                        </div>
+                        <p className="text-amber-700 dark:text-amber-200/50 relative z-10 text-sm mt-2">จากผู้ประเมินทั้งหมด {feedbackStats.total} คน</p>
+                   </div>
+                   
+                   <div className="bg-white dark:bg-slate-800 rounded-3xl p-6 shadow-sm border border-slate-100 dark:border-slate-700 flex flex-col justify-center">
+                        <h4 className="font-bold text-slate-800 dark:text-white mb-6">การกระจายตัวของคะแนน</h4>
+                        <div className="space-y-4">
+                            {feedbackStats.distribution.map((item) => (
+                                <div key={item.rating} className="flex items-center gap-4">
+                                    <div className="flex items-center gap-1 w-16 shrink-0 justify-end text-sm font-bold text-slate-600 dark:text-slate-300">
+                                        {item.rating} <i className="fa-solid fa-star text-amber-400 text-xs"></i>
+                                    </div>
+                                    <div className="flex-1 shrink-0 h-4 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden flex items-center">
+                                        <div 
+                                            className="h-full bg-amber-400 dark:bg-amber-500 rounded-full transition-all duration-1000 ease-out" 
+                                            style={{ width: `${item.percentage}%` }}
+                                        ></div>
+                                    </div>
+                                    <div className="w-12 shrink-0 text-right text-xs font-bold text-slate-500">
+                                        {item.count} คน
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                   </div>
+               </div>
+           </section>
+
+           {/* SECTION 6: SNAPSHOT TABLE (Refined Context) */}
            <section>
                 <SectionHeader title="รายการล่าสุด" subtitle="Recent Activity Snapshot" icon="fa-table-list" />
                 <div className="bg-white dark:bg-slate-800 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-700 overflow-hidden">

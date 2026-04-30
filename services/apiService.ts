@@ -1,13 +1,14 @@
 
 import { AppSettings, Submission, UserProfile, NewsItem, UserRole, VisitorStats, ReviewerScore } from '../types';
 import { supabase } from '../lib/supabaseClient';
-import { PR_NEWS } from '../constants';
+import { PR_NEWS, BRANCHES, WORK_TYPES } from '../constants';
 
 // --- Helper Types for DB Mapping ---
 const mapSubmissionFromDB = (data: any): Submission => ({
     id: data.id,
     userId: data.user_id,
     reviewerId: data.reviewer_id, 
+    reviewerIds: data.reviewer_ids || [],
     budgetYear: data.budget_year,
     firstName: data.first_name,
     lastName: data.last_name,
@@ -394,6 +395,7 @@ export async function apiCreateSubmission(settings: AppSettings, payload: Submis
     const dbPayload = {
         user_id: payload.userId, 
         reviewer_id: payload.reviewerId || null,
+        reviewer_ids: payload.reviewerIds || [],
         budget_year: payload.budgetYear, 
         first_name: payload.firstName, 
         last_name: payload.lastName,
@@ -413,13 +415,27 @@ export async function apiCreateSubmission(settings: AppSettings, payload: Submis
     const { data, error } = await supabase.from('submissions').insert([dbPayload]).select().single();
     if (error) throw new Error(error.message);
     
-    // Send Telegram Notification
-    notifyTelegram(
-        `📝 <b>มีการส่งผลงานขิ้นใหม่!</b>\n\n<b>เรื่อง:</b> ${payload.fileName}\n<b>โดย:</b> ${payload.firstName} ${payload.lastName}\n<b>หน่วยงาน:</b> ${payload.organization}`,
-        `${window.location.origin}/dashboard`
-    );
+    const newSubData = mapSubmissionFromDB(data);
 
-    return mapSubmissionFromDB(data);
+    // Send Telegram Notification
+    try {
+        const branchName = BRANCHES.find((b: any) => b.id.toString() === newSubData.branchId?.toString())?.label || newSubData.branchId || '-';
+        const workTypeName = WORK_TYPES.find((w: any) => w.id === newSubData.workType)?.label || newSubData.workType || '-';
+        notifyTelegram(
+            `📝 <b>มีการส่งผลงานชิ้นใหม่!</b>\n\n` +
+            `🏷️ <b>ประเภทผลงาน:</b> ${workTypeName}\n` +
+            `📂 <b>สาขา:</b> ${branchName}\n` +
+            `📌 <b>เรื่อง:</b> ${newSubData.fileName || '-'}\n` +
+            `👤 <b>โดย:</b> ${newSubData.firstName} ${newSubData.lastName}\n` +
+            `📞 <b>เบอร์โทร:</b> ${newSubData.phone || '-'}\n` +
+            `🏢 <b>หน่วยงาน:</b> ${newSubData.organization}`,
+            `https://moph.link/stnvichakarn69`
+        );
+    } catch(e) {
+        console.error('Error sending telegram notify', e);
+    }
+
+    return newSubData;
 }
 
 export async function apiUpdateSubmission(settings: AppSettings, id: string, patch: Partial<Submission>): Promise<Submission> {
@@ -427,6 +443,7 @@ export async function apiUpdateSubmission(settings: AppSettings, id: string, pat
     if (patch.status) dbPatch.status = patch.status;
     if (patch.audit) dbPatch.audit = patch.audit;
     if (patch.reviewerId !== undefined) dbPatch.reviewer_id = patch.reviewerId;
+    if (patch.reviewerIds !== undefined) dbPatch.reviewer_ids = patch.reviewerIds;
     if (patch.firstName) dbPatch.first_name = patch.firstName;
     if (patch.lastName) dbPatch.last_name = patch.lastName;
     if (patch.position) dbPatch.position = patch.position;
@@ -443,20 +460,31 @@ export async function apiUpdateSubmission(settings: AppSettings, id: string, pat
     const { data, error } = await supabase.from('submissions').update(dbPatch).eq('id', id).select().single();
     if (error) throw new Error(error.message);
     
+    const updatedSub = mapSubmissionFromDB(data);
+
     // Telegram Notification if status changed
     if (patch.status) {
         let statusEmoji = '🔄';
-        if (patch.status === 'accepted') statusEmoji = '🎉';
-        if (patch.status === 'rejected') statusEmoji = '❌';
-        if (patch.status === 'revision_requested') statusEmoji = '⚠️';
+        let statusWord: string = patch.status;
+        if (patch.status === 'accepted') { statusEmoji = '✅'; statusWord = 'ยืนยันเอกสารครบถ้วน'; }
+        if (patch.status === 'rejected') { statusEmoji = '❌'; statusWord = 'ปฏิเสธ/ตีตก';}
+        if (patch.status === 'revision_requested') { statusEmoji = '⚠️'; statusWord = 'ปลดล็อคให้แก้ไขข้อมูล'; }
+        if (patch.status === 'scored') { statusEmoji = '🌟'; statusWord = 'ให้คะแนนประเมินแล้ว'; }
+        if (patch.status === 'reviewed') { statusEmoji = '🔍'; statusWord = 'กำลังตรวจสอบ (รับเรื่อง)'; }
         
+        const branchName = BRANCHES.find((b: any) => b.id.toString() === updatedSub.branchId?.toString())?.label || updatedSub.branchId || '-';
         notifyTelegram(
-            `${statusEmoji} <b>อัปเดตสถานะผลงาน</b>\n\n<b>สถานะใหม่:</b> ${patch.status}`,
-            `${window.location.origin}/dashboard`
+            `${statusEmoji} <b>อัปเดตสถานะผลงาน</b>\n\n` +
+            `📌 <b>เรื่อง:</b> ${updatedSub.fileName || '-'}\n` +
+            `📂 <b>สาขา:</b> ${branchName}\n` +
+            `👤 <b>ผู้ส่ง:</b> ${updatedSub.firstName} ${updatedSub.lastName}\n` +
+            `🏢 <b>หน่วยงาน:</b> ${updatedSub.organization}\n` +
+            `🔔 <b>สถานะใหม่:</b> ${statusWord}`,
+            `https://moph.link/stnvichakarn69`
         );
     }
 
-    return mapSubmissionFromDB(data);
+    return updatedSub;
 }
 
 // --- Reviewer Scoring API ---
@@ -492,6 +520,33 @@ export async function apiGetScoresByReviewer(reviewerId: string): Promise<Review
     const { data, error } = await supabase.from('submission_scores').select('*').eq('reviewer_id', reviewerId);
     if (error) return [];
     return data.map(mapReviewerScoreFromDB);
+}
+
+export async function apiSubmitFeedback(userId: string, rating: number, ratingEase: number, ratingDesign: number, ratingContent: number, comment: string): Promise<void> {
+    const { error } = await supabase.from('app_feedbacks').insert([{
+        user_id: userId,
+        rating,
+        rating_ease: ratingEase,
+        rating_design: ratingDesign,
+        rating_content: ratingContent,
+        comment
+    }]);
+    if (error) throw new Error(error.message);
+}
+
+export async function apiGetFeedbacks(): Promise<import('../types').AppFeedback[]> {
+    const { data, error } = await supabase.from('app_feedbacks').select('*').order('created_at', { ascending: false });
+    if (error) return [];
+    return data.map(db => ({
+        id: db.id,
+        userId: db.user_id,
+        rating: db.rating,
+        ratingEase: db.rating_ease,
+        ratingDesign: db.rating_design,
+        ratingContent: db.rating_content,
+        comment: db.comment,
+        createdAt: db.created_at
+    }));
 }
 
 export async function apiSaveReviewerScore(payload: Omit<ReviewerScore, 'id' | 'createdAt'>): Promise<ReviewerScore> {
