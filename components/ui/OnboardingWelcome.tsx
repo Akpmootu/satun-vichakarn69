@@ -12,7 +12,7 @@ const OnboardingWelcome: React.FC<OnboardingWelcomeProps> = ({ currentUser, bann
 
     useEffect(() => {
         if (currentUser) {
-            const hasSeen = localStorage.getItem(`hasSeenOnboarding_${currentUser.id}`);
+            const hasSeen = sessionStorage.getItem(`hasSeenOnboarding_${currentUser.id}`);
             if (!hasSeen) {
                 setIsOpen(true);
             }
@@ -23,7 +23,7 @@ const OnboardingWelcome: React.FC<OnboardingWelcomeProps> = ({ currentUser, bann
 
     const handleClose = () => {
         setIsOpen(false);
-        localStorage.setItem(`hasSeenOnboarding_${currentUser.id}`, 'true');
+        sessionStorage.setItem(`hasSeenOnboarding_${currentUser.id}`, 'true');
         if (onWelcomeClose) {
             onWelcomeClose();
         }

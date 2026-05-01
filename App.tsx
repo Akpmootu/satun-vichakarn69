@@ -201,7 +201,7 @@ export default function App() {
     // Check if onboarding needs to be shown for the logged-in user
     let willShowOnboarding = false;
     if (currentUser) {
-        const hasSeenOnb = localStorage.getItem(`hasSeenOnboarding_${currentUser.id}`);
+        const hasSeenOnb = sessionStorage.getItem(`hasSeenOnboarding_${currentUser.id}`);
         if (!hasSeenOnb) willShowOnboarding = true;
     }
     
@@ -965,7 +965,7 @@ export default function App() {
               <div className="border-t border-slate-800 pt-8 flex flex-col md:flex-row justify-between items-center gap-4 text-xs font-medium text-slate-500">
                   <div className="flex items-center gap-2">
                        <i className="fa-solid fa-code text-sky-500"></i>
-                       <span>พัฒนาโดย IT SSJ Satun 2569 | <a href="#" onClick={(e) => {e.preventDefault(); Swal.fire({title: 'รายละเอียดอัปเดต v1.3.9', html: '<ul class="text-left space-y-2 text-sm"><li>📰 <b>Welcome Modal:</b> หน้า Welcome สามารถปรับเปลี่ยนรูปแบนเนอร์ได้จากแอดมิน (v1.3.9)</li><li>📰 <b>News Sequence:</b> จัดลำดับให้กล่องข้อความข่าวสารแสดงหลังจากการปิด Welcome modal (v1.3.9)</li><li>📊 <b>Dashboard:</b> ปรับปรุงแดชบอร์ดความพึงพอใจ ดึงข้อมูลจากฐานข้อมูล แสดงค่าเฉลี่ยและการให้คะแนนแบบเรียลไทม์ (v1.3.8)</li><li>🎨 <b>Loading UI:</b> เพิ่มคำคมสร้างแรงบันดาลใจขณะรอโหลด และเปลี่ยนชื่อระบบเป็นรูปแบบเต็ม (v1.3.8)</li></ul>', icon: 'info', confirmButtonColor: '#0ea5e9'}); }}>v1.3.9</a></span>
+                       <span>พัฒนาโดย IT SSJ Satun 2569 | <a href="#" onClick={(e) => {e.preventDefault(); Swal.fire({title: 'รายละเอียดอัปเดต v1.3.10', html: '<ul class="text-left space-y-2 text-sm"><li>📰 <b>Welcome Modal:</b> หน้า Welcome สามารถปรับเปลี่ยนรูปแบนเนอร์ได้จากแอดมิน (v1.3.9)</li><li>📰 <b>News Sequence:</b> จัดลำดับให้กล่องข้อความข่าวสารแสดงหลังจากการปิด Welcome modal (v1.3.9)</li><li>🐛 <b>Bug Fix:</b> แก้ไขโลโก้ไม่แสดงในหน้า Loading เริ่มต้น (v1.3.10)</li></ul>', icon: 'info', confirmButtonColor: '#0ea5e9'}); }}>v1.3.10</a></span>
                   </div>
                   <div className="flex gap-6">
                       <button onClick={() => setShowPrivacyPolicy(true)} className="hover:text-slate-300 transition">นโยบายความเป็นส่วนตัว</button>
