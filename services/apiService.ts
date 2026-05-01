@@ -375,12 +375,13 @@ export async function apiCheckTitleUnique(title: string, excludeSubmissionId?: s
     return count === 0;
 }
 
-async function notifyTelegram(message: string, url?: string) {
+async function notifyTelegram(message: string, buttons?: {text: string, url: string}[]) {
     try {
         const payload: any = { text: message };
-        if (url) {
+        if (buttons && buttons.length > 0) {
             payload.reply_markup = {
-                inline_keyboard: [[{ text: "👉 ไปยังระบบหลังบ้าน", url: url }]]
+                // To display buttons vertically, we map them as array of arrays
+                inline_keyboard: buttons.map(b => [{ text: b.text, url: b.url }])
             };
         }
         const res = await fetch('/api/notify-telegram', {
@@ -440,14 +441,18 @@ export async function apiCreateSubmission(settings: AppSettings, payload: Submis
         }
 
         notifyTelegram(
-            `<b>มีการลงทะเบียนส่งผลงาน</b>\n` +
-            `<b>ชื่อเรื่องผลงาน:</b> ${newSubData.fileName || '-'}\n` +
-            `<b>เบอร์โทรศัพท์ ของผู้ส่งผลงาน:</b> ${newSubData.phone || '-'}\n` +
-            `<b>หน่วยงาน/สังกัด ของผู้ส่งผลงาน:</b> ${newSubData.organization || '-'}\n` +
-            `<b>ตำแหน่ง ของผู้ส่งผลงาน:</b> ${newSubData.position || '-'}${userLevel}\n` +
-            `<b>ประเภท ของการส่งเข้าประกวด:</b> ${workTypeName}\n` +
-            `<b>สาขา ที่ส่งเข้าประกวด:</b> ${branchName}`,
-            `https://moph.link/stnvichakarn69`
+            `🛎 <b>มีการลงทะเบียนส่งผลงานใหม่เข้าสู่ระบบ!</b>\n` +
+            `🔹 <b>เรื่อง:</b> ${newSubData.fileName || '-'}\n` +
+            `👤 <b>ผู้ส่งผลงาน:</b> ${newSubData.firstName} ${newSubData.lastName}\n` +
+            `💼 <b>ตำแหน่ง:</b> ${newSubData.position || '-'}${userLevel}\n` +
+            `📞 <b>เบอร์โทรศัพท์:</b> ${newSubData.phone || '-'}\n` +
+            `🏢 <b>หน่วยงาน/สังกัด:</b> ${newSubData.organization || '-'}\n` +
+            `🏷️ <b>ประเภทผลงาน:</b> ${workTypeName}\n` +
+            `📂 <b>สาขาการประกวด:</b> ${branchName}`,
+            [
+                ...(newSubData.fileUrl ? [{ text: "🔗 ลิงก์ผลงานที่แนบ", url: newSubData.fileUrl }] : []),
+                { text: "👉 ไปยังระบบหลังบ้าน", url: "https://moph.link/stnvichakarn69" }
+            ]
         );
     } catch(e) {
         console.error('Error sending telegram notify', e);
@@ -503,7 +508,7 @@ export async function apiUpdateSubmission(settings: AppSettings, id: string, pat
             `📂 <b>สาขาการประกวด:</b> ${branchName}\n` +
             `📎 <b>ไฟล์แนบผลงาน:</b> ${filePayload}\n` +
             `🔔 <b>สถานะใหม่:</b> ${statusWord}`,
-            `https://moph.link/stnvichakarn69`
+            [{ text: "👉 ไปยังระบบหลังบ้าน", url: "https://moph.link/stnvichakarn69" }]
         );
     }
 

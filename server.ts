@@ -142,9 +142,17 @@ async function startServer() {
       const { data, error } = await supabaseAdmin.from('submissions').select('*').gte('created_at', startOfDay).lte('created_at', endOfDay);
       if (error || !data) return;
 
+      // Get cumulative submissions
+      const { data: allData, error: allError } = await supabaseAdmin.from('submissions').select('*');
+      if (allError || !allData) return;
+
+      const totalSubmissions = allData.length;
+      const uniqueTypes = new Set(allData.map(s => s.work_type).filter(Boolean)).size;
+      const uniqueBranches = new Set(allData.map(s => s.branch_id).filter(Boolean)).size;
+
       const newUsersCount = data.length;
       if (newUsersCount === 0) {
-          await sendTelegramDirectly(`📊 <b>สรุปรายงานประจำวันที่ ${todayString}</b>\n\nยังไม่มีผู้ส่งผลงานใหม่ในวันนี้`);
+          await sendTelegramDirectly(`📊 <b>สรุปรายงานประจำวันที่ ${todayString}</b>\n\nยังไม่มีผู้ส่งผลงานใหม่ในวันนี้\n\n<b>สรุปยอดสะสมในระบบ:</b>\n- จำนวนผลงานทั้งหมด: ${totalSubmissions} ผลงาน\n- หมวดหมู่ประเภท: ${uniqueTypes} ประเภท\n- สาขาการประกวด: ${uniqueBranches} สาขา`);
           return;
       }
 
@@ -186,7 +194,11 @@ async function startServer() {
       const msg = `📊 <b>สรุปรายงานผู้ส่งผลงานประจำวันที่ ${todayString}</b>\n\n` +
                   `👥 <b>ผู้ส่งผลงานใหม่วันนี้:</b> ${newUsersCount} ราย\n\n` +
                   `🏷️ <b>แยกตามประเภทผลงาน:</b>\n${typeMsg}\n` +
-                  `📂 <b>แยกตามสาขาการประกวด:</b>\n${branchMsg}`;
+                  `📂 <b>แยกตามสาขาการประกวด:</b>\n${branchMsg}\n` +
+                  `📈 <b>สรุปยอดสะสมในระบบ:</b>\n` +
+                  `- ผลงานทั้งหมด: ${totalSubmissions} ผลงาน\n` +
+                  `- ครอบคลุมประเภท: ${uniqueTypes} ประเภท\n` +
+                  `- ครอบคลุมสาขา: ${uniqueBranches} สาขา`;
       
       await sendTelegramDirectly(msg);
     } catch (error) {

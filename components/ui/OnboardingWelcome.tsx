@@ -69,7 +69,7 @@ const OnboardingWelcome: React.FC<OnboardingWelcomeProps> = ({ currentUser, bann
                         ยินดีต้อนรับ, คุณ{currentUser.firstName} <i className="fa-solid fa-face-smile text-amber-500"></i>
                     </h3>
                     <p className="text-slate-500 dark:text-slate-400 text-sm mb-8 leading-relaxed">
-                        ขอบคุณสำหรับการเข้าสู่ระบบครั้งแรก เราได้ออกแบบและพัฒนาระบบนี้ขึ้นเพื่อเป็นศูนย์กลางการขับเคลื่อนความรู้ของบุคลากรทางสาธารณสุข
+                        ขอบคุณสำหรับการเข้าสู่ระบบ เราได้ออกแบบและพัฒนาระบบนี้ขึ้นเพื่อเป็นศูนย์กลางการขับเคลื่อนความรู้ของบุคลากรทางสาธารณสุข จังหวัดสตูล
                     </p>
 
                     <div className="space-y-6 mb-10">
