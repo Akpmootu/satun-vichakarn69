@@ -113,33 +113,71 @@
 </head>
   <body>
     <!-- Splash Screen -->
-    <div id="splash-screen" style="position: fixed; inset: 0; background-color: #f8fafc; z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: opacity 0.5s ease-out;">
-        <div style="background-color: #e0f2fe; width: 80px; height: 80px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-bottom: 20px; animation: pulse 2s infinite;">
-            <i class="fa-solid fa-graduation-cap" style="font-size: 40px; color: #0ea5e9;"></i>
+    <div id="splash-screen" style="position: fixed; inset: 0; background-color: #0f172a; z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: opacity 0.5s ease-out; overflow: hidden;">
+        
+        <!-- Animated Background Gradient Rings -->
+        <div style="position: absolute; width: 600px; height: 600px; background: radial-gradient(circle, rgba(14,165,233,0.1) 0%, rgba(15,23,42,0) 70%); top: 50%; left: 50%; transform: translate(-50%, -50%); animation: pulse-ring 4s cubic-bezier(0.4, 0, 0.6, 1) infinite;"></div>
+        <div style="position: absolute; width: 400px; height: 400px; background: radial-gradient(circle, rgba(14,165,233,0.15) 0%, rgba(15,23,42,0) 70%); top: 50%; left: 50%; transform: translate(-50%, -50%); animation: pulse-ring 4s cubic-bezier(0.4, 0, 0.6, 1) infinite; animation-delay: 1s;"></div>
+        
+        <div style="position: relative; z-index: 10; display: flex; flex-direction: column; align-items: center;">
+            <img src="/logo.png" alt="Logo" style="width: 120px; height: 120px; object-fit: contain; margin-bottom: 30px; animation: glow 2s ease-in-out infinite alternate; filter: drop-shadow(0 0 20px rgba(14,165,233,0.5));" />
+            
+            <h1 style="font-family: 'Kanit', sans-serif; font-size: 24px; font-weight: 700; color: #f8fafc; margin-bottom: 4px; text-align: center; letter-spacing: 0.5px;">มหกรรมแลกเปลี่ยนเรียนรู้ผลงานวิชาการและนวัตกรรม</h1>
+            <h2 style="font-family: 'Kanit', sans-serif; font-size: 20px; font-weight: 500; color: #bae6fd; margin-bottom: 4px; text-align: center;">จังหวัดสตูล</h2>
+            <h3 style="font-family: 'Kanit', sans-serif; font-size: 16px; font-weight: 400; color: #94a3b8; margin-bottom: 40px; text-align: center;">ประจำปีงบประมาณ พ.ศ. 2569</h3>
+            
+            <div style="width: 240px; text-align: center;">
+                <div style="font-family: 'Kanit', sans-serif; font-size: 13px; color: #7dd3fc; margin-bottom: 8px; font-weight: 300; letter-spacing: 1px;">กำลังเตรียมระบบ... </div>
+                <div style="height: 6px; width: 100%; background-color: #1e293b; border-radius: 9999px; overflow: hidden; box-shadow: inset 0 1px 3px rgba(0,0,0,0.5);">
+                    <div id="loading-bar" style="height: 100%; width: 0%; box-shadow: 0 0 10px rgba(14,165,233,0.8); background: linear-gradient(90deg, #0284c7, #38bdf8); border-radius: 9999px; transition: width 0.1s ease;"></div>
+                </div>
+            </div>
         </div>
-        <h1 style="font-family: 'Kanit', sans-serif; font-size: 24px; font-weight: 700; color: #0f172a; margin-bottom: 8px;">วิชาการสตูล ๖๙</h1>
-        <div style="font-family: 'Kanit', sans-serif; font-size: 14px; color: #64748b; display: flex; align-items: center; gap: 8px;">
-            <i class="fa-solid fa-circle-notch fa-spin text-sky-500"></i> กำลังโหลดระบบ...
+        
+        <div style="position: absolute; bottom: 30px; left: 0; width: 100%; text-align: center; font-family: 'Kanit', sans-serif; font-size: 12px; color: #64748b; font-weight: 300;">
+            พัฒนาโดย กลุ่มงานสุขภาพดิจิทัล สำนักงานสาธารณสุขจังหวัดสตูล 2569
         </div>
+        
         <style>
-            @keyframes pulse {
-                0%, 100% { transform: scale(1); opacity: 1; }
-                50% { transform: scale(1.1); opacity: 0.8; }
+            @keyframes pulse-ring {
+                0% { transform: translate(-50%, -50%) scale(0.8); opacity: 0.5; }
+                50% { transform: translate(-50%, -50%) scale(1.2); opacity: 0.8; }
+                100% { transform: translate(-50%, -50%) scale(0.8); opacity: 0.5; }
+            }
+            @keyframes glow {
+                from { filter: drop-shadow(0 0 10px rgba(14,165,233,0.3)) scale(0.98); }
+                to { filter: drop-shadow(0 0 25px rgba(14,165,233,0.8)) scale(1.02); }
             }
         </style>
     </div>
 
     <div id="root"></div>
     <script>
+        // Simulate loading progress
+        let pct = 0;
+        const bar = document.getElementById('loading-bar');
+        const interval = setInterval(() => {
+            pct += Math.random() * 15;
+            if (pct >= 100) {
+                pct = 100;
+                clearInterval(interval);
+            }
+            if (bar) bar.style.width = pct + '%';
+        }, 150);
+
         // Remove splash screen after DOM is ready and React mounts
         window.addEventListener('load', () => {
             setTimeout(() => {
-                const splash = document.getElementById('splash-screen');
-                if (splash) {
-                    splash.style.opacity = '0';
-                    setTimeout(() => splash.remove(), 500);
-                }
-            }, 1000); // minimum showing 1s
+                pct = 100;
+                if (bar) bar.style.width = '100%';
+                setTimeout(() => {
+                    const splash = document.getElementById('splash-screen');
+                    if (splash) {
+                        splash.style.opacity = '0';
+                        setTimeout(() => splash.remove(), 500);
+                    }
+                }, 400);
+            }, 1200); // minimum showing time
         });
     </script>
     <script type="module" src="/index.tsx"></script>

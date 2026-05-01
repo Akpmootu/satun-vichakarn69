@@ -20,6 +20,7 @@ import Logo from "./components/ui/Logo";
 import LoadingOverlay from "./components/ui/LoadingOverlay";
 import CookieConsent from "./components/privacy/CookieConsent";
 import PrivacyPolicyModal from "./components/privacy/PrivacyPolicyModal";
+import OnboardingWelcome from "./components/ui/OnboardingWelcome";
 
 // Declare Swal globally
 declare const Swal: any;
@@ -197,7 +198,14 @@ export default function App() {
     const dontShowAgain = localStorage.getItem("svk_dont_show_news");
     const hasSeenSession = sessionStorage.getItem("svk_has_seen_news");
     
-    if (!dontShowAgain && !hasSeenSession && (!currentUser || currentUser.role === 'user')) {
+    // Check if onboarding needs to be shown for the logged-in user
+    let willShowOnboarding = false;
+    if (currentUser) {
+        const hasSeenOnb = localStorage.getItem(`hasSeenOnboarding_${currentUser.id}`);
+        if (!hasSeenOnb) willShowOnboarding = true;
+    }
+    
+    if (!willShowOnboarding && !dontShowAgain && !hasSeenSession && (!currentUser || currentUser.role === 'user')) {
       setTimeout(() => setShowNews(true), 1500); 
     }
   }, [currentUser]);
@@ -430,6 +438,19 @@ export default function App() {
             showToast={showToast} 
           />
       )}
+      
+      {/* Onboarding Welcome */}
+      <OnboardingWelcome 
+        currentUser={currentUser} 
+        bannerUrl={newsList.find(n => n.type === 'welcome_banner')?.imageUrl || undefined}
+        onWelcomeClose={() => {
+            const dontShowAgain = localStorage.getItem("svk_dont_show_news");
+            const hasSeenSession = sessionStorage.getItem("svk_has_seen_news");
+            if (!dontShowAgain && !hasSeenSession && (!currentUser || currentUser.role === 'user')) {
+                setTimeout(() => setShowNews(true), 500); 
+            }
+        }}
+      />
 
       {/* --- Sticky Top Header --- */}
       <header className={`sticky top-0 z-50 transition-all duration-300 ${darkMode ? 'bg-slate-900/90 border-slate-800' : 'bg-white/90 border-slate-200'} border-b backdrop-blur-md`}>
@@ -651,7 +672,20 @@ export default function App() {
 
       {/* --- Main Content Area --- */}
       <main className="flex-grow max-w-7xl w-full mx-auto px-4 mt-8">
-        {/* ... Main Content Logic (No changes needed here) ... */}
+        {/* Back to Home Button */}
+        {activeTab !== 'home' && (
+            <div className="mb-6">
+                <button 
+                   onClick={() => handleTabChange('home')}
+                   className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:text-sky-500 dark:hover:text-sky-400 text-sm font-semibold rounded-xl shadow-[0_1px_2px_rgba(0,0,0,0.05)] border border-slate-200 dark:border-slate-700 transition hover:shadow-md hover:-translate-y-0.5"
+                >
+                   <i className="fa-solid fa-house"></i>
+                   กลับสู่หน้าหลัก
+                </button>
+            </div>
+        )}
+        
+        {/* ... Main Content Logic ... */}
         {isAdmin ? (
             activeTab === 'profile' ? (
                 <ProfileSettings 
@@ -931,7 +965,7 @@ export default function App() {
               <div className="border-t border-slate-800 pt-8 flex flex-col md:flex-row justify-between items-center gap-4 text-xs font-medium text-slate-500">
                   <div className="flex items-center gap-2">
                        <i className="fa-solid fa-code text-sky-500"></i>
-                       <span>พัฒนาโดย IT SSJ Satun 2569 | <a href="#" onClick={(e) => {e.preventDefault(); Swal.fire({title: 'รายละเอียดอัปเดต v1.3.6', html: '<ul class="text-left space-y-2 text-sm"><li>📱 <b>Telegram Alert:</b> แก้ไขการแจ้งเตือนไม่ส่ง ให้ส่งจาก Server ได้สมบูรณ์ขึ้น (v1.3.6)</li><li>🗑️ <b>Admin Tool:</b> แก้ไขฟังก์ชั่นลบข้อมูลผู้ใช้งานให้สามารถลบข้อมูลได้อย่างสมบูรณ์ (v1.3.6)</li><li>✨ <b>Splash Screen:</b> เพิ่มหน้า Splash Screen ตอนเปิดแอป เพิ่มความหรูหราทางการ (v1.3.6)</li><li>🎨 <b>UI Fixed:</b> นำ Tailwind CDN กลับมาตามที่ผู้ใช้ต้องการ (v1.3.6)</li><li>⏱️ <b>Telegram Cron:</b> ระบบส่งรายงานสรุปยอดเข้า Telegram แบบรายวันอัตโนมัติ เวลา 17.00 น. (v1.3.5)</li></ul>', icon: 'info', confirmButtonColor: '#0ea5e9'}); }}>v1.3.6</a></span>
+                       <span>พัฒนาโดย IT SSJ Satun 2569 | <a href="#" onClick={(e) => {e.preventDefault(); Swal.fire({title: 'รายละเอียดอัปเดต v1.3.9', html: '<ul class="text-left space-y-2 text-sm"><li>📰 <b>Welcome Modal:</b> หน้า Welcome สามารถปรับเปลี่ยนรูปแบนเนอร์ได้จากแอดมิน (v1.3.9)</li><li>📰 <b>News Sequence:</b> จัดลำดับให้กล่องข้อความข่าวสารแสดงหลังจากการปิด Welcome modal (v1.3.9)</li><li>📊 <b>Dashboard:</b> ปรับปรุงแดชบอร์ดความพึงพอใจ ดึงข้อมูลจากฐานข้อมูล แสดงค่าเฉลี่ยและการให้คะแนนแบบเรียลไทม์ (v1.3.8)</li><li>🎨 <b>Loading UI:</b> เพิ่มคำคมสร้างแรงบันดาลใจขณะรอโหลด และเปลี่ยนชื่อระบบเป็นรูปแบบเต็ม (v1.3.8)</li></ul>', icon: 'info', confirmButtonColor: '#0ea5e9'}); }}>v1.3.9</a></span>
                   </div>
                   <div className="flex gap-6">
                       <button onClick={() => setShowPrivacyPolicy(true)} className="hover:text-slate-300 transition">นโยบายความเป็นส่วนตัว</button>

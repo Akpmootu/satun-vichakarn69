@@ -114,7 +114,7 @@ export interface NewsItem {
   title: string;
   date: string;
   desc: string;
-  type: 'news' | 'download';
+  type: 'news' | 'download' | 'welcome_banner'; // Added welcome_banner type
   imageUrl?: string;
   fileType?: string;
 }

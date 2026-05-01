@@ -278,6 +278,10 @@ const Dashboard: React.FC<DashboardProps> = ({ submissions, onViewAll }) => {
                       <option value={String(BUDGET_YEAR - 1)}>📅 ปีงบ {BUDGET_YEAR - 1}</option>
                   </select>
 
+           
+
+
+
                   <select 
                     value={filterMonth}
                     onChange={e => setFilterMonth(e.target.value)}
@@ -636,121 +640,6 @@ const Dashboard: React.FC<DashboardProps> = ({ submissions, onViewAll }) => {
                </div>
            </section>
 
-           {/* SECTION 5: FEEDBACK RATING STATS */}
-           <section>
-               <SectionHeader title="ผลการประเมินเว็บไซต์" subtitle="Website Feedback & Satisfaction" icon="fa-star" />
-               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                   <div className="bg-gradient-to-br from-amber-50 to-amber-100 dark:from-slate-800 dark:to-slate-800 rounded-3xl p-8 shadow-sm border border-amber-200 dark:border-slate-700 flex flex-col justify-center items-center relative overflow-hidden group text-center">
-                        <div className="absolute -right-12 -top-12 w-40 h-40 rounded-full opacity-20 group-hover:opacity-30 transition-opacity pointer-events-none bg-amber-400"></div>
-                        <h4 className="font-bold text-amber-800 dark:text-amber-400 mb-2 relative z-10 text-lg">คะแนนเฉลี่ย</h4>
-                        <div className="text-6xl font-black text-amber-600 dark:text-amber-500 relative z-10 flex items-end justify-center mb-4">
-                            {feedbackStats.avg} <span className="text-xl font-bold text-amber-800/50 dark:text-amber-600/50 ml-1 mb-1">/ 5</span>
-                        </div>
-                        <div className="flex justify-center gap-1 mb-2 relative z-10 text-2xl">
-                           {[1, 2, 3, 4, 5].map((star) => (
-                               <i key={star} className={`fa-solid fa-star ${Number(feedbackStats.avg) >= star ? 'text-amber-500' : Number(feedbackStats.avg) >= star - 0.5 ? 'fa-star-half-stroke text-amber-500' : 'text-amber-200 dark:text-slate-600'}`}></i>
-                           ))}
-                        </div>
-                        <p className="text-amber-700 dark:text-amber-200/50 relative z-10 text-sm mt-2">จากผู้ประเมินทั้งหมด {feedbackStats.total} คน</p>
-                   </div>
-
-                   <div className="bg-white dark:bg-slate-800 rounded-3xl p-6 shadow-sm border border-slate-100 dark:border-slate-700 flex flex-col justify-center space-y-4">
-                        <h4 className="font-bold text-slate-800 dark:text-white mb-2">คะแนนแยกรายข้อ</h4>
-                        
-                        <div className="bg-slate-50 dark:bg-slate-900/50 rounded-xl p-3 border border-slate-100 dark:border-slate-700 flex justify-between items-center">
-                            <div>
-                                <div className="text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-1">1. ความง่ายและสะดวกในการใช้งาน</div>
-                                <div className="flex gap-1 text-xs">
-                                    {[1, 2, 3, 4, 5].map((star) => (
-                                        <i key={`ease-${star}`} className={`fa-solid fa-star ${Number(feedbackStats.avgEase) >= star ? 'text-sky-500' : Number(feedbackStats.avgEase) >= star - 0.5 ? 'fa-star-half-stroke text-sky-500' : 'text-slate-200 dark:text-slate-700'}`}></i>
-                                    ))}
-                                </div>
-                            </div>
-                            <div className="text-xl font-black text-sky-600 dark:text-sky-400">{feedbackStats.avgEase}</div>
-                        </div>
-                        
-                        <div className="bg-slate-50 dark:bg-slate-900/50 rounded-xl p-3 border border-slate-100 dark:border-slate-700 flex justify-between items-center">
-                            <div>
-                                <div className="text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-1">2. ความสวยงามและเป็นระเบียบ</div>
-                                <div className="flex gap-1 text-xs">
-                                    {[1, 2, 3, 4, 5].map((star) => (
-                                        <i key={`ds-${star}`} className={`fa-solid fa-star ${Number(feedbackStats.avgDesign) >= star ? 'text-pink-500' : Number(feedbackStats.avgDesign) >= star - 0.5 ? 'fa-star-half-stroke text-pink-500' : 'text-slate-200 dark:text-slate-700'}`}></i>
-                                    ))}
-                                </div>
-                            </div>
-                            <div className="text-xl font-black text-pink-600 dark:text-pink-400">{feedbackStats.avgDesign}</div>
-                        </div>
-                        
-                        <div className="bg-slate-50 dark:bg-slate-900/50 rounded-xl p-3 border border-slate-100 dark:border-slate-700 flex justify-between items-center">
-                            <div>
-                                <div className="text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-1">3. ความครบถ้วนของเนื้อหา</div>
-                                <div className="flex gap-1 text-xs">
-                                    {[1, 2, 3, 4, 5].map((star) => (
-                                        <i key={`ct-${star}`} className={`fa-solid fa-star ${Number(feedbackStats.avgContent) >= star ? 'text-emerald-500' : Number(feedbackStats.avgContent) >= star - 0.5 ? 'fa-star-half-stroke text-emerald-500' : 'text-slate-200 dark:text-slate-700'}`}></i>
-                                    ))}
-                                </div>
-                            </div>
-                            <div className="text-xl font-black text-emerald-600 dark:text-emerald-400">{feedbackStats.avgContent}</div>
-                        </div>
-                   </div>
-                   
-                   <div className="bg-white dark:bg-slate-800 rounded-3xl p-6 shadow-sm border border-slate-100 dark:border-slate-700 flex flex-col justify-center">
-                        <h4 className="font-bold text-slate-800 dark:text-white mb-6">การกระจายตัวของคะแนน</h4>
-                        <div className="space-y-4">
-                            {feedbackStats.distribution.map((item) => (
-                                <div key={item.rating} className="flex items-center gap-4">
-                                    <div className="flex items-center gap-1 w-16 shrink-0 justify-end text-sm font-bold text-slate-600 dark:text-slate-300">
-                                        {item.rating} <i className="fa-solid fa-star text-amber-400 text-xs"></i>
-                                    </div>
-                                    <div className="flex-1 shrink-0 h-4 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden flex items-center">
-                                        <div 
-                                            className="h-full bg-amber-400 dark:bg-amber-500 rounded-full transition-all duration-1000 ease-out" 
-                                            style={{ width: `${item.percentage}%` }}
-                                        ></div>
-                                    </div>
-                                    <div className="w-12 shrink-0 text-right text-xs font-bold text-slate-500">
-                                        {item.count} คน
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                   </div>
-               </div>
-           </section>
-
-           {/* Feedback Comments List */}
-           <section className="mt-6">
-               <div className="bg-white dark:bg-slate-800 rounded-3xl p-6 shadow-sm border border-slate-100 dark:border-slate-700">
-                    <h4 className="font-bold text-slate-800 dark:text-white mb-6">ข้อเสนอแนะล่าสุดจากผู้ใช้งาน</h4>
-                    {feedbacks.filter(f => f.comment).length === 0 ? (
-                        <div className="text-center text-slate-400 py-4 text-sm mt-4 border-t border-slate-100 dark:border-slate-700 pt-8">
-                            ไม่มีข้อเสนอแนะเพิ่มเติม
-                        </div>
-                    ) : (
-                        <div className="space-y-4 max-h-[400px] overflow-y-auto custom-scrollbar pr-2 mt-4">
-                            {feedbacks.filter(f => f.comment).map((f, i) => (
-                                <div key={i} className="bg-slate-50 dark:bg-slate-900/50 p-4 rounded-2xl border border-slate-100 dark:border-slate-700">
-                                    <div className="flex flex-col gap-2 relative">
-                                       <div className="flex gap-4 items-center">
-                                           <div className="text-amber-500 font-bold text-lg">{f.rating} <i className="fa-solid fa-star text-sm"></i></div>
-                                           <div className="flex text-[10px] sm:text-xs gap-3">
-                                                <div className="text-sky-600 dark:text-sky-400 font-bold"><span className="text-slate-500 font-normal">ใช้งานง่าย:</span> {f.ratingEase || f.rating}</div>
-                                                <div className="text-pink-600 dark:text-pink-400 font-bold"><span className="text-slate-500 font-normal">สวยงาม:</span> {f.ratingDesign || f.rating}</div>
-                                                <div className="text-emerald-600 dark:text-emerald-400 font-bold"><span className="text-slate-500 font-normal">เนื้อหา:</span> {f.ratingContent || f.rating}</div>
-                                           </div>
-                                       </div>
-                                       <p className="text-slate-700 dark:text-slate-300 text-sm mt-1 bg-white dark:bg-slate-800 p-3 rounded-xl border border-slate-200 dark:border-slate-700">{f.comment}</p>
-                                       <div className="text-[10px] text-slate-400 mt-1">
-                                           {f.createdAt ? new Date(f.createdAt).toLocaleDateString('th-TH', { year: '2-digit', month: 'short', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : '-'}
-                                       </div>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    )}
-               </div>
-           </section>
-
            {/* SECTION 6: SNAPSHOT TABLE (Refined Context) */}
            <section>
                 <SectionHeader title="รายการล่าสุด" subtitle="Recent Activity Snapshot" icon="fa-table-list" />
@@ -842,6 +731,65 @@ const Dashboard: React.FC<DashboardProps> = ({ submissions, onViewAll }) => {
                         </table>
                     </div>
                 </div>
+           </section>
+
+           {/* SECTION 7: FEEDBACK RATING STATS */}
+           <section>
+               <SectionHeader title="ความพึงพอใจในการใช้งานระบบ" subtitle="Platform Experience & Satisfaction" icon="fa-heart" />
+               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                   <div className="bg-gradient-to-br from-amber-50 to-amber-100 dark:from-slate-800 dark:to-slate-800 rounded-3xl p-8 shadow-sm border border-amber-200 dark:border-slate-700 flex flex-col justify-center items-center relative overflow-hidden group text-center">
+                        <div className="absolute -right-12 -top-12 w-40 h-40 rounded-full opacity-20 group-hover:opacity-30 transition-opacity pointer-events-none bg-amber-400"></div>
+                        <h4 className="font-bold text-amber-800 dark:text-amber-400 mb-2 relative z-10 text-lg">คะแนนเฉลี่ย</h4>
+                        <div className="text-6xl font-black text-amber-600 dark:text-amber-500 relative z-10 flex items-end justify-center mb-4">
+                            {feedbackStats.avg} <span className="text-xl font-bold text-amber-800/50 dark:text-amber-600/50 ml-1 mb-1">/ 5</span>
+                        </div>
+                        <div className="flex justify-center gap-1 mb-2 relative z-10 text-2xl">
+                           {[1, 2, 3, 4, 5].map((star) => (
+                               <i key={star} className={`fa-solid fa-star ${Number(feedbackStats.avg) >= star ? 'text-amber-500' : Number(feedbackStats.avg) >= star - 0.5 ? 'fa-star-half-stroke text-amber-500' : 'text-amber-200 dark:text-slate-600'}`}></i>
+                           ))}
+                        </div>
+                        <p className="text-amber-700 dark:text-amber-200/50 relative z-10 text-sm mt-2">จากผู้ประเมินทั้งหมด {feedbackStats.total} คน</p>
+                   </div>
+                   
+                   <div className="bg-white dark:bg-slate-800 rounded-3xl p-8 shadow-sm border border-slate-100 dark:border-slate-700">
+                       <h4 className="font-bold text-slate-800 dark:text-white mb-6">คะแนนแยกรายข้อ</h4>
+                       <div className="space-y-6">
+                           <div className="bg-slate-50 dark:bg-slate-900/50 p-4 rounded-2xl border border-slate-100 dark:border-slate-700 flex justify-between items-center group transition hover:border-amber-200">
+                               <div>
+                                   <div className="text-sm font-bold text-slate-700 dark:text-slate-300 mb-1">1. ความง่ายและสะดวกในการใช้งาน</div>
+                                   <div className="flex text-[10px] text-slate-300 dark:text-slate-600">
+                                       {[1, 2, 3, 4, 5].map((s) => (
+                                           <i key={s} className={`fa-solid fa-star ${s <= Math.round(Number(feedbackStats.avgEase)) ? 'text-amber-400' : ''}`}></i>
+                                       ))}
+                                   </div>
+                               </div>
+                               <div className="text-xl font-black text-sky-600 dark:text-sky-400">{feedbackStats.avgEase}</div>
+                           </div>
+                           <div className="bg-slate-50 dark:bg-slate-900/50 p-4 rounded-2xl border border-slate-100 dark:border-slate-700 flex justify-between items-center group transition hover:border-amber-200">
+                               <div>
+                                   <div className="text-sm font-bold text-slate-700 dark:text-slate-300 mb-1">2. ความสวยงามและเป็นระเบียบ</div>
+                                   <div className="flex text-[10px] text-slate-300 dark:text-slate-600">
+                                       {[1, 2, 3, 4, 5].map((s) => (
+                                           <i key={s} className={`fa-solid fa-star ${s <= Math.round(Number(feedbackStats.avgDesign)) ? 'text-amber-400' : ''}`}></i>
+                                       ))}
+                                   </div>
+                               </div>
+                               <div className="text-xl font-black text-rose-500 dark:text-rose-400">{feedbackStats.avgDesign}</div>
+                           </div>
+                           <div className="bg-slate-50 dark:bg-slate-900/50 p-4 rounded-2xl border border-slate-100 dark:border-slate-700 flex justify-between items-center group transition hover:border-amber-200">
+                               <div>
+                                   <div className="text-sm font-bold text-slate-700 dark:text-slate-300 mb-1">3. ความครบถ้วนของเนื้อหา</div>
+                                   <div className="flex text-[10px] text-slate-300 dark:text-slate-600">
+                                       {[1, 2, 3, 4, 5].map((s) => (
+                                           <i key={s} className={`fa-solid fa-star ${s <= Math.round(Number(feedbackStats.avgContent)) ? 'text-amber-400' : ''}`}></i>
+                                       ))}
+                                   </div>
+                               </div>
+                               <div className="text-xl font-black text-emerald-500 dark:text-emerald-400">{feedbackStats.avgContent}</div>
+                           </div>
+                       </div>
+                   </div>
+               </div>
            </section>
 
        </div>

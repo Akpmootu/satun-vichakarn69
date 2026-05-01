@@ -1089,9 +1089,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ submissions, settings, refreshD
                             <select value={newsForm.type} onChange={e => setNewsForm({...newsForm, type: e.target.value})} className="p-3 rounded-xl border outline-none dark:bg-slate-800 dark:border-slate-600 dark:text-white">
                                 <option value="news">ข่าวประชาสัมพันธ์ (News)</option>
                                 <option value="download">เอกสารดาวน์โหลด (Download)</option>
+                                <option value="welcome_banner">แบนเนอร์หน้าต้อนรับ (Welcome Banner)</option>
                             </select>
                             <input value={newsForm.desc} onChange={e => setNewsForm({...newsForm, desc: e.target.value})} placeholder="รายละเอียดฉบับย่อ" className="md:col-span-2 p-3 rounded-xl border outline-none focus:ring-2 focus:ring-sky-200 dark:bg-slate-800 dark:border-slate-600 dark:text-white" />
-                            {newsForm.type === 'news' && <input value={newsForm.imageUrl} onChange={e => setNewsForm({...newsForm, imageUrl: e.target.value})} placeholder="URL รูปภาพ (Optional)" className="md:col-span-2 p-3 rounded-xl border outline-none dark:bg-slate-800 dark:border-slate-600 dark:text-white" />}
+                            {newsForm.type !== 'download' && <input value={newsForm.imageUrl} onChange={e => setNewsForm({...newsForm, imageUrl: e.target.value})} placeholder="URL รูปภาพ (Optional)" className="md:col-span-2 p-3 rounded-xl border outline-none dark:bg-slate-800 dark:border-slate-600 dark:text-white" />}
                             {newsForm.type === 'download' && <input value={newsForm.fileType} onChange={e => setNewsForm({...newsForm, fileType: e.target.value})} placeholder="ชนิดไฟล์ (PDF, DOCX)" className="p-3 rounded-xl border outline-none dark:bg-slate-800 dark:border-slate-600 dark:text-white" />}
                         </div>
                         <div className="flex justify-end gap-2 mt-4">

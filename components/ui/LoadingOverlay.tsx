@@ -43,26 +43,37 @@ const LoadingOverlay: React.FC<LoadingOverlayProps> = ({ isLoading }) => {
 
           {/* Text Content */}
           <div className="text-center space-y-2">
-             <h1 className="text-4xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-sky-400 via-white to-emerald-400 tracking-tight drop-shadow-sm animate-fade-in">
-                SKMS
+             <h1 className="text-2xl md:text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-sky-400 via-white to-sky-400 tracking-tight drop-shadow-sm animate-fade-in px-4 leading-relaxed pb-1">
+                มหกรรมแลกเปลี่ยนเรียนรู้ผลงานวิชาการและนวัตกรรม
              </h1>
-             <div className="text-sm md:text-base font-medium text-slate-400 tracking-wider uppercase">
-                Satun Knowledge Management Systems
+             <div className="text-sm md:text-base font-medium text-slate-400 tracking-wider">
+                จังหวัดสตูล ประจำปีงบประมาณ พ.ศ. 2569
              </div>
           </div>
 
-          {/* Divider with loading bar animation */}
-          <div className="w-24 h-1 bg-slate-800 rounded-full overflow-hidden relative">
-              <div className="absolute top-0 left-0 h-full w-1/2 bg-gradient-to-r from-sky-500 to-emerald-500 blur-[1px] animate-[translateX_1.5s_ease-in-out_infinite]"></div>
+          {/* Divider with beautiful progress bar style */}
+          <div className="w-48 h-1.5 bg-slate-800 rounded-full overflow-hidden relative shadow-inner">
+              <div className="absolute top-0 left-0 h-full w-1/2 bg-gradient-to-r from-sky-400 via-sky-300 to-sky-400 rounded-full animate-[progress_2s_ease-in-out_infinite]"></div>
           </div>
+          <style>{`
+            @keyframes progress {
+              0% { left: -50%; }
+              100% { left: 100%; }
+            }
+          `}</style>
 
-          {/* Quote */}
-          <div className="max-w-lg px-6">
-              <p className="text-lg md:text-xl text-sky-100 font-light italic leading-relaxed text-center animate-flow-up">
+          {/* Quote Section */}
+          <div className="max-w-md w-full px-8 text-center pt-4">
+              <p className="text-sky-200/80 italic text-sm md:text-base font-light leading-relaxed animate-pulse-slow">
                   "{quote}"
               </p>
           </div>
+          
+       </div>
 
+       {/* Credit */}
+       <div className="absolute bottom-6 left-0 w-full text-center text-xs text-slate-500 opacity-60 font-light tracking-wide px-4">
+           พัฒนาโดย กลุ่มงานสุขภาพดิจิทัล สำนักงานสาธารณสุขจังหวัดสตูล 2569
        </div>
     </div>
   );
