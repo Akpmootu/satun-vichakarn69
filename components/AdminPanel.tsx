@@ -1254,13 +1254,20 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ submissions, settings, refreshD
                                   </div>
                               ) : (
                                   <div className="max-h-48 overflow-y-auto space-y-2 pr-2 custom-scrollbar">
-                                      {reviewerList.map(r => {
-                                          const isChecked = selectedReviewers.includes(r.id);
+                                      {BRANCHES.map(branch => {
+                                          const branchReviewers = reviewerList.filter(r => r.branchId && r.branchId.toString() === branch.id.toString());
+                                          
+                                          // check if all branchReviewers are selected and there is at least one
+                                          const isChecked = branchReviewers.length > 0 && branchReviewers.every(r => selectedReviewers.includes(r.id));
+                                          
+                                          // If this branch has no reviewers in the system, we can still show it but disabled, or hide it. Let's show it disabled.
+                                          if (branchReviewers.length === 0) return null;
+                                          
                                           return (
-                                              <label key={r.id} className={`flex items-center gap-3 p-3 rounded-xl border transition cursor-pointer select-none
+                                              <label key={`branch-${branch.id}`} className={`flex items-start gap-3 p-3 rounded-xl border transition cursor-pointer select-none
                                                   ${isChecked ? 'bg-indigo-50 border-indigo-200 ring-1 ring-indigo-200' : 'bg-white border-slate-200 hover:border-sky-300 dark:bg-slate-800 dark:border-slate-700'}
                                               `}>
-                                                  <div className={`h-6 w-6 rounded flex items-center justify-center transition shrink-0 ${isChecked ? 'bg-indigo-500 text-white' : 'bg-slate-200 text-transparent'}`}>
+                                                  <div className={`mt-0.5 h-6 w-6 rounded flex items-center justify-center transition shrink-0 ${isChecked ? 'bg-indigo-500 text-white' : 'bg-slate-200 text-transparent'}`}>
                                                       <i className="fa-solid fa-check text-sm"></i>
                                                   </div>
                                                   <input 
@@ -1268,16 +1275,23 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ submissions, settings, refreshD
                                                       checked={isChecked} 
                                                       onChange={(e) => {
                                                           if (e.target.checked) {
-                                                              setSelectedReviewers([...selectedReviewers, r.id]);
+                                                              const newSelection = [...selectedReviewers];
+                                                              branchReviewers.forEach(r => {
+                                                                  if (!newSelection.includes(r.id)) newSelection.push(r.id);
+                                                              });
+                                                              setSelectedReviewers(newSelection);
                                                           } else {
-                                                              setSelectedReviewers(selectedReviewers.filter(id => id !== r.id));
+                                                              setSelectedReviewers(selectedReviewers.filter(id => !branchReviewers.some(r => r.id === id)));
                                                           }
                                                       }} 
                                                       className="hidden" 
                                                   />
-                                                  <div>
-                                                      <div className={`font-bold text-sm ${isChecked ? 'text-indigo-800' : 'text-slate-700 dark:text-white'}`}>{r.firstName} {r.lastName}</div>
-                                                      <div className="text-xs text-slate-500">{r.position || 'Reviewer'}</div>
+                                                  <div className="flex-1">
+                                                      <div className={`font-bold text-sm leading-tight mb-1 ${isChecked ? 'text-indigo-800' : 'text-slate-700 dark:text-white'}`}>สาขาที่ {branch.id}: {branch.label}</div>
+                                                      <div className="text-xs text-slate-500">
+                                                          <i className="fa-solid fa-users text-indigo-400 mr-1"></i> 
+                                                          <b>กรรมการ ({branchReviewers.length}):</b> {branchReviewers.map(r => `${r.firstName} ${r.lastName}`).join(', ')}
+                                                      </div>
                                                   </div>
                                               </label>
                                           );
