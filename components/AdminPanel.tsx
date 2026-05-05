@@ -30,7 +30,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ submissions, settings, refreshD
   const [updatingUser, setUpdatingUser] = useState<string | null>(null); // Track specific user update
 
   // Submissions Filter State
-  const [filter, setFilter] = useState({ q: '', branch: 'all', status: 'all' });
+  const [filter, setFilter] = useState({ q: '', type: 'all', date: '', org: '', branch: 'all', status: 'all' });
   const [submissionPage, setSubmissionPage] = useState(1);
   
   // User Filter State
@@ -82,6 +82,13 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ submissions, settings, refreshD
       }
   };
 
+  const [showOrgDropdown, setShowOrgDropdown] = useState(false);
+
+  const uniqueOrgs = useMemo(() => {
+      const orgs = new Set(submissions.map(s => s.organization).filter(Boolean) as string[]);
+      return Array.from(orgs);
+  }, [submissions]);
+
   // --- Filter Logic ---
   const filteredSubmissions = useMemo(() => {
       return submissions.filter(s => {
@@ -89,7 +96,16 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ submissions, settings, refreshD
           const matchQ = searchString.toLowerCase().includes(filter.q.toLowerCase());
           const matchBranch = filter.branch === 'all' || s.branchId.toString() === filter.branch;
           const matchStatus = filter.status === 'all' || s.status === filter.status;
-          return matchQ && matchBranch && matchStatus;
+          const matchType = filter.type === 'all' || s.workType === filter.type;
+          const matchOrg = filter.org === '' || (s.organization && s.organization.toLowerCase().includes(filter.org.toLowerCase()));
+          
+          let matchDate = true;
+          if (filter.date) {
+               const sDate = s.createdAt ? new Date(s.createdAt).toISOString().split('T')[0] : '';
+               matchDate = sDate === filter.date;
+          }
+          
+          return matchQ && matchBranch && matchStatus && matchType && matchOrg && matchDate;
       });
   }, [submissions, filter]);
 
@@ -147,7 +163,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ submissions, settings, refreshD
               audit: [...audit, {
                   at: new Date().toISOString(),
                   action: 'MANUAL_STATUS_UPDATE',
-                  note: `แอดมินเปลี่ยนสถานะเป็น: ${newStatus}`
+                  note: `เปลี่ยนสถานะเป็น: ${newStatus}\nดำเนินการโดย: ${currentUser.firstName} ${currentUser.lastName}`
               }]
           });
           showToast({ type: 'success', title: 'สำเร็จ', message: `เปลี่ยนสถานะเป็น ${newStatus} เรียบร้อยแล้ว` });
@@ -173,7 +189,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ submissions, settings, refreshD
                   audit: [...audit, {
                       at: new Date().toISOString(),
                       action: 'ADMIN_REJECT',
-                      note: `เอกสารไม่ครบถ้วนส่งกลับแก้ไข: ${reworkComment}`
+                      note: `เอกสารไม่ครบถ้วนส่งกลับแก้ไข\nเหตุผล: ${reworkComment}\nดำเนินการโดย: ${currentUser.firstName} ${currentUser.lastName}`
                   }]
               });
               showToast({ type: 'success', title: 'สำเร็จ', message: 'ส่งกลับให้แก้ไขเรียบร้อยแล้ว' });
@@ -208,7 +224,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ submissions, settings, refreshD
               audit: [...audit, { 
                   at: new Date().toISOString(), 
                   action: 'ADMIN_ASSIGN', 
-                  note: `เอกสารครบถ้วน มอบหมายให้: ${reviewerNames}` 
+                  note: `เอกสารครบถ้วน มอบหมายให้: ${reviewerNames}\nดำเนินการโดย: ${currentUser.firstName} ${currentUser.lastName}` 
               }]
           });
 
@@ -244,7 +260,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ submissions, settings, refreshD
                   audit: [...audit, { 
                       at: new Date().toISOString(), 
                       action: 'REVISION_REQUESTED', 
-                      note: `แอดมินปลดล็อคให้แก้ไข: ${result.value || 'ไม่ระบุเหตุผล'}` 
+                      note: `ปลดล็อคให้แก้ไข\nเหตุผล: ${result.value || 'ไม่ระบุเหตุผล'}\nดำเนินการโดย: ${currentUser.firstName} ${currentUser.lastName}` 
                   }]
               });
 
@@ -770,55 +786,112 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ submissions, settings, refreshD
 
         {activeTab === 'submissions' && (
             <div className="bg-white dark:bg-slate-800 rounded-3xl p-6 shadow-sm ring-1 ring-slate-200 dark:ring-slate-700">
-                <div className="flex flex-col md:flex-row gap-4 mb-6">
-                    <div className="flex-1 relative">
-                        <i className="fa-solid fa-magnifying-glass absolute left-4 top-3 text-slate-400"></i>
-                        <input 
-                            placeholder="ค้นหาชื่อ, หน่วยงาน, ชื่อไฟล์..." 
-                            className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 outline-none focus:ring-2 focus:ring-slate-900 dark:text-white"
-                            value={filter.q}
-                            onChange={e => setFilter({...filter, q: e.target.value})}
-                        />
+                <div className="flex flex-col gap-4 mb-6">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 rounded-xl flex items-center overflow-hidden focus-within:ring-2 focus-within:ring-sky-200">
+                            <i className="fa-solid fa-magnifying-glass pl-4 text-slate-400"></i>
+                            <input 
+                                placeholder="ค้นหาชื่อ, ชื่อไฟล์..." 
+                                className="w-full px-3 py-2.5 bg-transparent outline-none dark:text-white"
+                                value={filter.q}
+                                onChange={e => setFilter({...filter, q: e.target.value})}
+                            />
+                        </div>
+                        <div className="relative border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 rounded-xl flex items-center overflow-visible focus-within:ring-2 focus-within:ring-sky-200">
+                            <i className="fa-solid fa-building pl-4 text-slate-400"></i>
+                            <input 
+                                placeholder="ค้นหาหน่วยงาน/สังกัด..." 
+                                className="w-full px-3 py-2.5 bg-transparent outline-none dark:text-white"
+                                value={filter.org}
+                                onChange={e => {
+                                    setFilter({...filter, org: e.target.value});
+                                    setShowOrgDropdown(true);
+                                }}
+                                onFocus={() => setShowOrgDropdown(true)}
+                                onBlur={() => setTimeout(() => setShowOrgDropdown(false), 200)}
+                            />
+                            {showOrgDropdown && (
+                                <div className="absolute top-[110%] left-0 right-0 z-50 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-[0_10px_40px_-10px_rgba(0,0,0,0.1)] dark:shadow-black/40 max-h-48 overflow-y-auto overflow-x-hidden flex flex-col py-1">
+                                    {uniqueOrgs.filter(org => org.toLowerCase().includes(filter.org.toLowerCase())).length > 0 ? 
+                                        uniqueOrgs.filter(org => org.toLowerCase().includes(filter.org.toLowerCase())).map((org, i) => (
+                                            <div 
+                                                key={`org-${i}`} 
+                                                className="px-4 py-2 hover:bg-sky-50 dark:hover:bg-slate-700 cursor-pointer text-sm text-slate-700 dark:text-slate-200"
+                                                onClick={() => {
+                                                    setFilter({...filter, org});
+                                                    setShowOrgDropdown(false);
+                                                }}
+                                            >
+                                                <i className="fa-solid fa-hotel text-sky-400 mr-2 opacity-50"></i> {org}
+                                            </div>
+                                        ))
+                                    : (
+                                        <div className="px-4 py-3 text-sm text-slate-400 italic text-center">ไม่พบหน่วยงานที่ตรงกัน</div>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                        <div className="border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 rounded-xl flex items-center overflow-hidden pr-2 focus-within:ring-2 focus-within:ring-sky-200">
+                            <i className="fa-regular fa-calendar pl-4 text-slate-400"></i>
+                            <input 
+                                type="date"
+                                className="w-full px-3 py-2.5 bg-transparent outline-none dark:text-white"
+                                value={filter.date}
+                                onChange={e => setFilter({...filter, date: e.target.value})}
+                            />
+                        </div>
                     </div>
-                    <select 
-                        className="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 outline-none dark:text-white"
-                        value={filter.branch}
-                        onChange={e => setFilter({...filter, branch: e.target.value})}
-                    >
-                        <option value="all">ทุกสาขา</option>
-                        {BRANCH_GROUPS.map(group => (
-                            <optgroup key={group.label} label={group.label}>
-                                {BRANCHES.filter(b => group.ids.includes(b.id)).map(b => {
-                                    const count = submissions.filter(s => s.branchId === b.id).length;
-                                    return (
-                                        <option key={b.id} value={b.id}>
-                                            สาขาที่ {b.id}: {b.label} ({count} ผลงาน)
-                                        </option>
-                                    );
-                                })}
-                            </optgroup>
-                        ))}
-                    </select>
-                    <select 
-                        className="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 outline-none dark:text-white"
-                        value={filter.status}
-                        onChange={e => setFilter({...filter, status: e.target.value})}
-                    >
-                        <option value="all">ทุกสถานะ</option>
-                        <option value="draft">ฉบับร่าง (Draft)</option>
-                        <option value="submitted">รอตรวจสอบ (Submitted)</option>
-                        <option value="reviewed">กำลังพิจารณา (Under Review)</option>
-                        <option value="scored">ให้คะแนนแล้ว (Scored)</option>
-                        <option value="accepted">ผ่านการคัดเลือก (Accepted)</option>
-                        <option value="revision_requested">ตีกลับแก้ไข (Rework)</option>
-                        <option value="rejected">ไม่ผ่าน (Rejected)</option>
-                    </select>
-                    <button 
-                         onClick={handleExportCSV}
-                         className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl flex items-center justify-center gap-2 transition"
-                    >
-                         <i className="fa-solid fa-file-csv"></i> <span className="hidden xl:inline">Export CSV</span>
-                    </button>
+                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+                        <select 
+                            className="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 outline-none dark:text-white overflow-hidden text-ellipsis whitespace-nowrap min-w-0"
+                            value={filter.type}
+                            onChange={e => setFilter({...filter, type: e.target.value})}
+                        >
+                            <option value="all">ทุกประเภทผลงาน</option>
+                            {WORK_TYPES.map(w => (
+                                <option key={w.id} value={w.id}>{w.label}</option>
+                            ))}
+                        </select>
+                        <select 
+                            className="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 outline-none dark:text-white overflow-hidden text-ellipsis whitespace-nowrap min-w-0"
+                            value={filter.branch}
+                            onChange={e => setFilter({...filter, branch: e.target.value})}
+                        >
+                            <option value="all">ทุกสาขา</option>
+                            {BRANCH_GROUPS.map(group => (
+                                <optgroup key={group.label} label={group.label}>
+                                    {BRANCHES.filter(b => group.ids.includes(b.id)).map(b => {
+                                        const count = submissions.filter(s => s.branchId === b.id).length;
+                                        return (
+                                            <option key={b.id} value={b.id}>
+                                                สาขาที่ {b.id}: {b.label}   👉  มี {count} ผลงาน
+                                            </option>
+                                        );
+                                    })}
+                                </optgroup>
+                            ))}
+                        </select>
+                        <select 
+                            className="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 outline-none dark:text-white overflow-hidden text-ellipsis whitespace-nowrap min-w-0"
+                            value={filter.status}
+                            onChange={e => setFilter({...filter, status: e.target.value})}
+                        >
+                            <option value="all">ทุกสถานะ</option>
+                            <option value="draft">⚪ ฉบับร่าง (Draft)</option>
+                            <option value="submitted">🟡 รอตรวจสอบ (Submitted)</option>
+                            <option value="reviewed">🔵 กำลังพิจารณา (Under Review)</option>
+                            <option value="scored">🟣 ให้คะแนนแล้ว (Scored)</option>
+                            <option value="accepted">🟢 อนุมัติผ่าน (Accepted)</option>
+                            <option value="revision_requested">🔴 ตีกลับแก้ไข (Rework)</option>
+                            <option value="rejected">⚫ ไม่ผ่าน (Rejected)</option>
+                        </select>
+                        <button 
+                             onClick={handleExportCSV}
+                             className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl flex items-center justify-center gap-2 transition whitespace-nowrap"
+                        >
+                             <i className="fa-solid fa-file-csv"></i> <span className="hidden xl:inline">Export CSV</span>
+                        </button>
+                    </div>
                 </div>
 
                 <div className="overflow-x-auto">
@@ -878,13 +951,13 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ submissions, settings, refreshD
                                                 }
                                             `}
                                         >
-                                            <option value="draft">ฉบับร่าง (Draft)</option>
-                                            <option value="submitted">รอตรวจสอบ (Submitted)</option>
-                                            <option value="reviewed">กำลังพิจารณา (Under Review)</option>
-                                            <option value="scored">ให้คะแนนแล้ว (Scored)</option>
-                                            <option value="accepted">ผ่านการคัดเลือก (Accepted)</option>
-                                            <option value="revision_requested">ตีกลับแก้ไข (Rework)</option>
-                                            <option value="rejected">ไม่ผ่าน (Rejected)</option>
+                                            <option value="draft">⚪ ฉบับร่าง (Draft)</option>
+                                            <option value="submitted">🟡 รอตรวจสอบ (Submitted)</option>
+                                            <option value="reviewed">🔵 กำลังพิจารณา (Under Review)</option>
+                                            <option value="scored">🟣 ให้คะแนนแล้ว (Scored)</option>
+                                            <option value="accepted">🟢 ผ่านการคัดเลือก (Accepted)</option>
+                                            <option value="revision_requested">🔴 ตีกลับแก้ไข (Rework)</option>
+                                            <option value="rejected">⚫ ไม่ผ่าน (Rejected)</option>
                                         </select>
                                     </td>
                                     <td className="p-4">
@@ -1267,21 +1340,17 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ submissions, settings, refreshD
                                               <label key={`branch-${branch.id}`} className={`flex items-start gap-3 p-3 rounded-xl border transition cursor-pointer select-none
                                                   ${isChecked ? 'bg-indigo-50 border-indigo-200 ring-1 ring-indigo-200' : 'bg-white border-slate-200 hover:border-sky-300 dark:bg-slate-800 dark:border-slate-700'}
                                               `}>
-                                                  <div className={`mt-0.5 h-6 w-6 rounded flex items-center justify-center transition shrink-0 ${isChecked ? 'bg-indigo-500 text-white' : 'bg-slate-200 text-transparent'}`}>
-                                                      <i className="fa-solid fa-check text-sm"></i>
+                                                  <div className={`mt-0.5 h-6 w-6 rounded-full flex items-center justify-center transition shrink-0 ${isChecked ? 'bg-indigo-500 text-white shadow ring-2 ring-indigo-200 ring-offset-2 dark:ring-offset-slate-900' : 'bg-slate-200 dark:bg-slate-700 text-transparent'}`}>
+                                                      <div className={`h-2 w-2 rounded-full bg-white transition-transform ${isChecked ? 'scale-100' : 'scale-0'}`}></div>
                                                   </div>
                                                   <input 
-                                                      type="checkbox" 
+                                                      type="radio" 
+                                                      name="assignBranch"
                                                       checked={isChecked} 
                                                       onChange={(e) => {
                                                           if (e.target.checked) {
-                                                              const newSelection = [...selectedReviewers];
-                                                              branchReviewers.forEach(r => {
-                                                                  if (!newSelection.includes(r.id)) newSelection.push(r.id);
-                                                              });
+                                                              const newSelection = branchReviewers.map(r => r.id);
                                                               setSelectedReviewers(newSelection);
-                                                          } else {
-                                                              setSelectedReviewers(selectedReviewers.filter(id => !branchReviewers.some(r => r.id === id)));
                                                           }
                                                       }} 
                                                       className="hidden" 
@@ -1298,6 +1367,35 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ submissions, settings, refreshD
                                       })}
                                   </div>
                               )}
+                          </div>
+                          )}
+
+                          {/* 4. Audit Logs (ประวัติการดำเนินการ) */}
+                          {selectedSubmission.audit && selectedSubmission.audit.length > 0 && (
+                          <div className="mb-2 mt-8 border-t border-slate-100 dark:border-slate-800 pt-6">
+                              <h4 className="font-bold text-slate-800 dark:text-white mb-4"><i className="fa-solid fa-clock-rotate-left mr-2 text-indigo-500"></i> ประวัติการดำเนินการ (Audit Logs)</h4>
+                              <div className="space-y-4 max-h-60 overflow-y-auto pr-2 custom-scrollbar relative before:absolute before:inset-0 before:ml-[11px] before:h-full before:w-0.5 before:bg-slate-200 dark:before:bg-slate-700">
+                                  {[...selectedSubmission.audit].reverse().map((log: any, idx: number) => {
+                                      const dObj = new Date(log.at);
+                                      return (
+                                          <div key={idx} className="relative flex items-start gap-4">
+                                              <div className="flex items-center justify-center w-6 h-6 rounded-full border border-white dark:border-slate-800 bg-slate-100 dark:bg-slate-700 shadow-sm shrink-0 z-10 text-[10px]">
+                                                  {log.action === 'ADMIN_ASSIGN' ? <i className="fa-solid fa-user-check text-sky-500"></i> : 
+                                                   log.action.includes('REWORK') ? <i className="fa-solid fa-arrow-rotate-left text-rose-500"></i> :
+                                                   log.action.includes('SUBMIT') ? <i className="fa-solid fa-file-arrow-up text-emerald-500"></i> :
+                                                   <i className="fa-solid fa-pen-to-square text-slate-500"></i>}
+                                              </div>
+                                              <div className="flex-1 p-3 rounded-xl border border-slate-100 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm">
+                                                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-1 gap-1">
+                                                      <span className="font-bold text-slate-800 dark:text-white text-xs">{log.action || 'UPDATE'}</span>
+                                                      <span className="text-[10px] text-slate-400 font-mono">{dObj.toLocaleString('th-TH')}</span>
+                                                  </div>
+                                                  <div className="text-xs text-slate-500 whitespace-pre-wrap">{log.note}</div>
+                                              </div>
+                                          </div>
+                                      );
+                                  })}
+                              </div>
                           </div>
                           )}
                       </div>
