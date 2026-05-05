@@ -401,6 +401,11 @@ async function notifyTelegram(message: string, buttons?: {text: string, url: str
     }
 }
 
+function escapeHtml(unsafe: string | number | null | undefined): string {
+    if (unsafe === null || unsafe === undefined) return '';
+    return String(unsafe).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
 export async function apiCreateSubmission(settings: AppSettings, payload: Submission): Promise<Submission> {
     const dbPayload = {
         user_id: payload.userId, 
@@ -439,18 +444,33 @@ export async function apiCreateSubmission(settings: AppSettings, payload: Submis
                 userLevel = ` ระดับ ${userProfile.level}`;
             }
         }
+        
+        let fileButtons: {text: string, url: string}[] = [];
+        if (newSubData.fileUrl) {
+            try {
+                const arr = JSON.parse(newSubData.fileUrl);
+                fileButtons = arr.filter((a: any) => a.value && a.value.startsWith('http')).map((a: any, i: number) => {
+                    const name = a.name ? (a.name.length > 20 ? a.name.substring(0, 20) + '...' : a.name) : `ลิงก์ ${i+1}`;
+                    return { text: `🔗 ผลงาน: ${name}`, url: a.value };
+                });
+            } catch {
+                if (newSubData.fileUrl.startsWith('http')) {
+                    fileButtons = [{ text: "🔗 ลิงก์ผลงานที่แนบ", url: newSubData.fileUrl }];
+                }
+            }
+        }
 
         notifyTelegram(
             `🛎 <b>มีการลงทะเบียนส่งผลงานใหม่เข้าสู่ระบบ!</b>\n` +
-            `🔹 <b>เรื่อง:</b> ${newSubData.fileName || '-'}\n` +
-            `👤 <b>ผู้ส่งผลงาน:</b> ${newSubData.firstName} ${newSubData.lastName}\n` +
-            `💼 <b>ตำแหน่ง:</b> ${newSubData.position || '-'}${userLevel}\n` +
-            `📞 <b>เบอร์โทรศัพท์:</b> ${newSubData.phone || '-'}\n` +
-            `🏢 <b>หน่วยงาน/สังกัด:</b> ${newSubData.organization || '-'}\n` +
-            `🏷️ <b>ประเภทผลงาน:</b> ${workTypeName}\n` +
-            `📂 <b>สาขาการประกวด:</b> ${branchName}`,
+            `🔹 <b>เรื่อง:</b> ${escapeHtml(newSubData.fileName) || '-'}\n` +
+            `👤 <b>ผู้ส่งผลงาน:</b> ${escapeHtml(newSubData.firstName)} ${escapeHtml(newSubData.lastName)}\n` +
+            `💼 <b>ตำแหน่ง:</b> ${escapeHtml(newSubData.position) || '-'}${userLevel}\n` +
+            `📞 <b>เบอร์โทรศัพท์:</b> ${escapeHtml(newSubData.phone) || '-'}\n` +
+            `🏢 <b>หน่วยงาน/สังกัด:</b> ${escapeHtml(newSubData.organization) || '-'}\n` +
+            `🏷️ <b>ประเภทผลงาน:</b> ${escapeHtml(workTypeName)}\n` +
+            `📂 <b>สาขาการประกวด:</b> ${escapeHtml(branchName)}`,
             [
-                ...(newSubData.fileUrl ? [{ text: "🔗 ลิงก์ผลงานที่แนบ", url: newSubData.fileUrl }] : []),
+                ...fileButtons,
                 { text: "👉 ไปยังระบบหลังบ้าน", url: "https://moph.link/stnvichakarn69" }
             ]
         );
@@ -500,12 +520,12 @@ export async function apiUpdateSubmission(settings: AppSettings, id: string, pat
         const filePayload = updatedSub.fileUrl ? (() => { try { const arr = JSON.parse(updatedSub.fileUrl); return arr.map((a: any) => `<a href="${a.value}">${a.name}</a>`).join(', '); } catch { return updatedSub.fileUrl; } })() : '-';
         notifyTelegram(
             `${statusEmoji} <b>อัปเดตสถานะผลงาน</b>\n\n` +
-            `📌 <b>ชื่อเรื่องผลงาน:</b> ${updatedSub.fileName || '-'}\n` +
-            `📞 <b>เบอร์โทรศัพท์:</b> ${updatedSub.phone || '-'}\n` +
-            `🏢 <b>หน่วยงาน/สังกัด:</b> ${updatedSub.organization || '-'}\n` +
-            `💼 <b>ตำแหน่ง:</b> ${updatedSub.position || '-'}\n` +
-            `🏷️ <b>ประเภทผลงาน:</b> ${workTypeName}\n` +
-            `📂 <b>สาขาการประกวด:</b> ${branchName}\n` +
+            `📌 <b>ชื่อเรื่องผลงาน:</b> ${escapeHtml(updatedSub.fileName) || '-'}\n` +
+            `📞 <b>เบอร์โทรศัพท์:</b> ${escapeHtml(updatedSub.phone) || '-'}\n` +
+            `🏢 <b>หน่วยงาน/สังกัด:</b> ${escapeHtml(updatedSub.organization) || '-'}\n` +
+            `💼 <b>ตำแหน่ง:</b> ${escapeHtml(updatedSub.position) || '-'}\n` +
+            `🏷️ <b>ประเภทผลงาน:</b> ${escapeHtml(workTypeName)}\n` +
+            `📂 <b>สาขาการประกวด:</b> ${escapeHtml(branchName)}\n` +
             `📎 <b>ไฟล์แนบผลงาน:</b> ${filePayload}\n` +
             `🔔 <b>สถานะใหม่:</b> ${statusWord}`,
             [{ text: "👉 ไปยังระบบหลังบ้าน", url: "https://moph.link/stnvichakarn69" }]
