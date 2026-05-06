@@ -395,7 +395,7 @@ export default function App() {
   // --- Navigation Data Logic (Reordered) ---
   const allTabs = [
     { id: "home", label: "หน้าหลัก", icon: "fa-house" },
-    { id: "analytics", label: "วิเคราะห์", icon: "fa-chart-pie" },
+    { id: "analytics", label: "Dashboard", icon: "fa-chart-pie" },
     { id: "register", label: "ลงทะเบียนส่งผลงาน", icon: "fa-pen-to-square" },
     { id: "presentation", label: "ส่งไฟล์นำเสนอ", icon: "fa-file-powerpoint" },
     { id: "history", label: "ประวัติผลงาน", icon: "fa-clock-rotate-left" },
@@ -518,7 +518,7 @@ export default function App() {
           
           {/* 2. Desktop Navigation */}
           {!isAdmin && (
-              <nav className="hidden lg:flex items-center gap-1">
+              <nav className="hidden xl:flex items-center gap-1">
                   {navTabs.map(tab => {
                       const isActive = activeTab === tab.id;
                       if(tab.id === 'settings') return null; // Already filtered but just in case
@@ -527,7 +527,7 @@ export default function App() {
                               key={tab.id}
                               onClick={() => handleTabChange(tab.id)}
                               className={`
-                                  relative px-4 py-2 rounded-xl text-sm font-bold transition-all duration-200 flex items-center gap-2
+                                  relative px-3 2xl:px-4 py-2 rounded-xl text-[13px] 2xl:text-sm font-bold transition-all duration-200 flex items-center gap-2
                                   ${isActive 
                                       ? (darkMode ? 'bg-slate-800 text-sky-400' : 'bg-slate-100 text-sky-600') 
                                       : (darkMode ? 'text-slate-400 hover:text-white hover:bg-slate-800' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50')
@@ -674,7 +674,7 @@ export default function App() {
              {!isAdmin && !isReviewer && (
                  <button
                     onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                    className={`lg:hidden ml-1 h-10 w-10 rounded-xl flex items-center justify-center transition border ${isMobileMenuOpen ? 'bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-600' : 'border-transparent hover:bg-slate-100 dark:hover:bg-slate-800'}`}
+                    className={`xl:hidden ml-1 h-10 w-10 rounded-xl flex items-center justify-center transition border ${isMobileMenuOpen ? 'bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-600' : 'border-transparent hover:bg-slate-100 dark:hover:bg-slate-800'}`}
                  >
                     <i className={`fa-solid ${isMobileMenuOpen ? 'fa-xmark' : 'fa-bars'} text-lg ${darkMode ? 'text-white' : 'text-slate-800'}`}></i>
                  </button>
@@ -683,7 +683,7 @@ export default function App() {
         </div>
 
         {/* --- Mobile Dropdown Menu --- */}
-        <div className={`lg:hidden overflow-hidden transition-all duration-300 ease-in-out ${isMobileMenuOpen ? 'max-h-screen opacity-100 border-t border-slate-100 dark:border-slate-800' : 'max-h-0 opacity-0'}`}>
+        <div className={`xl:hidden overflow-hidden transition-all duration-300 ease-in-out ${isMobileMenuOpen ? 'max-h-screen opacity-100 border-t border-slate-100 dark:border-slate-800' : 'max-h-0 opacity-0'}`}>
             <div className={`p-4 space-y-2 shadow-lg ${darkMode ? 'bg-slate-900' : 'bg-white'}`}>
                 {navTabs.map(tab => (
                     <button
@@ -1027,7 +1027,7 @@ export default function App() {
               <div className="border-t border-slate-800 pt-8 flex flex-col md:flex-row justify-between items-center gap-4 text-xs font-medium text-slate-500">
                   <div className="flex items-center gap-2">
                        <i className="fa-solid fa-code text-sky-500"></i>
-                       <span>พัฒนาโดย กลุ่มงานสุขภาพดิจิทัล สำนักงานสาธารณสุขจังหวัดสตูล 2569 | <a href="#" onClick={(e) => {e.preventDefault(); Swal.fire({title: 'รายละเอียดอัปเดต v1.3.26', html: '<ul class="text-left space-y-2 text-sm"><li>✨ <b>Reviewer UI:</b> ดึงรูปโปรไฟล์และระดับจากฐานข้อมูลมาแสดงในแผงผู้ตรวจ (v1.3.26)</li><li>✨ <b>Reviewer UI:</b> ปรับปรุงขนาดแผงตรวจผลงาน ซ่อนรหัสผลงาน และแสดงโปรไฟล์ผู้นำเสนอ (ชื่อ, ประเภท, สาขา, ตำแหน่ง, สังกัด) (v1.3.25)</li><li>🖼️ <b>Canva Viewer:</b> เพิ่มแท็บเอกเทศสำหรับเปิดเอกสาร Canva โดยไม่พับซ้อน (v1.3.25)</li><li>📝 <b>Reviewer Panel:</b> เพิ่มการแสดงผลสรุปคะแนนส่วนล่างของแบบประเมินก่อนกดยืนยัน (v1.3.24)</li><li>🎨 <b>Presentation Embed:</b> อัปเดตการแสดงผลไฟล์ Canva ที่ไม่สามารถเปิดใน Iframe ได้ให้มีปุ่มกดเปิดลิงก์แทน และรองรับ `canva.link` (v1.3.24)</li></ul>', icon: 'info', confirmButtonColor: '#0ea5e9'}); }}>v1.3.26</a></span>
+                       <span>พัฒนาโดย กลุ่มงานสุขภาพดิจิทัล สำนักงานสาธารณสุขจังหวัดสตูล 2569 | <a href="#" onClick={(e) => {e.preventDefault(); Swal.fire({title: 'รายละเอียดอัปเดต v1.3.29', html: '<ul class="text-left space-y-2 text-sm"><li>✨ <b>System Core:</b> นำรูปแบบ CSS CDN กลับมาใช้งานเพื่อให้การแสดงผลเป็นไปตามรูปแบบเดิมที่สมบูรณ์ (v1.3.29)</li><li>✨ <b>System Core:</b> เปลี่ยนการเรียกใช้ Tailwind CSS จาก CDN เป็น PostCSS เพื่อประสิทธิภาพที่ดียิ่งขึ้นตามมาตรฐาน Production (v1.3.28)</li><li>✨ <b>Presentation Panel:</b> เพิ่ม Iframe สำหรับพรีวิวการแสดงผลไฟล์นำเสนอ, เพิ่มการแสดงเวลาอัปเดตล่าสุด และแสดงสาขาผลงาน (v1.3.27)</li></ul>', icon: 'info', confirmButtonColor: '#0ea5e9'}); }}>v1.3.29</a></span>
                   </div>
                   <div className="flex gap-6">
                       <button onClick={() => setShowPrivacyPolicy(true)} className="hover:text-slate-300 transition">นโยบายความเป็นส่วนตัว</button>

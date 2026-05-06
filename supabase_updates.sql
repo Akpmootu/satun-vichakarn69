@@ -6,6 +6,8 @@ ALTER TABLE profiles ADD COLUMN IF NOT EXISTS is_verified BOOLEAN DEFAULT false;
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS verified_by UUID REFERENCES auth.users(id);
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS verified_at TIMESTAMP WITH TIME ZONE;
 ALTER TABLE submissions ADD COLUMN IF NOT EXISTS author_photo TEXT;
+ALTER TABLE submissions ADD COLUMN IF NOT EXISTS presentation_url TEXT;
+ALTER TABLE submissions ADD COLUMN IF NOT EXISTS audit JSONB DEFAULT '[]'::jsonb;
 
 -- Create Storage Bucket for avatars (and logos) if not exists
 INSERT INTO storage.buckets (id, name, public) 
@@ -17,7 +19,7 @@ CREATE POLICY "Public Access to Avatars"
 ON storage.objects FOR SELECT 
 USING (bucket_id = 'avatars');
 
--- Allow authenticated users to upload to avatars bucket (optional, if you plan to let users upload photos)
+-- Allow authenticated users to upload to avatars bucket
 CREATE POLICY "Authenticated users can upload avatars" 
 ON storage.objects FOR INSERT 
 TO authenticated WITH CHECK (bucket_id = 'avatars');

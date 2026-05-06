@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Submission, AppSettings, UserProfile } from '../types';
 import { apiUpdateSubmission } from '../services/apiService';
+import { BRANCHES } from '../constants';
 import { motion } from 'motion/react';
 import Swal from 'sweetalert2';
 
@@ -52,7 +53,13 @@ const PresentationPanel: React.FC<PresentationPanelProps> = ({ submissions, sett
         if (url) {
             setLoadingMap(prev => ({ ...prev, [submission.id]: true }));
             try {
-                await apiUpdateSubmission(settings, submission.id, { presentationUrl: url });
+                const newAudit = {
+                    at: new Date().toISOString(),
+                    action: 'อัปเดตลิงก์นำเสนอ',
+                    note: `ผู้ส่งผลงานทำการแนบลิงก์: ${url}`
+                };
+                const updatedAudit = [...(submission.audit || []), newAudit];
+                await apiUpdateSubmission(settings, submission.id, { presentationUrl: url, audit: updatedAudit });
                 showToast({ type: 'success', title: 'บันทึกสำเร็จ', message: 'บันทึกลิงก์ไฟล์นำเสนอผลงานเรียบร้อยแล้ว' });
                 refreshData();
             } catch (e: any) {
@@ -111,6 +118,10 @@ const PresentationPanel: React.FC<PresentationPanelProps> = ({ submissions, sett
                                             <i className="fa-solid fa-tag text-sky-500"></i>
                                             {s.workType.toUpperCase()}
                                         </div>
+                                        <div className="flex items-center gap-1.5 text-xs text-slate-500">
+                                            <i className="fa-solid fa-code-branch text-sky-500"></i>
+                                            {BRANCHES.find(b => b.id === s.branchId)?.label || `สาขาที่ ${s.branchId}`}
+                                        </div>
                                         {s.presentationUrl && (
                                             <a 
                                                 href={s.presentationUrl} 
@@ -123,6 +134,14 @@ const PresentationPanel: React.FC<PresentationPanelProps> = ({ submissions, sett
                                             </a>
                                         )}
                                     </div>
+                                    
+                                    {/* Action Logs */}
+                                    {s.audit && s.audit.filter(a => a.action === 'อัปเดตลิงก์นำเสนอ').length > 0 && (
+                                        <div className="mt-3 text-[11px] text-slate-400 font-medium">
+                                            <i className="fa-solid fa-clock-rotate-left mr-1.5"></i>
+                                            อัปเดตล่าสุด: {new Date(s.audit.filter(a => a.action === 'อัปเดตลิงก์นำเสนอ').pop()!.at).toLocaleString('th-TH')}
+                                        </div>
+                                    )}
                                 </div>
 
                                 <div className="shrink-0 flex items-center">
@@ -146,6 +165,32 @@ const PresentationPanel: React.FC<PresentationPanelProps> = ({ submissions, sett
                                     </button>
                                 </div>
                             </div>
+                            
+                            {/* Iframe Preview */}
+                            {s.presentationUrl && (
+                                <div className="mt-6 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden bg-slate-50 dark:bg-slate-900/50">
+                                    <div className="bg-slate-100 dark:bg-slate-800 px-4 py-2 text-xs font-bold text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center">
+                                        <div className="flex items-center gap-2">
+                                            <i className="fa-solid fa-tv"></i> ตัวอย่างการแสดงผล (Preview)
+                                        </div>
+                                        {s.presentationUrl.includes('canva.link') && (
+                                           <span className="text-amber-500"><i className="fa-solid fa-triangle-exclamation"></i> ลิงก์ย่อ canva.link อาจไม่เล่นอัตโนมัติ</span>
+                                        )}
+                                    </div>
+                                    <div className="w-full aspect-video md:h-[400px] md:aspect-auto">
+                                        <iframe 
+                                            src={
+                                                s.presentationUrl.includes('drive.google.com') ? s.presentationUrl.replace(/\/view.*$/, '/preview') :
+                                                s.presentationUrl.includes('canva.com') ? (s.presentationUrl.includes('view') ? s.presentationUrl.replace('/view', '/view?embed') : s.presentationUrl) :
+                                                s.presentationUrl
+                                            }
+                                            className="w-full h-full border-0"
+                                            allow="fullscreen"
+                                            title="Presentation Preview"
+                                        ></iframe>
+                                    </div>
+                                </div>
+                            )}
                         </motion.div>
                     ))}
                 </div>
@@ -164,6 +209,10 @@ const PresentationPanel: React.FC<PresentationPanelProps> = ({ submissions, sett
                     <li className="flex gap-2">
                         <span className="text-sky-500 font-bold">•</span>
                         <span><b>Canva:</b> ใช้ลิงก์ในหมวดหมู่ "ลิงก์แสดงตัวอย่างเพื่ออ่านอย่างเดียว (Public View Link)"</span>
+                    </li>
+                    <li className="flex gap-2">
+                        <span className="text-rose-500 font-bold">•</span>
+                        <span><b>ข้อควรระวัง:</b> หากพรีวิวไม่แสดงผล แสดงว่ากรรมการก็จะไม่สามารถดูไฟล์ได้ กรุณาตรวจสอบการตั้งค่าการแชร์ให้เป็นสาธารณะ และแนะนำให้ส่งเป็นไฟล์นามสกุล .pdf หากเป็นไปได้</span>
                     </li>
                     <li className="flex gap-2">
                         <span className="text-sky-500 font-bold">•</span>
