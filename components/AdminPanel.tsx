@@ -94,7 +94,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ submissions, settings, refreshD
       return submissions.filter(s => {
           const searchString = (s.fileName || '') + s.firstName + s.lastName + (s.organization || '');
           const matchQ = searchString.toLowerCase().includes(filter.q.toLowerCase());
-          const matchBranch = filter.branch === 'all' || s.branchId.toString() === filter.branch;
+          const matchBranch = filter.branch === 'all' || s.branchId?.toString() === filter.branch;
           const matchStatus = filter.status === 'all' || s.status === filter.status;
           const matchType = filter.type === 'all' || s.workType === filter.type;
           const matchOrg = filter.org === '' || (s.organization && s.organization.toLowerCase().includes(filter.org.toLowerCase()));
