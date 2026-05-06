@@ -44,7 +44,7 @@ const LoadingOverlay: React.FC<LoadingOverlayProps> = ({ isLoading }) => {
           {/* Text Content */}
           <div className="text-center space-y-2">
              <h1 className="text-2xl md:text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-sky-400 via-white to-sky-400 tracking-tight drop-shadow-sm animate-fade-in px-4 leading-relaxed pb-1">
-                มหกรรมแลกเปลี่ยนเรียนรู้ผลงานวิชาการและนวัตกรรม
+                มหกรรมแลกเปลี่ยนเรียนรู้<br/>ผลงานวิชาการและนวัตกรรม
              </h1>
              <div className="text-sm md:text-base font-medium text-slate-400 tracking-wider">
                 จังหวัดสตูล ประจำปีงบประมาณ พ.ศ. 2569

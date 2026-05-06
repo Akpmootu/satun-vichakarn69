@@ -145,8 +145,11 @@ export default function App() {
   useEffect(() => {
       // Listen for auth state changes (e.g. invalid refresh token, signed out)
       const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
-          if (event === 'SIGNED_OUT' || (event === 'INITIAL_SESSION' && !session && currentUser)) {
-              logoutUser();
+          if (event === 'SIGNED_OUT') {
+              localStorage.removeItem("svk_supabase_user");
+              setCurrentUser(null);
+          } else if (event === 'INITIAL_SESSION' && !session) {
+              localStorage.removeItem("svk_supabase_user");
               setCurrentUser(null);
           } else if (event === 'TOKEN_REFRESHED' && session) {
               // Note: You can sync the session if needed here
@@ -987,7 +990,7 @@ export default function App() {
               <div className="border-t border-slate-800 pt-8 flex flex-col md:flex-row justify-between items-center gap-4 text-xs font-medium text-slate-500">
                   <div className="flex items-center gap-2">
                        <i className="fa-solid fa-code text-sky-500"></i>
-                       <span>พัฒนาโดย IT SSJ Satun 2569 | <a href="#" onClick={(e) => {e.preventDefault(); Swal.fire({title: 'รายละเอียดอัปเดต v1.3.16', html: '<ul class="text-left space-y-2 text-sm"><li>✅ <b>Reviewer Branches:</b> คณะกรรมการสามารถเลือปรับผิดชอบได้มากกว่า 1 สาขา (v1.3.16)</li><li>🔍 <b>Reviewer Filter:</b> ระบบหน้าจอของคณะกรรมการเพิ่มแถบกรองและค้นหา (v1.3.16)</li><li>🔧 <b>Auto View:</b> ระบบคณะกรรมการจะแสดงผลงานในสาขาที่รับผิดชอบให้ทันทีโดยอัตโนมัติ (v1.3.16)</li><li>🔧 <b>Filter Fix:</b> แก้ไขแถบกรองข้อมูลล้นหน้าจอ (v1.3.15)</li><li>🏢 <b>Org Autocomplete:</b> เพิ่มระบบ Dropdown เสนอชื่อหน่วยงานขณะค้นหา (v1.3.15)</li><li>👤 <b>Audit Logs:</b> เพิ่มชื่อผู้ดำเนินการในประวัติบันทึกการทำงาน (v1.3.15)</li></ul>', icon: 'info', confirmButtonColor: '#0ea5e9'}); }}>v1.3.16</a></span>
+                       <span>พัฒนาโดย IT SSJ Satun 2569 | <a href="#" onClick={(e) => {e.preventDefault(); Swal.fire({title: 'รายละเอียดอัปเดต v1.3.18', html: '<ul class="text-left space-y-2 text-sm"><li>🐛 <b>Bug Fix:</b> แก้ไขปัญหาระบบไม่ตอบสนอง (Page Unresponsive) เมื่อออกจากระบบ (v1.3.18)</li><li>🎨 <b>UI Improvement:</b> ปรับแก้การแสดงผลข้อความหัวเรื่องให้แสดงเป็น 2 บรรทัดเพื่อให้สวยงามขึ้น (v1.3.18)</li><li>🔧 <b>Pagination Style:</b> อัปเดตสไตล์ของระบบแบ่งหน้า (Pagination) ให้เป็นแบบ Track แถบสไลด์สวยงามขึ้น (v1.3.17)</li><li>✅ <b>Reviewer Branches:</b> คณะกรรมการสามารถเลือปรับผิดชอบได้มากกว่า 1 สาขา (v1.3.16)</li><li>🔍 <b>Reviewer Filter:</b> ระบบหน้าจอของคณะกรรมการเพิ่มแถบกรองและค้นหา (v1.3.16)</li><li>🔧 <b>Auto View:</b> ระบบคณะกรรมการจะแสดงผลงานในสาขาที่รับผิดชอบให้ทันทีโดยอัตโนมัติ (v1.3.16)</li><li>🔧 <b>Filter Fix:</b> แก้ไขแถบกรองข้อมูลล้นหน้าจอ (v1.3.15)</li></ul>', icon: 'info', confirmButtonColor: '#0ea5e9'}); }}>v1.3.18</a></span>
                   </div>
                   <div className="flex gap-6">
                       <button onClick={() => setShowPrivacyPolicy(true)} className="hover:text-slate-300 transition">นโยบายความเป็นส่วนตัว</button>
