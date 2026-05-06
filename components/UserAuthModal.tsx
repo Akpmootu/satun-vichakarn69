@@ -25,7 +25,7 @@ const UserAuthModal: React.FC<UserAuthModalProps> = ({ isOpen, onClose, onSucces
   // Register State
   const [regForm, setRegForm] = useState({
     prefix: "", firstName: "", lastName: "", email: "", organization: "", 
-    position: "", positionCustom: "", level: "", branchId: "", committeeRole: ""
+    position: "", positionCustom: "", level: "", branchId: "", committeeRole: "", branchIds: [] as string[]
   });
   
   // Phone Number State (10 Digits)
@@ -58,7 +58,7 @@ const UserAuthModal: React.FC<UserAuthModalProps> = ({ isOpen, onClose, onSucces
   useEffect(() => {
       if (!isOpen) {
           setLoginEmail(""); setLoginPassword("");
-          setRegForm({ prefix: "", firstName: "", lastName: "", email: "", organization: "", position: "", positionCustom: "", level: "", branchId: "", committeeRole: "" });
+          setRegForm({ prefix: "", firstName: "", lastName: "", email: "", organization: "", position: "", positionCustom: "", level: "", branchId: "", committeeRole: "", branchIds: [] as string[] });
           setPhoneDigits(Array(10).fill("")); // Reset phone
           setRegAvatar(null); setRegAvatarPreview(null); // Reset avatar
           setEduForm({ id: 'primary', degree: '', major: '', institution: '', year: '' });
@@ -216,7 +216,7 @@ const UserAuthModal: React.FC<UserAuthModalProps> = ({ isOpen, onClose, onSucces
 
       // 5. Reviewer Validation
       if (mode === 'register_reviewer') {
-          if (!regForm.prefix || !regForm.branchId || !regForm.committeeRole) {
+          if (!regForm.prefix || regForm.branchIds.length === 0 || !regForm.committeeRole) {
               showToast({ type: 'error', title: 'ข้อมูลกรรมการไม่ครบ', message: 'กรุณาระบุคำนำหน้า สาขา และหน้าที่กรรมการ' });
               return;
           }
@@ -241,7 +241,7 @@ const UserAuthModal: React.FC<UserAuthModalProps> = ({ isOpen, onClose, onSucces
               position: finalPosition,
               level: regForm.level,
               educationHistory: mode === 'register_reviewer' ? [] : [eduForm],
-              branchId: mode === 'register_reviewer' ? regForm.branchId : undefined,
+              branchId: mode === 'register_reviewer' ? regForm.branchIds.join(',') : undefined,
               committeeRole: mode === 'register_reviewer' ? regForm.committeeRole : undefined
           };
           
@@ -536,12 +536,7 @@ const UserAuthModal: React.FC<UserAuthModalProps> = ({ isOpen, onClose, onSucces
                             <div className="space-y-3 relative z-10">
                                 <div>
                                     <label className="text-xs font-bold text-slate-700 dark:text-slate-300">สาขาที่รับผิดชอบ <span className="text-rose-500">*</span></label>
-                                    <select 
-                                        value={regForm.branchId}
-                                        onChange={(e) => setRegForm({...regForm, branchId: e.target.value})}
-                                        className="w-full rounded-xl border border-slate-200 dark:border-slate-700 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-200 dark:bg-slate-800 dark:text-white cursor-pointer" 
-                                    >
-                                        <option value="">-- เลือกสาขา --</option>
+                                    <div className="w-full rounded-xl border border-slate-200 dark:border-slate-700 max-h-48 overflow-y-auto bg-white dark:bg-slate-800 p-2 mt-1">
                                         {BRANCH_GROUPS.map((group, idx) => {
                                             const branchesInGroup = group.ids
                                                 .map(id => BRANCHES.find(b => b.id === id))
@@ -550,16 +545,42 @@ const UserAuthModal: React.FC<UserAuthModalProps> = ({ isOpen, onClose, onSucces
                                             if (branchesInGroup.length === 0) return null;
                                             
                                             return (
-                                                <optgroup key={idx} label={group.label} className="font-bold bg-slate-50 dark:bg-slate-900 border-b border-slate-200">
-                                                    {branchesInGroup.map((b: any) => (
-                                                        <option key={b.id} value={b.id.toString()} className="font-normal bg-white dark:bg-slate-800">
-                                                            {String(b.id).padStart(2,'0')} - {b.label}
-                                                        </option>
-                                                    ))}
-                                                </optgroup>
+                                                <div key={idx} className="mb-2">
+                                                    <div className="text-xs font-bold bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 px-2 py-1 sticky top-0 z-10">
+                                                        {group.label}
+                                                    </div>
+                                                    <div className="flex flex-col gap-1 p-1">
+                                                        {branchesInGroup.map((b: any) => {
+                                                            const isChecked = regForm.branchIds.includes(b.id.toString());
+                                                            return (
+                                                                <label key={b.id} className="flex items-start gap-2 p-1.5 hover:bg-slate-50 dark:hover:bg-slate-700/50 rounded cursor-pointer group">
+                                                                    <div className={`mt-0.5 h-4 w-4 rounded flex items-center justify-center transition shrink-0 border ${isChecked ? 'bg-indigo-500 border-indigo-500 text-white' : 'bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-600 text-transparent'}`}>
+                                                                        <i className="fa-solid fa-check text-[10px]"></i>
+                                                                    </div>
+                                                                    <input 
+                                                                        type="checkbox"
+                                                                        className="hidden"
+                                                                        checked={isChecked}
+                                                                        onChange={(e) => {
+                                                                            if (e.target.checked) {
+                                                                                setRegForm({...regForm, branchIds: [...regForm.branchIds, b.id.toString()]});
+                                                                            } else {
+                                                                                setRegForm({...regForm, branchIds: regForm.branchIds.filter(id => id !== b.id.toString())});
+                                                                            }
+                                                                        }}
+                                                                    />
+                                                                    <span className="text-sm text-slate-700 dark:text-slate-300 group-hover:text-slate-900 dark:group-hover:text-white line-clamp-2">
+                                                                        {String(b.id).padStart(2,'0')} - {b.label}
+                                                                    </span>
+                                                                </label>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                </div>
                                             )
                                         })}
-                                    </select>
+                                    </div>
+                                    <div className="text-right mt-1 text-[10px] text-slate-500">เลือกได้มากกว่า 1 สาขา</div>
                                 </div>
                                 <div>
                                     <label className="text-xs font-bold text-slate-700 dark:text-slate-300">หน้าที่กรรมการ <span className="text-rose-500">*</span></label>

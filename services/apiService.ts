@@ -58,7 +58,7 @@ export function getCurrentUser(): UserProfile | null {
 }
 
 export function logoutUser() {
-    supabase.auth.signOut();
+    supabase.auth.signOut().catch(() => {});
     localStorage.removeItem("svk_supabase_user");
 }
 

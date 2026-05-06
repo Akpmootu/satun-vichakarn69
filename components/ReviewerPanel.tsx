@@ -105,15 +105,40 @@ const ReviewerPanel: React.FC<ReviewerPanelProps> = ({ submissions, settings, re
       loadScores();
   }, [submissions]);
 
-  // Only show submissions explicitly assigned to this reviewer, or fallback to branch logic if we want, but explicit assignment is better.
+  const [filter, setFilter] = useState({ search: '', type: 'all', branch: 'all', org: 'all' });
+
+  // Only show submissions explicitly assigned to this reviewer, or within their branches
   const branchSubmissions = useMemo(() => {
-      return submissions.filter(s => {
+      const myBranches = (currentUser.branchId || "").toString().split(',').filter(Boolean);
+      
+      let filtered = submissions.filter(s => {
           const isAssigned = (s.reviewerIds || []).includes(currentUser.id) || s.reviewerId === currentUser.id;
           if (isAssigned) return true;
-          // If no specific assignments exist, maybe it shouldn't show? Let's just strictly show what is assigned to them
-          return isAssigned;
+          // Submissions in their branch
+          if (s.branchId && myBranches.includes(s.branchId.toString())) return true;
+          return false;
       });
-  }, [submissions, currentUser]);
+
+      // Apply Filters
+      if (filter.search.trim() !== '') {
+          const q = filter.search.toLowerCase();
+          filtered = filtered.filter(s => 
+              (s.fileName || '').toLowerCase().includes(q) || 
+              `${s.firstName || ''} ${s.lastName || ''}`.toLowerCase().includes(q)
+          );
+      }
+      if (filter.type !== 'all') {
+          filtered = filtered.filter(s => s.workType === filter.type);
+      }
+      if (filter.branch !== 'all') {
+          filtered = filtered.filter(s => s.branchId?.toString() === filter.branch);
+      }
+      if (filter.org !== 'all') {
+          filtered = filtered.filter(s => s.organization === filter.org);
+      }
+
+      return filtered;
+  }, [submissions, currentUser, filter]);
 
   const [submissionPage, setSubmissionPage] = useState(1);
   const ITEMS_PER_PAGE = 10;
@@ -250,12 +275,53 @@ const ReviewerPanel: React.FC<ReviewerPanelProps> = ({ submissions, settings, re
                 </div>
             </div>
             
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm p-4 flex flex-col md:flex-row gap-3">
+                <div className="relative flex-1">
+                    <i className="fa-solid fa-search absolute left-4 top-3.5 text-slate-400"></i>
+                    <input 
+                        type="text" 
+                        placeholder="พิมพ์ค้นหาชื่อผลงาน, ชื่อผู้ส่ง..."
+                        className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 outline-none focus:bg-white focus:ring-2 focus:ring-sky-200 text-sm dark:text-white transition-all"
+                        value={filter.search}
+                        onChange={e => setFilter({...filter, search: e.target.value})}
+                    />
+                </div>
+                <div className="flex gap-3 overflow-x-auto pb-1 md:pb-0 hide-scrollbar">
+                    <select 
+                        className="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 outline-none dark:text-white text-sm"
+                        value={filter.type}
+                        onChange={e => setFilter({...filter, type: e.target.value})}
+                    >
+                        <option value="all">ทุกประเภท</option>
+                        {WORK_TYPES.map(w => <option key={w.id} value={w.id}>{w.label}</option>)}
+                    </select>
+                    <select 
+                        className="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 outline-none dark:text-white text-sm max-w-[200px] overflow-hidden text-ellipsis"
+                        value={filter.branch}
+                        onChange={e => setFilter({...filter, branch: e.target.value})}
+                    >
+                        <option value="all">ทุกสาขา</option>
+                        {BRANCHES.map(b => <option key={b.id} value={b.id}>{String(b.id).padStart(2,'0')} - {b.label}</option>)}
+                    </select>
+                    <select 
+                        className="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 outline-none dark:text-white text-sm max-w-[200px] overflow-hidden text-ellipsis"
+                        value={filter.org}
+                        onChange={e => setFilter({...filter, org: e.target.value})}
+                    >
+                        <option value="all">ทุกสถานพยาบาล</option>
+                        {Array.from(new Set(submissions.map(s => s.organization).filter(Boolean))).map(org => 
+                            <option key={org} value={org}>{org}</option>
+                        )}
+                    </select>
+                </div>
+            </div>
+
             <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm overflow-hidden">
                 <div className="overflow-x-auto">
                     <table className="w-full text-left text-sm text-slate-600 dark:text-slate-400 border-collapse min-w-[800px]">
                         <thead className="bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
                             <tr>
-                                <th className="px-5 py-4 border-b font-bold tracking-tight">ลำดับการ<br/>นำเสนอ</th>
+                                <th className="px-5 py-4 border-b font-bold tracking-tight text-center">ลำดับการ<br/>นำเสนอ</th>
                                 <th className="px-5 py-4 border-b font-bold tracking-tight">ประเภท</th>
                                 <th className="px-5 py-4 border-b font-bold tracking-tight">รหัส</th>
                                 <th className="px-5 py-4 border-b font-bold tracking-tight">ชื่อผลงาน</th>
@@ -277,8 +343,13 @@ const ReviewerPanel: React.FC<ReviewerPanelProps> = ({ submissions, settings, re
                                 
                                 return (
                                     <tr key={s.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition group">
-                                        <td className="px-5 py-4">{((submissionPage - 1) * ITEMS_PER_PAGE + idx + 1).toString().padStart(2, '0')}</td>
-                                        <td className="px-5 py-4 font-medium text-slate-700 dark:text-slate-200">{workTypeName}</td>
+                                        <td className="px-5 py-4 text-center">{((submissionPage - 1) * ITEMS_PER_PAGE + idx + 1).toString().padStart(2, '0')}</td>
+                                        <td className="px-5 py-4">
+                                            <div className="font-medium text-slate-700 dark:text-slate-200">{workTypeName}</div>
+                                            <div className="text-[10px] text-slate-400 mt-0.5 line-clamp-1 max-w-[150px]" title={s.branchId ? BRANCHES.find(b => b.id.toString() === s.branchId?.toString())?.label : ''}>
+                                                {s.branchId ? `สาขา: ${String(s.branchId).padStart(2,'0')}` : '-'}
+                                            </div>
+                                        </td>
                                         <td className="px-5 py-4 font-mono text-xs">{s.id.substring(0,8)}</td>
                                         <td className="px-5 py-4 max-w-[200px] truncate" title={s.fileName}>{s.fileName}</td>
                                         <td className="px-5 py-4">{s.firstName} {s.lastName}</td>

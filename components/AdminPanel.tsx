@@ -1328,7 +1328,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ submissions, settings, refreshD
                               ) : (
                                   <div className="max-h-48 overflow-y-auto space-y-2 pr-2 custom-scrollbar">
                                       {BRANCHES.map(branch => {
-                                          const branchReviewers = reviewerList.filter(r => r.branchId && r.branchId.toString() === branch.id.toString());
+                                          const branchReviewers = reviewerList.filter(r => r.branchId && r.branchId.toString().split(',').includes(branch.id.toString()));
                                           
                                           // check if all branchReviewers are selected and there is at least one
                                           const isChecked = branchReviewers.length > 0 && branchReviewers.every(r => selectedReviewers.includes(r.id));

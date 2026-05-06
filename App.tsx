@@ -3,7 +3,7 @@ import React, { useEffect, useState, useRef, useCallback, useMemo } from "react"
 import { BUDGET_YEAR, BRANCHES } from "./constants";
 import { AppSettings, Submission, ToastMessage, UserProfile, VisitorStats, NewsItem } from "./types";
 import { apiListSubmissions, loadSettings, getCurrentUser, logoutUser, apiGetUserProfile, subscribeToVisitorPresence, subscribeToStatsUpdates, apiGetVisitorStats, apiRecordVisit, apiFetchNewsAsync } from "./services/apiService";
-
+import { supabase } from "./lib/supabaseClient";
 import Registration from "./components/Registration";
 import History from "./components/History";
 import Dashboard from "./components/Dashboard";
@@ -143,6 +143,16 @@ export default function App() {
 
   // --- Profile Sync Logic ---
   useEffect(() => {
+      // Listen for auth state changes (e.g. invalid refresh token, signed out)
+      const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
+          if (event === 'SIGNED_OUT' || (event === 'INITIAL_SESSION' && !session && currentUser)) {
+              logoutUser();
+              setCurrentUser(null);
+          } else if (event === 'TOKEN_REFRESHED' && session) {
+              // Note: You can sync the session if needed here
+          }
+      });
+
       if (currentUser) {
           apiGetUserProfile(currentUser.id)
             .then(freshProfile => {
@@ -154,8 +164,18 @@ export default function App() {
                     }
                 }
             })
-            .catch(err => console.error("Sync profile failed:", err));
+            .catch(err => {
+                console.error("Sync profile failed:", err);
+                if (err.message?.includes("Invalid Refresh Token") || err.message?.includes("Refresh Token Not Found") || err.message?.includes("token")) {
+                    logoutUser();
+                    setCurrentUser(null);
+                }
+            });
       }
+
+      return () => {
+          authListener.subscription.unsubscribe();
+      };
   }, []); 
 
   // --- Visitor Stats & Logging Logic ---
@@ -168,7 +188,7 @@ export default function App() {
       // 2. Fetch Initial Aggregated Stats (Total, Week, etc)
       apiGetVisitorStats().then(data => {
           setVisitorStats(prev => ({ ...prev, ...data }));
-      });
+      }).catch(err => console.error("Visitor stats load error:", err));
 
       // 3. Realtime Stats Updates (Listen for new logs)
       const unsubscribeStats = subscribeToStatsUpdates((newStats) => {
@@ -311,7 +331,9 @@ export default function App() {
       const data = await apiListSubmissions(settings, undefined);
       setAllSubmissions(Array.isArray(data) ? data : []);
     } catch (e: any) {
-      showToast({ type: "error", title: "Error loading data", message: e.message });
+      if (!e.message?.includes("Refresh Token") && !e.message?.includes("session") && !e.message?.includes("token")) {
+          showToast({ type: "error", title: "Error loading data", message: e.message });
+      }
     } finally {
       setLoading(false);
     }
@@ -965,7 +987,7 @@ export default function App() {
               <div className="border-t border-slate-800 pt-8 flex flex-col md:flex-row justify-between items-center gap-4 text-xs font-medium text-slate-500">
                   <div className="flex items-center gap-2">
                        <i className="fa-solid fa-code text-sky-500"></i>
-                       <span>พัฒนาโดย IT SSJ Satun 2569 | <a href="#" onClick={(e) => {e.preventDefault(); Swal.fire({title: 'รายละเอียดอัปเดต v1.3.15', html: '<ul class="text-left space-y-2 text-sm"><li>🔧 <b>Filter Fix:</b> แก้ไขแถบกรองข้อมูลล้นหน้าจอ (v1.3.15)</li><li>🏢 <b>Org Autocomplete:</b> เพิ่มระบบ Dropdown เสนอชื่อหน่วยงานขณะค้นหา (v1.3.15)</li><li>👤 <b>Audit Logs:</b> เพิ่มชื่อผู้ดำเนินการในประวัติบันทึกการทำงาน (v1.3.15)</li><li>🔘 <b>Assign Reviewer:</b> แก้ไขเป็นรูปแบบ Radio Box เพื่อให้เลือกได้เพียงสาขาเดียวต่อผลงาน (v1.3.15)</li><li>🔍 <b>Filters Enhance:</b> อัปเดตแท็บจัดการผลงาน เพิ่มระบบกรองด้วย ชื่อ, ประเภท, วันที่ และสังกัด และเพิ่มเลขกำกับจำนวนในตัวเลือกสาขา (v1.3.14)</li></ul>', icon: 'info', confirmButtonColor: '#0ea5e9'}); }}>v1.3.15</a></span>
+                       <span>พัฒนาโดย IT SSJ Satun 2569 | <a href="#" onClick={(e) => {e.preventDefault(); Swal.fire({title: 'รายละเอียดอัปเดต v1.3.16', html: '<ul class="text-left space-y-2 text-sm"><li>✅ <b>Reviewer Branches:</b> คณะกรรมการสามารถเลือปรับผิดชอบได้มากกว่า 1 สาขา (v1.3.16)</li><li>🔍 <b>Reviewer Filter:</b> ระบบหน้าจอของคณะกรรมการเพิ่มแถบกรองและค้นหา (v1.3.16)</li><li>🔧 <b>Auto View:</b> ระบบคณะกรรมการจะแสดงผลงานในสาขาที่รับผิดชอบให้ทันทีโดยอัตโนมัติ (v1.3.16)</li><li>🔧 <b>Filter Fix:</b> แก้ไขแถบกรองข้อมูลล้นหน้าจอ (v1.3.15)</li><li>🏢 <b>Org Autocomplete:</b> เพิ่มระบบ Dropdown เสนอชื่อหน่วยงานขณะค้นหา (v1.3.15)</li><li>👤 <b>Audit Logs:</b> เพิ่มชื่อผู้ดำเนินการในประวัติบันทึกการทำงาน (v1.3.15)</li></ul>', icon: 'info', confirmButtonColor: '#0ea5e9'}); }}>v1.3.16</a></span>
                   </div>
                   <div className="flex gap-6">
                       <button onClick={() => setShowPrivacyPolicy(true)} className="hover:text-slate-300 transition">นโยบายความเป็นส่วนตัว</button>
