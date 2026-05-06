@@ -91,6 +91,8 @@ const Dashboard: React.FC<DashboardProps> = ({ submissions, onViewAll }) => {
   const [filterYear, setFilterYear] = useState<string>(String(BUDGET_YEAR));
   const [filterMonth, setFilterMonth] = useState<string>('all');
   const [filterOrg, setFilterOrg] = useState<string>('all');
+  const [filterBranch, setFilterBranch] = useState<string>('all');
+  const [filterWorkType, setFilterWorkType] = useState<string>('all');
   const [tableSearch, setTableSearch] = useState('');
   const [tableFilterStatus, setTableFilterStatus] = useState('all');
   const [feedbacks, setFeedbacks] = useState<AppFeedback[]>([]);
@@ -131,7 +133,9 @@ const Dashboard: React.FC<DashboardProps> = ({ submissions, onViewAll }) => {
         const matchYear = String(s.budgetYear) === filterYear;
         const matchMonth = filterMonth === 'all' || String(d.getMonth() + 1) === filterMonth;
         const matchOrg = filterOrg === 'all' || s.organization === filterOrg;
-        return matchYear && matchMonth && matchOrg;
+        const matchBranch = filterBranch === 'all' || String(s.branchId) === filterBranch;
+        const matchType = filterWorkType === 'all' || s.workType === filterWorkType;
+        return matchYear && matchMonth && matchOrg && matchBranch && matchType;
     });
 
     const total = filtered.length;
@@ -231,7 +235,7 @@ const Dashboard: React.FC<DashboardProps> = ({ submissions, onViewAll }) => {
         userCounts,
         donutGradient
     };
-  }, [submissions, filterYear, filterMonth, filterOrg, tableSearch, tableFilterStatus]);
+  }, [submissions, filterYear, filterMonth, filterOrg, filterBranch, filterWorkType, tableSearch, tableFilterStatus]);
 
   // --- Helpers for Status Display ---
   const getStatusLabel = (status: string) => {
@@ -272,31 +276,49 @@ const Dashboard: React.FC<DashboardProps> = ({ submissions, onViewAll }) => {
                   <select 
                     value={filterYear}
                     onChange={e => setFilterYear(e.target.value)}
-                    className="px-4 py-2 rounded-lg bg-slate-100 dark:bg-slate-800 border-none text-xs font-bold text-slate-700 dark:text-white outline-none hover:bg-slate-200 dark:hover:bg-slate-700 cursor-pointer transition"
+                    className="px-4 py-2 rounded-lg bg-slate-100 dark:bg-slate-800 border-none text-xs font-bold text-slate-700 dark:text-white outline-none hover:bg-slate-200 dark:hover:bg-slate-700 cursor-pointer transition min-w-[120px]"
                   >
                       <option value={String(BUDGET_YEAR)}>📅 ปีงบ {BUDGET_YEAR}</option>
                       <option value={String(BUDGET_YEAR - 1)}>📅 ปีงบ {BUDGET_YEAR - 1}</option>
                   </select>
 
-           
-
-
-
                   <select 
                     value={filterMonth}
                     onChange={e => setFilterMonth(e.target.value)}
-                    className="px-4 py-2 rounded-lg bg-slate-100 dark:bg-slate-800 border-none text-xs font-bold text-slate-700 dark:text-white outline-none hover:bg-slate-200 dark:hover:bg-slate-700 cursor-pointer transition"
+                    className="px-4 py-2 rounded-lg bg-slate-100 dark:bg-slate-800 border-none text-xs font-bold text-slate-700 dark:text-white outline-none hover:bg-slate-200 dark:hover:bg-slate-700 cursor-pointer transition min-w-[120px]"
                   >
                       <option value="all">🗓️ ทุกเดือน</option>
                       {["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."].map((m, i) => (
                           <option key={i} value={String(i + 1)}>{m}</option>
                       ))}
                   </select>
+                  
+                  <select 
+                    value={filterWorkType}
+                    onChange={e => setFilterWorkType(e.target.value)}
+                    className="px-4 py-2 rounded-lg bg-slate-100 dark:bg-slate-800 border-none text-xs font-bold text-slate-700 dark:text-white outline-none hover:bg-slate-200 dark:hover:bg-slate-700 cursor-pointer transition min-w-[150px] max-w-[200px]"
+                  >
+                      <option value="all">🏷️ ทุกประเภท</option>
+                      {WORK_TYPES.map((w, i) => (
+                          <option key={i} value={w.id}>{w.label}</option>
+                      ))}
+                  </select>
+
+                  <select 
+                    value={filterBranch}
+                    onChange={e => setFilterBranch(e.target.value)}
+                    className="px-4 py-2 rounded-lg bg-slate-100 dark:bg-slate-800 border-none text-xs font-bold text-slate-700 dark:text-white outline-none hover:bg-slate-200 dark:hover:bg-slate-700 cursor-pointer transition max-w-[200px] truncate"
+                  >
+                      <option value="all">🌱 ทุกสาขา</option>
+                      {BRANCHES.map((b, i) => (
+                          <option key={i} value={String(b.id)}>{b.label}</option>
+                      ))}
+                  </select>
 
                   <select 
                     value={filterOrg}
                     onChange={e => setFilterOrg(e.target.value)}
-                    className="px-4 py-2 rounded-lg bg-slate-100 dark:bg-slate-800 border-none text-xs font-bold text-slate-700 dark:text-white outline-none hover:bg-slate-200 dark:hover:bg-slate-700 cursor-pointer transition max-w-[200px]"
+                    className="px-4 py-2 rounded-lg bg-slate-100 dark:bg-slate-800 border-none text-xs font-bold text-slate-700 dark:text-white outline-none hover:bg-slate-200 dark:hover:bg-slate-700 cursor-pointer transition max-w-[200px] truncate"
                   >
                       <option value="all">🏢 ทุกหน่วยงาน</option>
                       {orgOptions.map((org, i) => (
@@ -429,16 +451,60 @@ const Dashboard: React.FC<DashboardProps> = ({ submissions, onViewAll }) => {
                <SectionHeader title="แนวโน้มและสัดส่วน" subtitle="Volume & Distribution Analysis" icon="fa-chart-pie" />
                <div className="grid grid-cols-12 gap-6">
                   
-                  {/* Left: Monthly Trend (Vertical Bar Chart) */}
-                  <div className="col-span-12 lg:col-span-8 bg-white dark:bg-slate-800 rounded-3xl p-6 shadow-sm border border-slate-100 dark:border-slate-700 flex flex-col">
+                  {/* Left: Work Type (Pie Chart) - Now prioritized */}
+                  <div className="col-span-12 lg:col-span-8 bg-white dark:bg-slate-800 rounded-3xl p-6 shadow-sm border border-slate-100 dark:border-slate-700 flex flex-col order-1 lg:order-1">
+                     <h3 className="font-bold text-slate-800 dark:text-white mb-6 flex items-center gap-2">
+                        <i className="fa-solid fa-shapes text-indigo-500"></i> สัดส่วนประเภทผลงาน
+                     </h3>
+                     
+                     <div className="flex-1 flex flex-col items-center justify-center relative min-h-[300px]">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <PieChart>
+                                    <Pie 
+                                      data={stats.typeCounts} 
+                                      dataKey="count" 
+                                      nameKey="label" 
+                                      cx="50%" 
+                                      cy="50%" 
+                                      innerRadius={70}
+                                      outerRadius={110} 
+                                      paddingAngle={3}
+                                      labelLine={false}
+                                    >
+                                        {
+                                            stats.typeCounts.map((entry, index) => (
+                                                <Cell key={`cell-${index}`} fill={entry.color} />
+                                            ))
+                                        }
+                                    </Pie>
+                                    <RechartsTooltip 
+                                        contentStyle={{ borderRadius: '1rem', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)' }}
+                                        itemStyle={{ fontWeight: 'bold' }}
+                                    />
+                                    <Legend verticalAlign="bottom" height={36}/>
+                                </PieChart>
+                            </ResponsiveContainer>
+                     </div>
+                     <div className="mt-8 flex flex-col sm:flex-row flex-wrap justify-center gap-6 text-xs font-bold px-4">
+                         {stats.typeCounts.map((t, i) => (
+                             <div key={i} className="flex items-center gap-2 bg-slate-50 dark:bg-slate-800/50 px-3 py-2 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700">
+                                 <div className="w-4 h-4 rounded-full" style={{ backgroundColor: t.color }}></div>
+                                 <span className="text-slate-700 dark:text-slate-300 text-sm">{t.label}: {t.count} ({t.percent.toFixed(1)}%)</span>
+                             </div>
+                         ))}
+                     </div>
+                  </div>
+
+                  {/* Right: Monthly Trend (Vertical Bar Chart) */}
+                  <div className="col-span-12 lg:col-span-4 bg-white dark:bg-slate-800 rounded-3xl p-6 shadow-sm border border-slate-100 dark:border-slate-700 flex flex-col order-2 lg:order-2">
                      <div className="flex justify-between items-center mb-6">
                          <h3 className="font-bold text-slate-800 dark:text-white flex items-center gap-2">
-                            <i className="fa-solid fa-chart-column text-sky-500"></i> ปริมาณการส่งรายเดือน
+                            <i className="fa-solid fa-chart-column text-sky-500"></i> ปริมาณส่งรายเดือน
                          </h3>
                          <div className="text-xs text-slate-400 font-medium bg-slate-100 dark:bg-slate-700 px-3 py-1 rounded-full">Unit: เรื่อง</div>
                      </div>
                      
-                     <div className="flex-1 flex items-end gap-3 md:gap-4 relative pt-6 border-b border-slate-200 dark:border-slate-700 pb-2 min-h-[250px]">
+                     <div className="flex-1 flex items-end gap-3 md:gap-4 relative pt-6 border-b border-slate-200 dark:border-slate-700 pb-2 min-h-[300px]">
                          {/* Grid Lines */}
                          <div className="absolute inset-0 flex flex-col justify-between pointer-events-none opacity-20 z-0">
                              {[...Array(5)].map((_, i) => <div key={i} className="border-t border-slate-400 w-full h-0"></div>)}
@@ -463,97 +529,89 @@ const Dashboard: React.FC<DashboardProps> = ({ submissions, onViewAll }) => {
                          })}
                      </div>
                   </div>
-
-                  {/* Right: Work Type (Donut Chart) */}
-                  <div className="col-span-12 lg:col-span-4 bg-white dark:bg-slate-800 rounded-3xl p-6 shadow-sm border border-slate-100 dark:border-slate-700 flex flex-col">
-                     <h3 className="font-bold text-slate-800 dark:text-white mb-6 flex items-center gap-2">
-                        <i className="fa-solid fa-shapes text-indigo-500"></i> สัดส่วนประเภทผลงาน
-                     </h3>
-                     
-                     <div className="flex-1 flex flex-col items-center justify-center relative min-h-[250px]">
-                         {/* Donut Chart CSS */}
-                         <div 
-                            className="relative w-48 h-48 rounded-full shadow-inner ring-8 ring-slate-50 dark:ring-slate-800 transition-all duration-1000"
-                            style={{ background: donutGradient }}
-                         >
-                             {/* Inner Circle for Donut Effect */}
-                             <div className="absolute inset-0 m-8 bg-white dark:bg-slate-800 rounded-full flex flex-col items-center justify-center shadow-sm">
-                                 <span className="text-3xl font-black text-slate-800 dark:text-white">{stats.total}</span>
-                                 <span className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">Total</span>
-                             </div>
-                         </div>
-
-                         {/* Legend */}
-                         <div className="mt-8 w-full space-y-3">
-                             {stats.typeCounts.map(t => (
-                                 <div key={t.id} className="flex items-center justify-between text-xs group cursor-default">
-                                     <div className="flex items-center gap-2">
-                                         <div className="w-3 h-3 rounded-full shadow-sm" style={{ backgroundColor: t.color }}></div>
-                                         <span className="font-bold text-slate-600 dark:text-slate-300 group-hover:text-slate-900 dark:group-hover:text-white transition">{t.label}</span>
-                                     </div>
-                                     <div className="font-mono font-bold text-slate-500 dark:text-slate-400">
-                                         {t.count} ({t.percent.toFixed(0)}%)
-                                     </div>
-                                 </div>
-                             ))}
-                         </div>
-                     </div>
-                  </div>
                </div>
            </section>
 
            {/* SECTION 3.5: BRANCHES (PIE & RADAR) */}
            <section>
                <SectionHeader title="ผลงานรายสาขา (15 สาขา)" subtitle="Branches Distribution" icon="fa-chart-pie" />
-               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                   <div className="bg-white dark:bg-slate-800 rounded-3xl p-6 shadow-sm border border-slate-100 dark:border-slate-700 flex flex-col items-center">
-                       <h3 className="font-bold text-slate-800 dark:text-white mb-6 w-full text-left flex items-center gap-2">
-                           <i className="fa-solid fa-chart-pie text-sky-500"></i> สัดส่วนผลงานจำแนกตามสาขา
-                       </h3>
-                       <div className="h-80 w-full">
-                           <ResponsiveContainer width="100%" height="100%">
-                               <PieChart>
-                                   <Pie 
-                                     data={stats.branchCounts} 
-                                     dataKey="count" 
-                                     nameKey="label" 
-                                     cx="50%" 
-                                     cy="50%" 
-                                     outerRadius={100} 
-                                     labelLine={false}
-                                   >
-                                       {
-                                           stats.branchCounts.map((entry, index) => (
-                                               <Cell key={`cell-${index}`} fill={`hsl(${(index * 360 / Math.max(stats.branchCounts.length, 1))}, 70%, 50%)`} />
-                                           ))
-                                       }
-                                   </Pie>
-                                   <RechartsTooltip 
-                                       contentStyle={{ borderRadius: '1rem', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)' }}
-                                       itemStyle={{ fontWeight: 'bold' }}
-                                   />
-                               </PieChart>
-                           </ResponsiveContainer>
-                       </div>
-                   </div>
+               
+               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-6">
+                   {stats.branchCountsAll.map(b => {
+                       let icon = "fa-chart-pie";
+                       if (b.id === 1) icon = "fa-stethoscope";
+                       else if (b.id === 2) icon = "fa-user-doctor";
+                       else if (b.id === 3) icon = "fa-tooth";
+                       else if (b.id === 4) icon = "fa-pills";
+                       else if (b.id === 5) icon = "fa-user-nurse";
+                       else if (b.id === 6) icon = "fa-hospital-user";
+                       else if (b.id === 7) icon = "fa-clipboard-user";
+                       else if (b.id === 8) icon = "fa-flask";
+                       else if (b.id === 9) icon = "fa-person-walking-with-cane";
+                       else if (b.id === 10) icon = "fa-leaf";
+                       else if (b.id === 11) icon = "fa-seedling";
+                       else if (b.id === 12) icon = "fa-shield-virus";
+                       else if (b.id === 13) icon = "fa-brain";
+                       else if (b.id === 14) icon = "fa-briefcase-medical";
+                       else if (b.id === 15) icon = "fa-microchip";
 
-                   <div className="bg-white dark:bg-slate-800 rounded-3xl p-6 shadow-sm border border-slate-100 dark:border-slate-700 flex flex-col items-center">
-                       <h3 className="font-bold text-slate-800 dark:text-white mb-6 w-full text-left flex items-center gap-2">
-                           <i className="fa-solid fa-radar text-emerald-500"></i> Radar Chart แสดงภาพรวมสาขา
-                       </h3>
-                       <div className="h-80 w-full">
-                           <ResponsiveContainer width="100%" height="100%">
-                               <RadarChart cx="50%" cy="50%" outerRadius="80%" data={stats.branchCountsAll}>
-                                   <PolarGrid />
-                                   <PolarAngleAxis dataKey="id" tick={{ fill: '#94a3b8', fontSize: 10 }} />
-                                   <PolarRadiusAxis angle={30} domain={[0, 'auto']} />
-                                   <Radar name="จำนวนผลงาน" dataKey="count" stroke="#0ea5e9" fill="#0ea5e9" fillOpacity={0.5} />
-                                   <RechartsTooltip 
-                                       contentStyle={{ borderRadius: '1rem', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                                   />
-                               </RadarChart>
-                           </ResponsiveContainer>
-                       </div>
+                       return (
+                           <div key={b.id} className="bg-white dark:bg-slate-800 rounded-2xl p-4 shadow-sm border border-slate-100 dark:border-slate-700 flex flex-col justify-between hover:shadow-md transition group overflow-hidden relative">
+                               <div className="absolute -right-4 -top-4 w-16 h-16 rounded-full bg-sky-50 dark:bg-sky-900/10 opacity-50 group-hover:scale-150 transition-transform duration-500 pointer-events-none"></div>
+                               <div className="flex items-center gap-3 mb-2 relative z-10">
+                                   <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-lg ${b.count > 0 ? 'bg-sky-100 text-sky-600 dark:bg-sky-900/40 dark:text-sky-400' : 'bg-slate-100 text-slate-400 dark:bg-slate-700'}`}>
+                                       <i className={`fa-solid ${icon}`}></i>
+                                   </div>
+                                   <div className="flex-1 flex justify-end">
+                                        <div className={`text-2xl font-black ${b.count > 0 ? 'text-slate-800 dark:text-white' : 'text-slate-300 dark:text-slate-600'}`}>{b.count}</div>
+                                   </div>
+                               </div>
+                               <div className="text-[11px] font-bold text-slate-600 dark:text-slate-300 mt-2 line-clamp-2 leading-tight relative z-10" title={b.label}>
+                                   {b.label}
+                               </div>
+                           </div>
+                       );
+                   })}
+               </div>
+
+               <div className="bg-white dark:bg-slate-800 rounded-3xl p-6 shadow-sm border border-slate-100 dark:border-slate-700 flex flex-col items-center">
+                   <h3 className="font-bold text-slate-800 dark:text-white mb-6 w-full text-left flex items-center gap-2">
+                       <i className="fa-solid fa-radar text-emerald-500"></i> Radar Chart แสดงภาพรวมสาขา
+                   </h3>
+                   <div className="h-[400px] w-full relative">
+                        {stats.branchCountsAll.length === 0 ? (
+                            <div className="absolute inset-0 flex items-center justify-center text-slate-400">ไม่มีข้อมูล</div>
+                        ) : (
+                            <ResponsiveContainer width="100%" height="100%">
+                                <RadarChart cx="50%" cy="50%" outerRadius="70%" data={stats.branchCountsAll}>
+                                    <PolarGrid strokeOpacity={0.2} />
+                                    <PolarAngleAxis 
+                                        dataKey="label" 
+                                        tick={{ fill: '#64748b', fontSize: 11, fontWeight: 600 }}
+                                        tickFormatter={(val: string) => {
+                                            const maxLen = 20;
+                                            return val.length > maxLen ? val.substring(0, maxLen) + "..." : val;
+                                        }}
+                                    />
+                                    <PolarRadiusAxis 
+                                        angle={90} 
+                                        domain={[0, 'auto']} 
+                                        tick={{ fontSize: 10, fill: '#94a3b8' }}
+                                    />
+                                    <Radar 
+                                        name="จำนวนผลงานระดับสาขา" 
+                                        dataKey="count" 
+                                        stroke="#0ea5e9" 
+                                        strokeWidth={2}
+                                        fill="#0ea5e9" 
+                                        fillOpacity={0.4} 
+                                    />
+                                    <RechartsTooltip 
+                                        contentStyle={{ borderRadius: '1rem', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1)', fontSize: '13px', fontWeight: 'bold' }}
+                                    />
+                                </RadarChart>
+                            </ResponsiveContainer>
+                        )}
                    </div>
                </div>
            </section>
@@ -561,7 +619,7 @@ const Dashboard: React.FC<DashboardProps> = ({ submissions, onViewAll }) => {
            {/* SECTION 4: TOP LISTS (SCALABLE TABLES) */}
            <section>
                <SectionHeader title="อันดับสูงสุด" subtitle="Top Rankings" icon="fa-trophy" />
-               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+               <div className="grid grid-cols-1 gap-6">
                    
                    {/* Col 1: Top Organizations (Horizontal Bars) */}
                    <div className="bg-white dark:bg-slate-800 rounded-3xl p-6 shadow-sm border border-slate-100 dark:border-slate-700">
@@ -575,64 +633,24 @@ const Dashboard: React.FC<DashboardProps> = ({ submissions, onViewAll }) => {
                                    <tr className="text-[10px] uppercase text-slate-400 border-b border-slate-100 dark:border-slate-700">
                                        <th className="pb-2 pl-2 font-bold w-12">#Rank</th>
                                        <th className="pb-2 font-bold">หน่วยงาน</th>
-                                       <th className="pb-2 pr-2 font-bold text-right">จำนวน</th>
+                                       <th className="pb-2 pr-2 font-bold text-right">จำนวนผลงาน</th>
                                    </tr>
                                </thead>
                                <tbody className="text-xs">
                                    {stats.orgCounts.map((org, idx) => (
                                        <tr key={idx} className="group hover:bg-slate-50 dark:hover:bg-slate-700/30 transition border-b border-slate-50 dark:border-slate-800 last:border-0">
                                            <td className="py-3 pl-2 font-bold text-slate-500 group-hover:text-amber-500 transition">{idx + 1}</td>
-                                           <td className="py-3 font-medium text-slate-700 dark:text-slate-300 truncate max-w-[150px]" title={org.name}>
+                                           <td className="py-3 font-medium text-slate-700 dark:text-slate-300 truncate" title={org.name}>
                                                {org.name}
                                            </td>
                                            <td className="py-3 pr-2 text-right">
-                                               <span className="bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 px-2 py-0.5 rounded-md font-bold shadow-sm">
+                                               <span className="bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 px-3 py-1 rounded-md font-bold shadow-sm">
                                                    {org.count}
                                                </span>
                                            </td>
                                        </tr>
                                    ))}
                                    {stats.orgCounts.length === 0 && <tr><td colSpan={3} className="text-center py-4 text-slate-400">ไม่มีข้อมูล</td></tr>}
-                               </tbody>
-                           </table>
-                       </div>
-                   </div>
-
-                   {/* Col 2: Top Contributors (Mini Table) */}
-                   <div className="bg-white dark:bg-slate-800 rounded-3xl p-6 shadow-sm border border-slate-100 dark:border-slate-700">
-                       <h3 className="font-bold text-slate-800 dark:text-white flex items-center justify-between mb-6">
-                           <span className="flex items-center gap-2"><i className="fa-solid fa-user-astronaut text-emerald-500"></i> Top 5 ผู้ส่งผลงาน</span>
-                       </h3>
-                       
-                       <div className="overflow-x-auto">
-                           <table className="w-full text-left border-collapse">
-                               <thead>
-                                   <tr className="text-[10px] uppercase text-slate-400 border-b border-slate-100 dark:border-slate-700">
-                                       <th className="pb-2 pl-2 font-bold w-12">#Rank</th>
-                                       <th className="pb-2 font-bold">ชื่อ-สกุล</th>
-                                       <th className="pb-2 pr-2 font-bold text-right">ผลงาน</th>
-                                   </tr>
-                               </thead>
-                               <tbody className="text-xs">
-                                   {userCounts.map((user, idx) => (
-                                       <tr key={idx} className="group hover:bg-slate-50 dark:hover:bg-slate-700/30 transition border-b border-slate-50 dark:border-slate-800 last:border-0">
-                                           <td className="py-3 pl-2">
-                                               <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold ${idx === 0 ? 'bg-emerald-500 text-white shadow-md' : 'bg-slate-100 dark:bg-slate-700 text-slate-500'}`}>
-                                                   {idx + 1}
-                                               </div>
-                                           </td>
-                                           <td className="py-3">
-                                               <div className="font-bold text-slate-800 dark:text-white group-hover:text-emerald-600 transition">{user.name}</div>
-                                               <div className="text-[10px] text-slate-400 truncate max-w-[150px]">{user.org}</div>
-                                           </td>
-                                           <td className="py-3 pr-2 text-right">
-                                               <span className="bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 px-2 py-0.5 rounded-md font-bold shadow-sm">
-                                                   {user.count}
-                                               </span>
-                                           </td>
-                                       </tr>
-                                   ))}
-                                   {userCounts.length === 0 && <tr><td colSpan={3} className="text-center py-4 text-slate-400">ไม่มีข้อมูล</td></tr>}
                                </tbody>
                            </table>
                        </div>

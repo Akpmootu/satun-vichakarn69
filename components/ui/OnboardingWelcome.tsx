@@ -33,10 +33,10 @@ const OnboardingWelcome: React.FC<OnboardingWelcomeProps> = ({ currentUser, bann
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
             <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm animate-fade-in" onClick={handleClose}></div>
             
-            <div className="relative w-full max-w-4xl bg-white dark:bg-slate-900 rounded-3xl overflow-hidden shadow-2xl animate-flow-up z-10 flex flex-col md:flex-row">
+            <div className="relative w-full max-w-4xl max-h-[95vh] overflow-y-auto bg-white dark:bg-slate-900 rounded-3xl shadow-2xl animate-flow-up z-10 flex flex-col md:flex-row">
                 
                 {/* Left Side: Large Banner Image */}
-                <div className="w-full md:w-1/2 bg-sky-600 relative overflow-hidden flex items-center justify-center min-h-[200px] md:min-h-[500px]">
+                <div className="w-full md:w-1/2 bg-sky-600 relative overflow-hidden flex items-center justify-center min-h-[250px] md:min-h-[500px] shrink-0">
                     <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_var(--tw-gradient-stops))] from-sky-400 via-sky-600 to-sky-900"></div>
                     <img 
                         src={bannerUrl || "https://images.unsplash.com/photo-1542744173-8e7e53415bb0?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80"}
@@ -54,11 +54,11 @@ const OnboardingWelcome: React.FC<OnboardingWelcomeProps> = ({ currentUser, bann
                 </div>
 
                 {/* Right Side: Welcome Message & Guide */}
-                <div className="w-full md:w-1/2 p-8 md:p-12 flex flex-col justify-center relative">
+                <div className="w-full md:w-1/2 p-8 md:p-12 flex flex-col justify-center relative pb-16 md:pb-12">
                     {/* Add Developer Credit here */}
-                    <div className="absolute bottom-4 right-8 text-[10px] text-slate-400 dark:text-slate-500 font-light flex items-center gap-1.5 border border-slate-100 dark:border-slate-800 bg-white/50 dark:bg-slate-900/50 px-3 py-1.5 rounded-full backdrop-blur-sm">
+                    <div className="absolute bottom-4 right-8 text-[10px] text-slate-400 dark:text-slate-500 font-light flex items-center gap-1.5 border border-slate-100 dark:border-slate-800 bg-white/50 dark:bg-slate-900/50 px-3 py-1.5 rounded-full backdrop-blur-sm z-20">
                         <i className="fa-solid fa-code text-sky-500"></i>
-                        <span>พัฒนาโดย IT SSJ Satun 2569</span>
+                        <span>พัฒนาโดย กลุ่มงานสุขภาพดิจิทัล สำนักงานสาธารณสุขจังหวัดสตูล 2569</span>
                     </div>
 
                     <div className="inline-block px-3 py-1 bg-sky-100 dark:bg-sky-900/50 text-sky-600 dark:text-sky-400 font-bold text-xs rounded-full mb-4 w-max">

@@ -1009,7 +1009,7 @@ export default function App() {
                               <span className="text-white font-mono font-bold text-lg">{visitorStats.month.toLocaleString()}</span>
                           </div>
 
-<div className="flex flex-col items-center">
+                          <div className="flex flex-col items-center">
                               <span className="text-[10px] text-slate-500 uppercase font-bold mb-1">รายปี</span>
                               <span className="text-white font-mono font-bold text-lg">{visitorStats.year.toLocaleString()}</span>
                           </div>
@@ -1027,7 +1027,7 @@ export default function App() {
               <div className="border-t border-slate-800 pt-8 flex flex-col md:flex-row justify-between items-center gap-4 text-xs font-medium text-slate-500">
                   <div className="flex items-center gap-2">
                        <i className="fa-solid fa-code text-sky-500"></i>
-                       <span>พัฒนาโดย IT SSJ Satun 2569 | <a href="#" onClick={(e) => {e.preventDefault(); Swal.fire({title: 'รายละเอียดอัปเดต v1.3.26', html: '<ul class="text-left space-y-2 text-sm"><li>✨ <b>Reviewer UI:</b> ดึงรูปโปรไฟล์และระดับจากฐานข้อมูลมาแสดงในแผงผู้ตรวจ (v1.3.26)</li><li>✨ <b>Reviewer UI:</b> ปรับปรุงขนาดแผงตรวจผลงาน ซ่อนรหัสผลงาน และแสดงโปรไฟล์ผู้นำเสนอ (ชื่อ, ประเภท, สาขา, ตำแหน่ง, สังกัด) (v1.3.25)</li><li>🖼️ <b>Canva Viewer:</b> เพิ่มแท็บเอกเทศสำหรับเปิดเอกสาร Canva โดยไม่พับซ้อน (v1.3.25)</li><li>📝 <b>Reviewer Panel:</b> เพิ่มการแสดงผลสรุปคะแนนส่วนล่างของแบบประเมินก่อนกดยืนยัน (v1.3.24)</li><li>🎨 <b>Presentation Embed:</b> อัปเดตการแสดงผลไฟล์ Canva ที่ไม่สามารถเปิดใน Iframe ได้ให้มีปุ่มกดเปิดลิงก์แทน และรองรับ `canva.link` (v1.3.24)</li></ul>', icon: 'info', confirmButtonColor: '#0ea5e9'}); }}>v1.3.26</a></span>
+                       <span>พัฒนาโดย กลุ่มงานสุขภาพดิจิทัล สำนักงานสาธารณสุขจังหวัดสตูล 2569 | <a href="#" onClick={(e) => {e.preventDefault(); Swal.fire({title: 'รายละเอียดอัปเดต v1.3.26', html: '<ul class="text-left space-y-2 text-sm"><li>✨ <b>Reviewer UI:</b> ดึงรูปโปรไฟล์และระดับจากฐานข้อมูลมาแสดงในแผงผู้ตรวจ (v1.3.26)</li><li>✨ <b>Reviewer UI:</b> ปรับปรุงขนาดแผงตรวจผลงาน ซ่อนรหัสผลงาน และแสดงโปรไฟล์ผู้นำเสนอ (ชื่อ, ประเภท, สาขา, ตำแหน่ง, สังกัด) (v1.3.25)</li><li>🖼️ <b>Canva Viewer:</b> เพิ่มแท็บเอกเทศสำหรับเปิดเอกสาร Canva โดยไม่พับซ้อน (v1.3.25)</li><li>📝 <b>Reviewer Panel:</b> เพิ่มการแสดงผลสรุปคะแนนส่วนล่างของแบบประเมินก่อนกดยืนยัน (v1.3.24)</li><li>🎨 <b>Presentation Embed:</b> อัปเดตการแสดงผลไฟล์ Canva ที่ไม่สามารถเปิดใน Iframe ได้ให้มีปุ่มกดเปิดลิงก์แทน และรองรับ `canva.link` (v1.3.24)</li></ul>', icon: 'info', confirmButtonColor: '#0ea5e9'}); }}>v1.3.26</a></span>
                   </div>
                   <div className="flex gap-6">
                       <button onClick={() => setShowPrivacyPolicy(true)} className="hover:text-slate-300 transition">นโยบายความเป็นส่วนตัว</button>
