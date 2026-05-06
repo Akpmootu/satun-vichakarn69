@@ -409,7 +409,7 @@ export default function App() {
           if (tab.id === 'settings') return isAdmin;
           if (tab.id === 'assessment') return isReviewer;
           if (isReviewer) {
-              if (tab.id === 'home' || tab.id === 'register' || tab.id === 'history') return false;
+              if (tab.id === 'home' || tab.id === 'register' || tab.id === 'history' || tab.id === 'presentation') return false;
           } else {
               if (tab.id === 'assessment') return false;
           }
@@ -725,7 +725,7 @@ export default function App() {
       <main className="flex-grow max-w-7xl w-full mx-auto px-4 mt-8">
         {/* Back to Home Button */}
         {activeTab !== 'home' && (
-            <div className="mb-6">
+            <div id="top-bar-portal" className="mb-6 flex flex-wrap items-center gap-3">
                 <button 
                    onClick={() => handleTabChange('home')}
                    className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:text-sky-500 dark:hover:text-sky-400 text-sm font-semibold rounded-xl shadow-[0_1px_2px_rgba(0,0,0,0.05)] border border-slate-200 dark:border-slate-700 transition hover:shadow-md hover:-translate-y-0.5"
@@ -1027,7 +1027,7 @@ export default function App() {
               <div className="border-t border-slate-800 pt-8 flex flex-col md:flex-row justify-between items-center gap-4 text-xs font-medium text-slate-500">
                   <div className="flex items-center gap-2">
                        <i className="fa-solid fa-code text-sky-500"></i>
-                       <span>พัฒนาโดย IT SSJ Satun 2569 | <a href="#" onClick={(e) => {e.preventDefault(); Swal.fire({title: 'รายละเอียดอัปเดต v1.3.24', html: '<ul class="text-left space-y-2 text-sm"><li>📝 <b>Reviewer Panel:</b> เพิ่มการแสดงผลสรุปคะแนนส่วนล่างของแบบประเมินก่อนกดยืนยัน (v1.3.24)</li><li>🎨 <b>Presentation Embed:</b> อัปเดตการแสดงผลไฟล์ Canva ที่ไม่สามารถเปิดใน Iframe ได้ให้มีปุ่มกดเปิดลิงก์แทน และรองรับ `canva.link` (v1.3.24)</li><li>🐛 <b>Bug Fix:</b> แก้ไขปัญหาการส่งลิงก์ Canva แบบ canva.link ไม่ได้ (v1.3.23)</li><li>📁 <b>Presentation Upload:</b> เพิ่มระบบส่งลิงก์ไฟล์นำเสนอผลงาน (Drive/Canva) พร้อมระบบแจ้งเตือน (v1.3.22)</li><li>📊 <b>Dashboard & Sorting:</b> จัดเรียงข้อมูลในตาราง อัปเดตหน้ากระดาน Reviewer พร้อมระบบกรองข้อมูล (v1.3.21)</li><li>💬 <b>Telegram API:</b> ยกเลิก cronjob ของระบบและปรับเปลี่ยนให้ทำการส่งการแจ้งเตือนพุชแทนเรียลไทม์ (v1.3.21)</li><li>🌀 <b>Animations:</b> เพิ่มเอฟเฟกต์แอนิเมชันให้ข่าวสารและเอกสารดาวน์โหลดเวลาเลื่อนหน้าจอ (v1.3.20)</li><li>🔧 <b>Status Update:</b> ย้ายระบบการปรับสถานะผลงานจากตารางเข้าไปอยู่ในส่วน ตรวจสอบ/จัดการ (v1.3.20)</li><li>🐛 <b>Bug Fix:</b> แก้ไขข้อผิดพลาดในการกรองสาขาในหน้าจัดการผลงานที่ทำให้ข้อมูลไม่แสดงผล (v1.3.19)</li><li>🐛 <b>Bug Fix:</b> แก้ไขปัญหาระบบไม่ตอบสนอง (Page Unresponsive) เมื่อออกจากระบบ (v1.3.18)</li></ul>', icon: 'info', confirmButtonColor: '#0ea5e9'}); }}>v1.3.24</a></span>
+                       <span>พัฒนาโดย IT SSJ Satun 2569 | <a href="#" onClick={(e) => {e.preventDefault(); Swal.fire({title: 'รายละเอียดอัปเดต v1.3.26', html: '<ul class="text-left space-y-2 text-sm"><li>✨ <b>Reviewer UI:</b> ดึงรูปโปรไฟล์และระดับจากฐานข้อมูลมาแสดงในแผงผู้ตรวจ (v1.3.26)</li><li>✨ <b>Reviewer UI:</b> ปรับปรุงขนาดแผงตรวจผลงาน ซ่อนรหัสผลงาน และแสดงโปรไฟล์ผู้นำเสนอ (ชื่อ, ประเภท, สาขา, ตำแหน่ง, สังกัด) (v1.3.25)</li><li>🖼️ <b>Canva Viewer:</b> เพิ่มแท็บเอกเทศสำหรับเปิดเอกสาร Canva โดยไม่พับซ้อน (v1.3.25)</li><li>📝 <b>Reviewer Panel:</b> เพิ่มการแสดงผลสรุปคะแนนส่วนล่างของแบบประเมินก่อนกดยืนยัน (v1.3.24)</li><li>🎨 <b>Presentation Embed:</b> อัปเดตการแสดงผลไฟล์ Canva ที่ไม่สามารถเปิดใน Iframe ได้ให้มีปุ่มกดเปิดลิงก์แทน และรองรับ `canva.link` (v1.3.24)</li></ul>', icon: 'info', confirmButtonColor: '#0ea5e9'}); }}>v1.3.26</a></span>
                   </div>
                   <div className="flex gap-6">
                       <button onClick={() => setShowPrivacyPolicy(true)} className="hover:text-slate-300 transition">นโยบายความเป็นส่วนตัว</button>

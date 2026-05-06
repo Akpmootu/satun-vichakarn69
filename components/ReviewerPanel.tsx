@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { Submission, AppSettings, UserProfile, ReviewerScore } from '../types';
-import { apiGetAllScores, apiSaveReviewerScore, apiUpdateSubmission } from '../services/apiService';
+import { apiGetAllScores, apiSaveReviewerScore, apiUpdateSubmission, apiGetUserProfile } from '../services/apiService';
 import { WORK_TYPES, BRANCHES, BRANCH_GROUPS } from '../constants';
 import Pagination from './ui/Pagination';
 
@@ -86,8 +87,17 @@ const ScoreSelector = ({ value, onChange }: { value: number, onChange: (v: numbe
 const ReviewerPanel: React.FC<ReviewerPanelProps> = ({ submissions, settings, refreshData, showToast, currentUser, onTriggerFeedback }) => {
   const [allScores, setAllScores] = useState<ReviewerScore[]>([]);
   const [loading, setLoading] = useState(true);
+  const [hideCanvaExt, setHideCanvaExt] = useState(false);
   const [activeSubmission, setActiveSubmission] = useState<Submission | null>(null);
+  const [activeProfile, setActiveProfile] = useState<UserProfile | null>(null);
   const [currentScoreData, setCurrentScoreData] = useState<Record<string, {score: number, comment: string}>>({});
+
+  useEffect(() => {
+    setActiveProfile(null);
+    if (activeSubmission?.userId) {
+        apiGetUserProfile(activeSubmission.userId).then(setActiveProfile).catch(console.error);
+    }
+  }, [activeSubmission]);
   
   const loadScores = async () => {
       setLoading(true);
@@ -496,50 +506,71 @@ const ReviewerPanel: React.FC<ReviewerPanelProps> = ({ submissions, settings, re
           <div className="animate-fade-in flex flex-col lg:flex-row gap-6 max-w-7xl mx-auto pb-10">
               
               {/* Left Side: Detail & Content */}
-              <div className="w-full lg:w-[45%] flex flex-col gap-5">
+              {document.getElementById('top-bar-portal') && createPortal(
                   <button 
                       onClick={() => setActiveSubmission(null)}
-                      className="self-start px-4 py-2 bg-white text-slate-600 dark:bg-slate-800 dark:text-slate-300 font-bold hover:text-sky-600 hover:shadow-md hover:bg-slate-50 transition rounded-xl flex items-center gap-2 shadow-sm border border-slate-200 dark:border-slate-700"
+                      className="animate-fade-in flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-sm font-semibold hover:text-sky-500 dark:hover:text-sky-400 transition rounded-xl shadow-[0_1px_2px_rgba(0,0,0,0.05)] border border-slate-200 dark:border-slate-700 hover:shadow-md hover:-translate-y-0.5"
                   >
                       <i className="fa-solid fa-arrow-left"></i> ย้อนกลับ
-                  </button>
-                  
+                  </button>,
+                  document.getElementById('top-bar-portal')!
+              )}
+              <div className="w-full lg:w-[60%] flex flex-col gap-5">
                   <div className="bg-sky-50 dark:bg-sky-900/10 border-t-4 border-sky-500 rounded-2xl overflow-hidden shadow-sm">
-                      <div className="p-5 md:p-6 space-y-4 text-sm">
-                          <div className="grid grid-cols-3 gap-2">
-                              <span className="text-slate-500 font-medium">รหัสผลงาน</span> 
-                              <span className="font-mono bg-white dark:bg-slate-800 px-2 py-0.5 rounded border border-slate-200 dark:border-slate-700 col-span-2 place-self-start">{activeSubmission.id.substring(0,8)}</span>
-                          </div>
-                          <div className="grid grid-cols-3 gap-2 border-t border-sky-100 dark:border-sky-800/50 pt-4">
-                              <span className="text-slate-500 font-medium">ชื่อผลงาน</span> 
-                              <span className="font-bold text-slate-800 dark:text-slate-200 text-base leading-tight col-span-2">{activeSubmission.fileName}</span>
-                          </div>
-                          <div className="grid grid-cols-3 gap-2 border-t border-sky-100 dark:border-sky-800/50 pt-4">
-                              <span className="text-slate-500 font-medium">ผู้จัดทำ</span> 
-                              <span className="col-span-2 flex items-center gap-2 text-slate-700 dark:text-slate-300"><i className="fa-solid fa-user text-sky-400"></i> {activeSubmission.firstName} {activeSubmission.lastName}</span>
-                          </div>
-                          <div className="grid grid-cols-3 gap-2 border-t border-sky-100 dark:border-sky-800/50 pt-4">
-                              <span className="text-slate-500 font-medium">หมวดหมู่</span> 
-                              <span className="col-span-2 text-slate-700 dark:text-slate-300">{WORK_TYPES.find(w => w.id === activeSubmission.workType)?.label}</span>
-                          </div>
-                          <div className="grid grid-cols-3 gap-2 border-t border-sky-100 dark:border-sky-800/50 pt-4">
-                              <span className="text-slate-500 font-medium">ไฟล์นำเสนอ</span> 
-                              <span className="col-span-2">
-                                  {activeSubmission.presentationUrl ? (
-                                      <a 
-                                          href={activeSubmission.presentationUrl} 
-                                          target="_blank" 
-                                          rel="noreferrer"
-                                          className="inline-flex items-center gap-2 px-3 py-1.5 bg-emerald-500 text-white rounded-xl text-xs font-bold hover:bg-emerald-600 transition shadow-md shadow-emerald-200 dark:shadow-none"
-                                      >
-                                          <i className="fa-solid fa-file-powerpoint"></i> เปิดลิงก์นำเสนอ (Canva/Drive)
-                                      </a>
-                                  ) : (
-                                      <span className="text-xs text-rose-500 font-bold bg-rose-50 px-2 py-1 rounded-lg">
-                                          <i className="fa-solid fa-circle-exclamation"></i> ยังไม่ได้แนบลิงก์นำเสนอ
+                      <div className="p-5 md:p-6 text-sm">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                              <div className="space-y-1 sm:col-span-2">
+                                  <span className="text-slate-500 font-medium block text-xs uppercase tracking-wider">ชื่อผลงาน</span> 
+                                  <span className="font-bold text-slate-800 dark:text-slate-200 text-base leading-tight block">{activeSubmission.fileName || "-"}</span>
+                              </div>
+                              <div className="space-y-1">
+                                  <span className="text-slate-500 font-medium block text-xs uppercase tracking-wider">ประเภทผลงาน</span> 
+                                  <span className="font-bold text-slate-800 dark:text-slate-200 leading-tight block">
+                                      <i className="fa-solid fa-layer-group text-slate-400 mr-2"></i>
+                                      {WORK_TYPES.find(w => w.id === activeSubmission.workType)?.label || "-"}
+                                  </span>
+                              </div>
+                              <div className="space-y-1">
+                                  <span className="text-slate-500 font-medium block text-xs uppercase tracking-wider">สาขาผลงาน</span> 
+                                  <span className="font-bold text-slate-800 dark:text-slate-200 leading-tight block">
+                                      <i className="fa-solid fa-code-branch text-slate-400 mr-2"></i>
+                                      {BRANCHES.find(b => b.id === activeSubmission.branchId)?.label || "-"}
+                                  </span>
+                              </div>
+                              <div className="space-y-1 border-t border-sky-100 dark:border-sky-800/50 pt-3">
+                                  <span className="text-slate-500 font-medium block text-xs uppercase tracking-wider">ผู้นำเสนอ</span> 
+                                  <span className="font-bold text-slate-800 dark:text-slate-200 leading-tight flex items-center gap-3">
+                                      <img 
+                                          src={activeProfile?.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(activeSubmission.firstName + ' ' + activeSubmission.lastName)}&background=random`} 
+                                          alt="Profile Avatar" 
+                                          className="w-8 h-8 rounded-full border shadow-sm border-slate-200 dark:border-slate-700 bg-white object-cover" 
+                                      />
+                                      <span>
+                                         {activeSubmission.firstName} {activeSubmission.lastName}
                                       </span>
-                                  )}
-                              </span>
+                                  </span>
+                              </div>
+                              <div className="hidden sm:flex border-t border-sky-100 dark:border-sky-800/50 pt-3 justify-center items-center sm:row-span-2">
+                                  <img 
+                                      src={activeProfile?.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(activeSubmission.firstName + ' ' + activeSubmission.lastName)}&background=random&size=256`} 
+                                      alt="Large Profile Avatar" 
+                                      className="w-24 h-24 rounded-full border-4 shadow-lg border-white dark:border-slate-800 bg-white object-cover" 
+                                  />
+                              </div>
+                              <div className="space-y-1">
+                                  <span className="text-slate-500 font-medium block text-xs uppercase tracking-wider">ตำแหน่ง</span> 
+                                  <span className="font-bold text-slate-800 dark:text-slate-200 leading-tight block">
+                                      <i className="fa-solid fa-briefcase text-slate-400 mr-2"></i>
+                                      {activeSubmission.position || "-"} { activeProfile?.level ? <span className="text-sky-600 dark:text-sky-400">({activeProfile.level})</span> : ((activeSubmission as any).level ? <span className="text-sky-600 dark:text-sky-400">({(activeSubmission as any).level})</span> : "") }
+                                  </span>
+                              </div>
+                              <div className="space-y-1 sm:col-start-1">
+                                  <span className="text-slate-500 font-medium block text-xs uppercase tracking-wider">หน่วยงาน/สังกัด</span> 
+                                  <span className="font-bold text-slate-800 dark:text-slate-200 leading-tight block">
+                                      <i className="fa-solid fa-building text-slate-400 mr-2"></i>
+                                      {activeSubmission.organization || "-"}
+                                  </span>
+                              </div>
                           </div>
                       </div>
                   </div>
@@ -611,17 +642,48 @@ const ReviewerPanel: React.FC<ReviewerPanelProps> = ({ submissions, settings, re
                                   </a>
                               </div>
                               {isCanva ? (
-                                  <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-50 dark:bg-slate-900 z-10 p-8 text-center">
-                                      <div className="w-20 h-20 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-200 dark:shadow-none mb-6">
-                                          <span className="text-white font-black text-3xl">C</span>
+                                  !hideCanvaExt ? (
+                                      <div className="absolute inset-0 z-20 flex flex-col bg-white dark:bg-slate-900 overflow-hidden">
+                                          <div className="bg-slate-50 dark:bg-slate-800/50 px-4 py-2.5 flex items-center justify-between border-b border-slate-200 dark:border-slate-700 shadow-sm relative">
+                                              <div className="flex items-center gap-2">
+                                                  <div className="w-3 h-3 rounded-full bg-rose-400/80 shadow-sm"></div>
+                                                  <div className="w-3 h-3 rounded-full bg-amber-400/80 shadow-sm"></div>
+                                                  <div className="w-3 h-3 rounded-full bg-emerald-400/80 shadow-sm"></div>
+                                                  <span className="ml-3 text-[11px] font-bold text-slate-600 dark:text-slate-300 flex items-center gap-2 uppercase tracking-wider">
+                                                      <div className="w-5 h-5 rounded bg-[#00C4CC] flex items-center justify-center text-white text-[10px] font-black tracking-tighter mix-blend-multiply dark:mix-blend-normal">C</div>
+                                                      Canva Viewer
+                                                  </span>
+                                              </div>
+                                              <div className="flex gap-2 items-center">
+                                                  <a href={pUrl || embedUrl} target="_blank" rel="noreferrer" className="text-[10px] font-bold bg-sky-50 dark:bg-sky-500/10 hover:bg-sky-100 dark:hover:bg-sky-500/20 text-sky-600 dark:text-sky-400 px-3 py-1 bg-opacity-50 rounded-lg transition-colors flex items-center gap-1.5 shadow-sm border border-sky-100 dark:border-sky-500/20">
+                                                      เปิดหน้าต่างใหม่ <i className="fa-solid fa-external-link-alt"></i>
+                                                  </a>
+                                                  <button onClick={() => setHideCanvaExt(true)} className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-rose-50 dark:hover:bg-rose-500/20 hover:text-rose-600 dark:hover:text-rose-400 text-slate-400 transition-colors ml-1" title="ปิดแท็บตัวอย่าง">
+                                                      <i className="fa-solid fa-times"></i>
+                                                  </button>
+                                              </div>
+                                          </div>
+                                          <div className="flex-1 bg-slate-100/50 dark:bg-slate-900">
+                                              <iframe src={embedUrl} className="w-full h-full border-0" allow="autoplay" />
+                                          </div>
                                       </div>
-                                      <h3 className="font-black text-2xl text-slate-800 dark:text-white mb-2">Canva Presentation</h3>
-                                      <p className="text-slate-500 dark:text-slate-400 mb-8 max-w-sm">ลิงก์แพลตฟอร์ม Canva อาจถูกปิดกั้นการแสดงผลชั่วคราว คุณสามารถเปิดดูเต็มจอได้ทันที</p>
-                                      <a href={pUrl || embedUrl} target="_blank" rel="noreferrer" className="px-8 py-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-2xl shadow-lg shadow-indigo-200 dark:shadow-none transition transform hover:-translate-y-1 flex items-center gap-3">
-                                          <i className="fa-solid fa-arrow-up-right-from-square"></i>
-                                          เปิดดูผลงานชิ้นนี้บน Canva
-                                      </a>
-                                  </div>
+                                  ) : (
+                                      <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-50 dark:bg-slate-900 z-10 p-8 text-center border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-3xl m-2">
+                                          <div className="w-16 h-16 bg-gradient-to-br from-[#00C4CC] to-purple-500 rounded-2xl flex items-center justify-center shadow-lg shadow-[#00c4cc]/20 mb-6 opacity-80 mix-blend-multiply dark:mix-blend-normal">
+                                              <span className="text-white font-black text-2xl">C</span>
+                                          </div>
+                                          <h3 className="font-black text-xl text-slate-800 dark:text-white mb-2">Canva Viewer ถูกพับเก็บ</h3>
+                                          <p className="text-slate-500 dark:text-slate-400 mb-8 max-w-sm text-sm">หน้าตัวอย่างถูกซ่อนไว้เพื่อจัดการป็อปอัป หากคุณต้องการดูงานนำเสนออีกครั้งสามารถคลิกได้ด้านล่าง</p>
+                                          <div className="flex flex-col sm:flex-row gap-3">
+                                              <button onClick={() => setHideCanvaExt(false)} className="px-6 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-[#00C4CC] hover:text-[#00C4CC] text-slate-600 dark:text-slate-300 font-bold rounded-xl shadow-sm transition-all focus:ring-4 focus:ring-[#00C4CC]/20">
+                                                  <i className="fa-solid fa-rotate-right mr-2"></i> โหลดตัวอย่างใหม่
+                                              </button>
+                                              <a href={pUrl || embedUrl} target="_blank" rel="noreferrer" className="px-6 py-3 bg-[#00C4CC] hover:bg-[#00a9b0] text-white font-bold rounded-xl shadow-md shadow-[#00c4cc]/20 transition-all focus:ring-4 focus:ring-[#00C4CC]/40 flex items-center gap-2 justify-center">
+                                                  <i className="fa-solid fa-external-link-alt"></i> เปิด Canva ในหน้าใหม่
+                                              </a>
+                                          </div>
+                                      </div>
+                                  )
                               ) : (
                                   <iframe 
                                       src={embedUrl} 
@@ -636,7 +698,7 @@ const ReviewerPanel: React.FC<ReviewerPanelProps> = ({ submissions, settings, re
               </div>
 
               {/* Right Side: Scoring Form */}
-              <div className="w-full lg:w-[55%]">
+              <div className="w-full lg:w-[40%]">
                   <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 md:p-8 shadow-md relative overflow-hidden flex flex-col h-full">
                       {/* Decoration */}
                       <div className="absolute top-0 right-0 w-64 h-64 bg-sky-50 dark:bg-sky-900/10 rounded-bl-full pointer-events-none -z-0 opacity-50"></div>
