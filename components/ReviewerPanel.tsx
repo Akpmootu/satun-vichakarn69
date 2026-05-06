@@ -558,9 +558,15 @@ const ReviewerPanel: React.FC<ReviewerPanelProps> = ({ submissions, settings, re
                           if (pUrl.includes('drive.google.com')) {
                               embedUrl = pUrl.replace(/\/view.*$/, '/preview');
                               isGoogleDrive = true;
-                          } else if (pUrl.includes('canva.com/design/')) {
-                              // Convert Canva link to embed if possible, or just use as is
-                              embedUrl = pUrl;
+                          } else if (pUrl.includes('canva.com/design/') || pUrl.includes('canva.link/')) {
+                              // Canva usually blocks embedding unless it's the specific view?embed URL.
+                              // While we can try to format it, it's safer to just set isCanva = true
+                              // which we will handle by showing a dedicated Canva button if it fails to embed
+                              if (pUrl.includes('/view')) {
+                                  embedUrl = pUrl.split('/view')[0] + '/view?embed';
+                              } else {
+                                  embedUrl = pUrl;
+                              }
                               isCanva = true;
                           } else {
                               embedUrl = pUrl;
@@ -574,6 +580,13 @@ const ReviewerPanel: React.FC<ReviewerPanelProps> = ({ submissions, settings, re
                               if (first.includes('drive.google.com')) {
                                   embedUrl = first.replace(/\/view.*$/, '/preview');
                                   isGoogleDrive = true;
+                              } else if (first.includes('canva.com/design/') || first.includes('canva.link/')) {
+                                  if (first.includes('/view')) {
+                                      embedUrl = first.split('/view')[0] + '/view?embed';
+                                  } else {
+                                      embedUrl = first;
+                                  }
+                                  isCanva = true;
                               } else {
                                   embedUrl = first;
                               }
@@ -593,16 +606,30 @@ const ReviewerPanel: React.FC<ReviewerPanelProps> = ({ submissions, settings, re
                       return (
                           <div className="flex-1 min-h-[500px] border border-slate-200 dark:border-slate-800 rounded-3xl overflow-hidden flex flex-col bg-slate-900 shadow-md relative group">
                               <div className="absolute top-2 right-2 p-2 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity z-10">
-                                  <a href={embedUrl} target="_blank" rel="noreferrer" className="w-10 h-10 bg-black/60 hover:bg-sky-500 text-white rounded-xl backdrop-blur-md flex items-center justify-center transition border border-white/10" title="เปิดในแท็บใหม่">
+                                  <a href={pUrl || embedUrl} target="_blank" rel="noreferrer" className="w-10 h-10 bg-black/60 hover:bg-sky-500 text-white rounded-xl backdrop-blur-md flex items-center justify-center transition border border-white/10" title="เปิดในแท็บใหม่">
                                       <i className="fa-solid fa-external-link-alt text-sm"></i>
                                   </a>
                               </div>
-                              <iframe 
-                                  src={embedUrl} 
-                                  className="w-full h-full flex-1 border-0 bg-white" 
-                                  title="Presentation Viewer"
-                                  allow="autoplay"
-                              />
+                              {isCanva ? (
+                                  <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-50 dark:bg-slate-900 z-10 p-8 text-center">
+                                      <div className="w-20 h-20 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-200 dark:shadow-none mb-6">
+                                          <span className="text-white font-black text-3xl">C</span>
+                                      </div>
+                                      <h3 className="font-black text-2xl text-slate-800 dark:text-white mb-2">Canva Presentation</h3>
+                                      <p className="text-slate-500 dark:text-slate-400 mb-8 max-w-sm">ลิงก์แพลตฟอร์ม Canva อาจถูกปิดกั้นการแสดงผลชั่วคราว คุณสามารถเปิดดูเต็มจอได้ทันที</p>
+                                      <a href={pUrl || embedUrl} target="_blank" rel="noreferrer" className="px-8 py-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-2xl shadow-lg shadow-indigo-200 dark:shadow-none transition transform hover:-translate-y-1 flex items-center gap-3">
+                                          <i className="fa-solid fa-arrow-up-right-from-square"></i>
+                                          เปิดดูผลงานชิ้นนี้บน Canva
+                                      </a>
+                                  </div>
+                              ) : (
+                                  <iframe 
+                                      src={embedUrl} 
+                                      className="w-full h-full flex-1 border-0 bg-white" 
+                                      title="Presentation Viewer"
+                                      allow="autoplay"
+                                  />
+                              )}
                           </div>
                       );
                   })()}
@@ -673,6 +700,10 @@ const ReviewerPanel: React.FC<ReviewerPanelProps> = ({ submissions, settings, re
                       </div>
 
                       <div className="pt-6 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 z-20 flex flex-col gap-4">
+                          <div className="bg-sky-50 dark:bg-sky-900/20 border border-sky-100 dark:border-sky-800 rounded-2xl p-4 flex items-center justify-between shadow-sm">
+                             <div className="font-bold text-sky-800 dark:text-sky-300">คะแนนรวมทั้งหมด</div>
+                             <div className="text-3xl font-black text-sky-600 dark:text-sky-400">{calculateTotal(activeSubmission.workType, currentScoreData)} <span className="text-lg opacity-50">/ 100</span></div>
+                          </div>
                           <button 
                               onClick={handleSaveScore}
                               className="w-full py-4 bg-slate-900 text-white rounded-2xl font-black text-lg hover:bg-slate-800 transition flex items-center justify-center gap-3 shadow-xl dark:bg-sky-600 dark:hover:bg-sky-500 focus:ring-4 focus:ring-sky-100"

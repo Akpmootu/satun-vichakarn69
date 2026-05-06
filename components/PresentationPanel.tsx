@@ -19,7 +19,7 @@ const PresentationPanel: React.FC<PresentationPanelProps> = ({ submissions, sett
 
     const validateUrl = (url: string) => {
         const lower = url.toLowerCase();
-        return lower.includes('drive.google.com') || lower.includes('canva.com');
+        return lower.includes('drive.google.com') || lower.includes('canva.com') || lower.includes('canva.link');
     };
 
     const handleUpdateLink = async (submission: Submission) => {
