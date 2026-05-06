@@ -25,7 +25,8 @@ const mapSubmissionFromDB = (data: any): Submission => ({
     updatedAt: data.updated_at,
     audit: data.audit || [],
     coAuthors: data.co_authors || [], // Map JSONB
-    authorPhoto: data.author_photo || null // Map Author Photo
+    authorPhoto: data.author_photo || null, // Map Author Photo
+    presentationUrl: data.presentation_url // Map Presentation URL
 });
 
 const mapProfileFromDB = (data: any): UserProfile => ({
@@ -425,7 +426,8 @@ export async function apiCreateSubmission(settings: AppSettings, payload: Submis
         status: payload.status, 
         audit: payload.audit,
         co_authors: payload.coAuthors || [], // JSONB
-        author_photo: payload.authorPhoto || null // New Field
+        author_photo: payload.authorPhoto || null, // New Field
+        presentation_url: payload.presentationUrl
     };
     const { data, error } = await supabase.from('submissions').insert([dbPayload]).select().single();
     if (error) throw new Error(error.message);
@@ -499,6 +501,7 @@ export async function apiUpdateSubmission(settings: AppSettings, id: string, pat
     if (patch.fileName !== undefined) dbPatch.file_name = patch.fileName;
     if (patch.coAuthors !== undefined) dbPatch.co_authors = patch.coAuthors;
     if (patch.authorPhoto !== undefined) dbPatch.author_photo = patch.authorPhoto; // Update Photo
+    if (patch.presentationUrl !== undefined) dbPatch.presentation_url = patch.presentationUrl;
 
     const { data, error } = await supabase.from('submissions').update(dbPatch).eq('id', id).select().single();
     if (error) throw new Error(error.message);
@@ -634,7 +637,23 @@ export async function apiSaveReviewerScore(payload: Omit<ReviewerScore, 'id' | '
         result = data;
     }
     
-    return mapReviewerScoreFromDB(result);
+    const mappedResult = mapReviewerScoreFromDB(result);
+
+    try {
+        const { data: subData } = await supabase.from('submissions').select('file_name').eq('id', payload.submissionId).single();
+        const { data: revData } = await supabase.from('profiles').select('first_name,last_name').eq('id', payload.reviewerId).single();
+        if (subData && revData) {
+            notifyTelegram(
+                `🌟 <b>กรรมการให้คะแนนผลงานแล้ว!</b>\n\n` +
+                `📌 <b>ชื่อเรื่อง:</b> ${escapeHtml(subData.file_name || '-')}\n` +
+                `👤 <b>กรรมการ:</b> ${escapeHtml(revData.first_name)} ${escapeHtml(revData.last_name)}\n` +
+                `🎯 <b>คะแนนรวม:</b> ${payload.totalScore}`,
+                [{ text: "👉 ไปยังระบบหลังบ้าน", url: "https://moph.link/stnvichakarn69" }]
+            );
+        }
+    } catch(e) { console.error('Error notifying telegram on score', e); }
+
+    return mappedResult;
 }
 
 export async function apiDeleteSubmission(settings: AppSettings, id: string): Promise<void> {

@@ -14,6 +14,7 @@ import ReviewerPanel from "./components/ReviewerPanel";
 import ProfileSettings from "./components/ProfileSettings";
 import NewsModal from "./components/NewsModal";
 import UserAuthModal from "./components/UserAuthModal";
+import PresentationPanel from "./components/PresentationPanel";
 import FeedbackModal from "./components/FeedbackModal";
 import Toast from "./components/ui/Toast";
 import Logo from "./components/ui/Logo";
@@ -396,6 +397,7 @@ export default function App() {
     { id: "home", label: "หน้าหลัก", icon: "fa-house" },
     { id: "analytics", label: "วิเคราะห์", icon: "fa-chart-pie" },
     { id: "register", label: "ลงทะเบียนส่งผลงาน", icon: "fa-pen-to-square" },
+    { id: "presentation", label: "ส่งไฟล์นำเสนอ", icon: "fa-file-powerpoint" },
     { id: "history", label: "ประวัติผลงาน", icon: "fa-clock-rotate-left" },
     { id: "assessment", label: "ประเมินผลงาน", icon: "fa-clipboard-check" },
     { id: "settings", label: "ตั้งค่าระบบ", icon: "fa-gear" },
@@ -449,6 +451,30 @@ export default function App() {
                 setActiveTab('assessment');
             } else if (user.role === 'admin') {
                 setActiveTab('settings');
+            } else {
+                // Check for missing presentations for regular user
+                setTimeout(async () => {
+                   try {
+                       const subs = await apiListSubmissions(loadSettings(), user.id);
+                       const pending = subs.filter(s => !s.presentationUrl);
+                       if (pending.length > 0) {
+                           Swal.fire({
+                               title: 'แจ้งเตือน: ยังไม่ได้ส่งไฟล์นำเสนอ',
+                               html: `คุณยังมีผลงานอีก <b>${pending.length}</b> เรื่องที่ยังไม่ได้แนบลิงก์ไฟล์นำเสนอ<br>กรุณาดำเนินการแนบลิงก์ Google Drive หรือ Canva เพื่อให้กรรมการประเมิน`,
+                               icon: 'warning',
+                               showCancelButton: true,
+                               confirmButtonText: 'ไปที่หน้าส่งไฟล์นำเสนอ',
+                               cancelButtonText: 'ไว้ภายหลัง',
+                               confirmButtonColor: '#0ea5e9',
+                               customClass: { popup: 'rounded-3xl' }
+                           }).then((res: any) => {
+                               if (res.isConfirmed) {
+                                   handleTabChange('presentation');
+                               }
+                           });
+                       }
+                   } catch(e) { console.error(e); }
+                }, 1000);
             }
         }}
         showToast={showToast}
@@ -794,6 +820,16 @@ export default function App() {
                         onNavigateToProfile={() => handleTabChange('profile')}
                     />
                 )}
+
+                {activeTab === 'presentation' && currentUser && (
+                    <PresentationPanel 
+                        submissions={allSubmissions}
+                        settings={settings}
+                        currentUser={currentUser}
+                        refreshData={loadData}
+                        showToast={showToast}
+                    />
+                )}
                 
                 {activeTab === 'history' && (
                     <History 
@@ -972,7 +1008,8 @@ export default function App() {
                               <span className="text-[10px] text-slate-500 uppercase font-bold mb-1">รายเดือน</span>
                               <span className="text-white font-mono font-bold text-lg">{visitorStats.month.toLocaleString()}</span>
                           </div>
-                          <div className="flex flex-col items-center">
+
+<div className="flex flex-col items-center">
                               <span className="text-[10px] text-slate-500 uppercase font-bold mb-1">รายปี</span>
                               <span className="text-white font-mono font-bold text-lg">{visitorStats.year.toLocaleString()}</span>
                           </div>
@@ -990,7 +1027,7 @@ export default function App() {
               <div className="border-t border-slate-800 pt-8 flex flex-col md:flex-row justify-between items-center gap-4 text-xs font-medium text-slate-500">
                   <div className="flex items-center gap-2">
                        <i className="fa-solid fa-code text-sky-500"></i>
-                       <span>พัฒนาโดย IT SSJ Satun 2569 | <a href="#" onClick={(e) => {e.preventDefault(); Swal.fire({title: 'รายละเอียดอัปเดต v1.3.19', html: '<ul class="text-left space-y-2 text-sm"><li>🐛 <b>Bug Fix:</b> แก้ไขข้อผิดพลาดในการกรองสาขาในหน้าจัดการผลงานที่ทำให้ข้อมูลไม่แสดงผล (v1.3.19)</li><li>🐛 <b>Bug Fix:</b> แก้ไขปัญหาระบบไม่ตอบสนอง (Page Unresponsive) เมื่อออกจากระบบ (v1.3.18)</li><li>🎨 <b>UI Improvement:</b> ปรับแก้การแสดงผลข้อความหัวเรื่องให้แสดงเป็น 2 บรรทัดเพื่อให้สวยงามขึ้น (v1.3.18)</li><li>🔧 <b>Pagination Style:</b> อัปเดตสไตล์ของระบบแบ่งหน้า (Pagination) ให้เป็นแบบ Track แถบสไลด์สวยงามขึ้น (v1.3.17)</li><li>✅ <b>Reviewer Branches:</b> คณะกรรมการสามารถเลือปรับผิดชอบได้มากกว่า 1 สาขา (v1.3.16)</li><li>🔍 <b>Reviewer Filter:</b> ระบบหน้าจอของคณะกรรมการเพิ่มแถบกรองและค้นหา (v1.3.16)</li><li>🔧 <b>Auto View:</b> ระบบคณะกรรมการจะแสดงผลงานในสาขาที่รับผิดชอบให้ทันทีโดยอัตโนมัติ (v1.3.16)</li></ul>', icon: 'info', confirmButtonColor: '#0ea5e9'}); }}>v1.3.19</a></span>
+                       <span>พัฒนาโดย IT SSJ Satun 2569 | <a href="#" onClick={(e) => {e.preventDefault(); Swal.fire({title: 'รายละเอียดอัปเดต v1.3.22', html: '<ul class="text-left space-y-2 text-sm"><li>📁 <b>Presentation Upload:</b> เพิ่มระบบส่งลิงก์ไฟล์นำเสนอผลงาน (Drive/Canva) พร้อมระบบแจ้งเตือน (v1.3.22)</li><li>📊 <b>Dashboard & Sorting:</b> จัดเรียงข้อมูลในตาราง อัปเดตหน้ากระดาน Reviewer พร้อมระบบกรองข้อมูล (v1.3.21)</li><li>💬 <b>Telegram API:</b> ยกเลิก cronjob ของระบบและปรับเปลี่ยนให้ทำการส่งการแจ้งเตือนพุชแทนเรียลไทม์ (v1.3.21)</li><li>🌀 <b>Animations:</b> เพิ่มเอฟเฟกต์แอนิเมชันให้ข่าวสารและเอกสารดาวน์โหลดเวลาเลื่อนหน้าจอ (v1.3.20)</li><li>🔧 <b>Status Update:</b> ย้ายระบบการปรับสถานะผลงานจากตารางเข้าไปอยู่ในส่วน ตรวจสอบ/จัดการ (v1.3.20)</li><li>🐛 <b>Bug Fix:</b> แก้ไขข้อผิดพลาดในการกรองสาขาในหน้าจัดการผลงานที่ทำให้ข้อมูลไม่แสดงผล (v1.3.19)</li><li>🐛 <b>Bug Fix:</b> แก้ไขปัญหาระบบไม่ตอบสนอง (Page Unresponsive) เมื่อออกจากระบบ (v1.3.18)</li><li>🎨 <b>UI Improvement:</b> ปรับแก้การแสดงผลข้อความหัวเรื่องให้แสดงเป็น 2 บรรทัดเพื่อให้สวยงามขึ้น (v1.3.18)</li><li>🔧 <b>Pagination Style:</b> อัปเดตสไตล์ของระบบแบ่งหน้า (Pagination) ให้เป็นแบบ Track แถบสไลด์สวยงามขึ้น (v1.3.17)</li><li>✅ <b>Reviewer Branches:</b> คณะกรรมการสามารถเลือปรับผิดชอบได้มากกว่า 1 สาขา (v1.3.16)</li></ul>', icon: 'info', confirmButtonColor: '#0ea5e9'}); }}>v1.3.22</a></span>
                   </div>
                   <div className="flex gap-6">
                       <button onClick={() => setShowPrivacyPolicy(true)} className="hover:text-slate-300 transition">นโยบายความเป็นส่วนตัว</button>

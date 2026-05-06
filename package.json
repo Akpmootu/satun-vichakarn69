@@ -1,21 +1,25 @@
 {
   "name": "satun-vichakarn",
   "private": true,
-  "version": "1.3.19",
+  "version": "1.3.20",
   "type": "module",
   "scripts": {
     "dev": "tsx server.ts",
     "build": "tsc && vite build && npx esbuild server.ts --bundle --platform=node --packages=external --outdir=dist --format=cjs",
     "start": "node dist/server.cjs",
+    "lint": "tsc --noEmit",
     "preview": "vite preview"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.39.7",
     "express": "^5.2.1",
+    "motion": "^12.38.0",
     "node-cron": "^4.2.1",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "recharts": "^3.8.1"
+    "react-intersection-observer": "^10.0.3",
+    "recharts": "^3.8.1",
+    "sweetalert2": "^11.26.24"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.2.4",

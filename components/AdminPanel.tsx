@@ -90,8 +90,23 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ submissions, settings, refreshD
   }, [submissions]);
 
   // --- Filter Logic ---
+  const [submissionSort, setSubmissionSort] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(null);
+  const [userSort, setUserSort] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(null);
+
+  const handleSubmissionSort = (key: string) => {
+      let direction: 'asc' | 'desc' = 'asc';
+      if (submissionSort && submissionSort.key === key && submissionSort.direction === 'asc') direction = 'desc';
+      setSubmissionSort({ key, direction });
+  };
+
+  const handleUserSort = (key: string) => {
+      let direction: 'asc' | 'desc' = 'asc';
+      if (userSort && userSort.key === key && userSort.direction === 'asc') direction = 'desc';
+      setUserSort({ key, direction });
+  };
+
   const filteredSubmissions = useMemo(() => {
-      return submissions.filter(s => {
+      let results = submissions.filter(s => {
           const searchString = (s.fileName || '') + s.firstName + s.lastName + (s.organization || '');
           const matchQ = searchString.toLowerCase().includes(filter.q.toLowerCase());
           const matchBranch = filter.branch === 'all' || s.branchId?.toString() === filter.branch;
@@ -107,15 +122,47 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ submissions, settings, refreshD
           
           return matchQ && matchBranch && matchStatus && matchType && matchOrg && matchDate;
       });
-  }, [submissions, filter]);
+
+      if (submissionSort) {
+          results.sort((a: any, b: any) => {
+              let valA = a[submissionSort.key] || '';
+              let valB = b[submissionSort.key] || '';
+              if (submissionSort.key === 'firstName') {
+                  valA = a.firstName + a.lastName;
+                  valB = b.firstName + b.lastName;
+              }
+              if (valA < valB) return submissionSort.direction === 'asc' ? -1 : 1;
+              if (valA > valB) return submissionSort.direction === 'asc' ? 1 : -1;
+              return 0;
+          });
+      }
+
+      return results;
+  }, [submissions, filter, submissionSort]);
 
   const filteredUsers = useMemo(() => {
-      return userList.filter(u => {
+      let results = userList.filter(u => {
           const matchQ = (u.firstName + u.lastName + u.email + (u.organization || '')).toLowerCase().includes(userFilter.q.toLowerCase());
           const matchRole = userFilter.role === 'all' || u.role === userFilter.role;
           return matchQ && matchRole;
       });
-  }, [userList, userFilter]);
+      
+      if (userSort) {
+          results.sort((a: any, b: any) => {
+              let valA = a[userSort.key] || '';
+              let valB = b[userSort.key] || '';
+              if (userSort.key === 'firstName') {
+                  valA = a.firstName + a.lastName;
+                  valB = b.firstName + b.lastName;
+              }
+              if (valA < valB) return userSort.direction === 'asc' ? -1 : 1;
+              if (valA > valB) return userSort.direction === 'asc' ? 1 : -1;
+              return 0;
+          });
+      }
+
+      return results;
+  }, [userList, userFilter, userSort]);
 
   const getBranchLabel = (id?: number) => {
       const b = BRANCHES.find(x => x.id === Number(id));
@@ -553,7 +600,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ submissions, settings, refreshD
 
   const handleExportCSV = () => {
     try {
-      const headers = ['ลำดับ', 'สาขา', 'ชื่อผลงาน', 'รายชื่อผู้แต่ง', 'ตำแหน่ง', 'หน่วยงาน', 'ลิงก์ผลงาน', 'สถานะ'];
+      const headers = ['ลำดับ', 'สาขา', 'ชื่อผลงาน', 'รายชื่อผู้แต่ง', 'ตำแหน่ง', 'หน่วยงาน', 'ลิงก์ผลงาน', 'ลิงก์นำเสนอ', 'สถานะ'];
       const rows = filteredSubmissions.map((s, index) => {
         const branchName = getBranchLabel(s.branchId);
         const mainAuthor = `${s.firstName} ${s.lastName}`;
@@ -562,6 +609,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ submissions, settings, refreshD
         
         const attachs = parseAttachments(s.fileUrl);
         const link = attachs.length > 0 ? attachs.map((a: any) => a.value).join(', ') : '-';
+        const pLink = s.presentationUrl || '-';
         
         // Escape quotes
         return [
@@ -572,6 +620,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ submissions, settings, refreshD
           `"${s.position || '-'}"`,
           `"${s.organization || '-'}"`,
           `"${link}"`,
+          `"${pLink}"`,
           `"${s.status}"`
         ].join(',');
       });
@@ -898,10 +947,17 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ submissions, settings, refreshD
                     <table className="w-full text-sm text-left">
                         <thead className="bg-slate-50 dark:bg-slate-900 text-slate-500 dark:text-slate-400 font-bold uppercase">
                             <tr>
-                                <th className="p-4 rounded-l-xl">ผู้ส่ง</th>
-                                <th className="p-4">เรื่อง/สาขา</th>
-                                <th className="p-4">สถานะปัจจุบัน</th>
-                                <th className="p-4">ผู้รับผิดชอบ (Reviewer)</th>
+                                <th className="p-4 rounded-l-xl cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition" onClick={() => handleSubmissionSort('firstName')}>
+                                    <div className="flex items-center gap-2">ผู้ส่ง {submissionSort?.key === 'firstName' && <i className={`fa-solid fa-sort-${submissionSort.direction === 'asc' ? 'up' : 'down'}`}></i>}</div>
+                                </th>
+                                <th className="p-4 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition" onClick={() => handleSubmissionSort('fileName')}>
+                                    <div className="flex items-center gap-2">เรื่อง/สาขา {submissionSort?.key === 'fileName' && <i className={`fa-solid fa-sort-${submissionSort.direction === 'asc' ? 'up' : 'down'}`}></i>}</div>
+                                </th>
+                                <th className="p-4 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition" onClick={() => handleSubmissionSort('status')}>
+                                    <div className="flex items-center gap-2">สถานะปัจจุบัน {submissionSort?.key === 'status' && <i className={`fa-solid fa-sort-${submissionSort.direction === 'asc' ? 'up' : 'down'}`}></i>}</div>
+                                </th>
+                                <th className="p-4 text-center">นำเสนอ</th>
+                                <th className="p-4 text-center">ผู้รับผิดชอบ (Reviewer)</th>
                                 <th className="p-4 rounded-r-xl text-center">จัดการ</th>
                             </tr>
                         </thead>
@@ -936,10 +992,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ submissions, settings, refreshD
                                         )}
                                     </td>
                                     <td className="p-4">
-                                        <select 
-                                            value={s.status} 
-                                            onChange={(e) => handleUpdateStatus(s.id, e.target.value)}
-                                            className={`px-3 py-1.5 rounded-xl border text-xs font-bold font-sans outline-none focus:ring-2 focus:ring-sky-200 cursor-pointer text-center
+                                        <div 
+                                            className={`inline-block px-3 py-1.5 rounded-xl border text-xs font-bold font-sans text-center whitespace-nowrap
                                                 ${s.status === 'draft' ? 'bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800' :
                                                   s.status === 'submitted' ? 'bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-400' :
                                                   s.status === 'reviewed' ? 'bg-sky-100 text-sky-700 border-sky-200 dark:bg-sky-900/30 dark:text-sky-400' :
@@ -951,14 +1005,25 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ submissions, settings, refreshD
                                                 }
                                             `}
                                         >
-                                            <option value="draft">⚪ ฉบับร่าง (Draft)</option>
-                                            <option value="submitted">🟡 รอตรวจสอบ (Submitted)</option>
-                                            <option value="reviewed">🔵 กำลังพิจารณา (Under Review)</option>
-                                            <option value="scored">🟣 ให้คะแนนแล้ว (Scored)</option>
-                                            <option value="accepted">🟢 ผ่านการคัดเลือก (Accepted)</option>
-                                            <option value="revision_requested">🔴 ตีกลับแก้ไข (Rework)</option>
-                                            <option value="rejected">⚫ ไม่ผ่าน (Rejected)</option>
-                                        </select>
+                                            {s.status === 'draft' && '⚪ ฉบับร่าง (Draft)'}
+                                            {s.status === 'submitted' && '🟡 รอตรวจสอบ (Submitted)'}
+                                            {s.status === 'reviewed' && '🔵 กำลังพิจารณา (Under Review)'}
+                                            {s.status === 'scored' && '🟣 ให้คะแนนแล้ว (Scored)'}
+                                            {s.status === 'accepted' && '🟢 ผ่านการคัดเลือก (Accepted)'}
+                                            {s.status === 'revision_requested' && '🔴 ตีกลับแก้ไข (Rework)'}
+                                            {s.status === 'rejected' && '⚫ ไม่ผ่าน (Rejected)'}
+                                        </div>
+                                    </td>
+                                    <td className="p-4 text-center">
+                                        {s.presentationUrl ? (
+                                            <a href={s.presentationUrl} target="_blank" rel="noreferrer" className="inline-flex h-8 w-8 items-center justify-center bg-emerald-100 text-emerald-600 rounded-lg hover:bg-emerald-500 hover:text-white transition" title="เปิดลิงก์นำเสนอ">
+                                                <i className="fa-solid fa-file-powerpoint"></i>
+                                            </a>
+                                        ) : (
+                                            <div className="inline-flex h-8 w-8 items-center justify-center bg-slate-100 text-slate-300 rounded-lg" title="ยังไม่แนบลิงก์">
+                                                <i className="fa-solid fa-file-circle-xmark"></i>
+                                            </div>
+                                        )}
                                     </td>
                                     <td className="p-4">
                                          {assignedReviewers.length > 0 ? (
@@ -993,7 +1058,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ submissions, settings, refreshD
                     {filteredSubmissions.length === 0 && <div className="text-center p-8 text-slate-400">ไม่พบข้อมูล</div>}
                     
                     {submissionTotalPages > 1 && (
-                        <div className="p-4 border-t border-slate-100 dark:border-slate-700">
+                        <div className="p-4 border-t border-slate-100 dark:border-slate-700 flex justify-center">
                             <Pagination 
                                 currentPage={submissionPage} 
                                 totalPages={submissionTotalPages} 
@@ -1133,7 +1198,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ submissions, settings, refreshD
                      {filteredUsers.length === 0 && <div className="text-center p-12 text-slate-400">ไม่พบข้อมูลผู้ใช้งาน</div>}
                      
                      {userTotalPages > 1 && (
-                         <div className="p-4 border-t border-slate-100 dark:border-slate-700">
+                         <div className="p-4 border-t border-slate-100 dark:border-slate-700 flex justify-center">
                              <Pagination 
                                  currentPage={userPage} 
                                  totalPages={userTotalPages} 
@@ -1268,6 +1333,20 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ submissions, settings, refreshD
                                           <div className="text-slate-400 text-xs italic">ไม่มีไฟล์แนบ</div>
                                       )}
                                   </div>
+
+                                  <div className="text-xs font-bold text-slate-400 uppercase mt-4 mb-2">ลิงก์นำเสนอผลงาน (Canva / Drive)</div>
+                                  <div>
+                                      {selectedSubmission.presentationUrl ? (
+                                          <a href={selectedSubmission.presentationUrl} target="_blank" className="flex items-center gap-2 px-3 py-2 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 text-emerald-600 dark:text-emerald-400 font-bold hover:bg-emerald-100 transition text-xs">
+                                              <i className="fa-solid fa-file-powerpoint text-lg"></i>
+                                              {selectedSubmission.presentationUrl}
+                                          </a>
+                                      ) : (
+                                          <div className="text-rose-500 text-xs font-bold bg-rose-50 dark:bg-rose-900/10 px-3 py-2 rounded-xl border border-rose-100 dark:border-rose-800 flex items-center gap-2">
+                                               <i className="fa-solid fa-circle-exclamation"></i> ยังไม่ได้แนบลิงก์นำเสนอ
+                                          </div>
+                                      )}
+                                  </div>
                               </div>
                           </div>
                           );
@@ -1398,6 +1477,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ submissions, settings, refreshD
                               </div>
                           </div>
                           )}
+
                       </div>
 
                       {/* Footer Actions */}

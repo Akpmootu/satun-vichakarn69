@@ -1,5 +1,6 @@
 
 import React, { useMemo, useEffect } from 'react';
+import { motion } from 'motion/react';
 import { Submission, UserProfile, NewsItem } from '../types';
 import Timeline from './Timeline';
 
@@ -624,7 +625,15 @@ const Home: React.FC<HomeProps> = ({ onNavigate, currentUser, onLoginRequest, us
               <div className="space-y-4">
                   {newsList.filter(n => n.type === 'news').map((item, filteredIndex) => {
                       return (
-                          <div key={item.id} className="group relative bg-white dark:bg-slate-900 rounded-3xl p-5 shadow-sm hover:shadow-lg transition-all duration-300 ring-1 ring-slate-100 dark:ring-slate-700 border-l-4 border-l-rose-500 cursor-pointer overflow-hidden hover:-translate-y-1" onClick={() => onOpenNews(filteredIndex)}>
+                          <motion.div 
+                              initial={{ opacity: 0, y: 20 }}
+                              whileInView={{ opacity: 1, y: 0 }}
+                              viewport={{ once: true, margin: "-50px" }}
+                              transition={{ duration: 0.5, delay: filteredIndex * 0.1 }}
+                              key={item.id} 
+                              className="group relative bg-white dark:bg-slate-900 rounded-3xl p-5 shadow-sm hover:shadow-lg transition-all duration-300 ring-1 ring-slate-100 dark:ring-slate-700 border-l-4 border-l-rose-500 cursor-pointer overflow-hidden hover:-translate-y-1" 
+                              onClick={() => onOpenNews(filteredIndex)}
+                          >
                               
                               <div className="flex flex-col sm:flex-row gap-5">
                                   {/* Image/Icon */}
@@ -661,7 +670,7 @@ const Home: React.FC<HomeProps> = ({ onNavigate, currentUser, onLoginRequest, us
                                       </button>
                                   </div>
                               </div>
-                          </div>
+                          </motion.div>
                       );
                   })}
               </div>
@@ -680,8 +689,12 @@ const Home: React.FC<HomeProps> = ({ onNavigate, currentUser, onLoginRequest, us
               </div>
               
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {newsList.filter(n => n.type === 'download').map(item => (
-                      <div 
+                  {newsList.filter(n => n.type === 'download').map((item, filteredIndex) => (
+                      <motion.div 
+                        initial={{ opacity: 0, y: 20 }}
+                        whileInView={{ opacity: 1, y: 0 }}
+                        viewport={{ once: true, margin: "-50px" }}
+                        transition={{ duration: 0.5, delay: filteredIndex * 0.1 }}
                         key={item.id} 
                         onClick={() => handleDownload(item.id)}
                         className="group flex flex-col bg-white dark:bg-slate-900 p-5 rounded-3xl shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 ring-1 ring-slate-200 dark:ring-slate-700 cursor-pointer relative overflow-hidden"
@@ -712,7 +725,7 @@ const Home: React.FC<HomeProps> = ({ onNavigate, currentUser, onLoginRequest, us
                                   <i className="fa-solid fa-download text-xs"></i>
                               </div>
                           </div>
-                      </div>
+                      </motion.div>
                   ))}
               </div>
           </div>

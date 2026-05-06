@@ -107,6 +107,7 @@ export interface Submission {
   audit: AuditLog[];
   coAuthors?: CoAuthor[]; // Replaced string with structured array
   authorPhoto?: string | null; // New: Official Photo Base64/URL
+  presentationUrl?: string; // New: URL for Presentation (Google Drive / Canva)
 }
 
 export interface NewsItem {

@@ -142,11 +142,34 @@ const ReviewerPanel: React.FC<ReviewerPanelProps> = ({ submissions, settings, re
 
   const [submissionPage, setSubmissionPage] = useState(1);
   const ITEMS_PER_PAGE = 10;
+  const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(null);
+
+  const handleSort = (key: string) => {
+      let direction: 'asc' | 'desc' = 'asc';
+      if (sortConfig && sortConfig.key === key && sortConfig.direction === 'asc') {
+          direction = 'desc';
+      }
+      setSortConfig({ key, direction });
+  };
   
   const paginatedSubmissions = useMemo(() => {
+      let results = [...branchSubmissions];
+      if (sortConfig) {
+          results.sort((a: any, b: any) => {
+              let valA = a[sortConfig.key] || '';
+              let valB = b[sortConfig.key] || '';
+              if (sortConfig.key === 'firstName') {
+                  valA = a.firstName + ' ' + a.lastName;
+                  valB = b.firstName + ' ' + b.lastName;
+              }
+              if (valA < valB) return sortConfig.direction === 'asc' ? -1 : 1;
+              if (valA > valB) return sortConfig.direction === 'asc' ? 1 : -1;
+              return 0;
+          });
+      }
       const start = (submissionPage - 1) * ITEMS_PER_PAGE;
-      return branchSubmissions.slice(start, start + ITEMS_PER_PAGE);
-  }, [branchSubmissions, submissionPage]);
+      return results.slice(start, start + ITEMS_PER_PAGE);
+  }, [branchSubmissions, submissionPage, sortConfig]);
 
   const totalPages = Math.ceil(branchSubmissions.length / ITEMS_PER_PAGE);
 
@@ -316,16 +339,54 @@ const ReviewerPanel: React.FC<ReviewerPanelProps> = ({ submissions, settings, re
                 </div>
             </div>
 
+            {/* Dashboard Summary */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 flex items-center gap-4">
+                    <div className="h-12 w-12 rounded-xl bg-sky-100 dark:bg-sky-900/50 text-sky-500 flex items-center justify-center text-xl shrink-0"><i className="fa-solid fa-list-check"></i></div>
+                    <div>
+                        <div className="text-2xl font-black text-slate-800 dark:text-white leading-none">{branchSubmissions.length}</div>
+                        <div className="text-xs font-bold text-slate-500 mt-1">ผลงานในความรับผิดชอบ</div>
+                    </div>
+                </div>
+                <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 flex items-center gap-4">
+                    <div className="h-12 w-12 rounded-xl bg-amber-100 dark:bg-amber-900/50 text-amber-600 flex items-center justify-center text-xl shrink-0"><i className="fa-solid fa-microphone-lines"></i></div>
+                    <div>
+                        <div className="text-2xl font-black text-slate-800 dark:text-white leading-none">{branchSubmissions.filter(s => s.workType === 'oral').length}</div>
+                        <div className="text-xs font-bold text-slate-500 mt-1">ประเภท Oral</div>
+                    </div>
+                </div>
+                <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 flex items-center gap-4">
+                    <div className="h-12 w-12 rounded-xl bg-purple-100 dark:bg-purple-900/50 text-purple-600 flex items-center justify-center text-xl shrink-0"><i className="fa-solid fa-images"></i></div>
+                    <div>
+                        <div className="text-2xl font-black text-slate-800 dark:text-white leading-none">{branchSubmissions.filter(s => s.workType === 'eposter').length}</div>
+                        <div className="text-xs font-bold text-slate-500 mt-1">ประเภท E-Poster</div>
+                    </div>
+                </div>
+                <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 flex items-center gap-4">
+                    <div className="h-12 w-12 rounded-xl bg-emerald-100 dark:bg-emerald-900/50 text-emerald-600 flex items-center justify-center text-xl shrink-0"><i className="fa-solid fa-lightbulb"></i></div>
+                    <div>
+                        <div className="text-2xl font-black text-slate-800 dark:text-white leading-none">{branchSubmissions.filter(s => s.workType === 'innovation').length}</div>
+                        <div className="text-xs font-bold text-slate-500 mt-1">ประเภท N-Innovation</div>
+                    </div>
+                </div>
+            </div>
+
             <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm overflow-hidden">
                 <div className="overflow-x-auto">
                     <table className="w-full text-left text-sm text-slate-600 dark:text-slate-400 border-collapse min-w-[800px]">
                         <thead className="bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
                             <tr>
                                 <th className="px-5 py-4 border-b font-bold tracking-tight text-center">ลำดับการ<br/>นำเสนอ</th>
-                                <th className="px-5 py-4 border-b font-bold tracking-tight">ประเภท</th>
-                                <th className="px-5 py-4 border-b font-bold tracking-tight">รหัส</th>
-                                <th className="px-5 py-4 border-b font-bold tracking-tight">ชื่อผลงาน</th>
-                                <th className="px-5 py-4 border-b font-bold tracking-tight">ชื่อผู้ส่ง</th>
+                                <th className="px-5 py-4 border-b font-bold tracking-tight cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700" onClick={() => handleSort('workType')}>
+                                    ประเภท {sortConfig?.key === 'workType' && <i className={`fa-solid fa-sort-${sortConfig.direction === 'asc' ? 'up' : 'down'} ml-1`}></i>}
+                                </th>
+                                <th className="px-5 py-4 border-b font-bold tracking-tight cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700" onClick={() => handleSort('fileName')}>
+                                    ชื่อผลงาน {sortConfig?.key === 'fileName' && <i className={`fa-solid fa-sort-${sortConfig.direction === 'asc' ? 'up' : 'down'} ml-1`}></i>}
+                                </th>
+                                <th className="px-5 py-4 border-b font-bold tracking-tight cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700" onClick={() => handleSort('firstName')}>
+                                    ชื่อผู้ส่ง {sortConfig?.key === 'firstName' && <i className={`fa-solid fa-sort-${sortConfig.direction === 'asc' ? 'up' : 'down'} ml-1`}></i>}
+                                </th>
+                                <th className="px-5 py-4 border-b font-bold tracking-tight text-center">นำเสนอ</th>
                                 <th className="px-5 py-4 border-b font-bold tracking-tight text-center bg-sky-50 dark:bg-sky-900/30">คะแนน<br/>ของฉัน</th>
                                 <th className="px-5 py-4 border-b font-bold tracking-tight text-center">รวม<br/>คะแนน</th>
                                 <th className="px-5 py-4 border-b font-bold tracking-tight text-center">จำนวน<br/>กรรมการ</th>
@@ -345,14 +406,39 @@ const ReviewerPanel: React.FC<ReviewerPanelProps> = ({ submissions, settings, re
                                     <tr key={s.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition group">
                                         <td className="px-5 py-4 text-center">{((submissionPage - 1) * ITEMS_PER_PAGE + idx + 1).toString().padStart(2, '0')}</td>
                                         <td className="px-5 py-4">
-                                            <div className="font-medium text-slate-700 dark:text-slate-200">{workTypeName}</div>
-                                            <div className="text-[10px] text-slate-400 mt-0.5 line-clamp-1 max-w-[150px]" title={s.branchId ? BRANCHES.find(b => b.id.toString() === s.branchId?.toString())?.label : ''}>
+                                            <div className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold border whitespace-nowrap mb-1
+                                                ${s.workType === 'oral' ? 'bg-amber-50 text-amber-600 border-amber-200 dark:bg-amber-900/30 dark:border-amber-800' :
+                                                  s.workType === 'eposter' ? 'bg-purple-50 text-purple-600 border-purple-200 dark:bg-purple-900/30 dark:border-purple-800' :
+                                                  s.workType === 'innovation' ? 'bg-emerald-50 text-emerald-600 border-emerald-200 dark:bg-emerald-900/30 dark:border-emerald-800' :
+                                                  'bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700'}
+                                            `}>
+                                                {workTypeName}
+                                            </div>
+                                            <div className="text-[10px] text-slate-400 line-clamp-1 max-w-[150px]" title={s.branchId ? BRANCHES.find(b => b.id.toString() === s.branchId?.toString())?.label : ''}>
                                                 {s.branchId ? `สาขา: ${String(s.branchId).padStart(2,'0')}` : '-'}
                                             </div>
                                         </td>
-                                        <td className="px-5 py-4 font-mono text-xs">{s.id.substring(0,8)}</td>
-                                        <td className="px-5 py-4 max-w-[200px] truncate" title={s.fileName}>{s.fileName}</td>
+                                        <td className="px-5 py-4" title={s.fileName}>
+                                            <div className="font-bold text-slate-800 dark:text-slate-200">{s.fileName}</div>
+                                        </td>
                                         <td className="px-5 py-4">{s.firstName} {s.lastName}</td>
+                                        <td className="px-5 py-4 text-center">
+                                            {s.presentationUrl ? (
+                                                <div className="flex flex-col items-center gap-1">
+                                                    <div className="text-[10px] text-emerald-500 font-bold uppercase">ส่งแล้ว</div>
+                                                    <a href={s.presentationUrl} target="_blank" rel="noreferrer" className="w-8 h-8 bg-sky-100 text-sky-600 rounded-lg flex items-center justify-center hover:bg-sky-500 hover:text-white transition shadow-sm" title="เปิดลิงก์นำเสนอ">
+                                                        <i className="fa-solid fa-file-powerpoint"></i>
+                                                    </a>
+                                                </div>
+                                            ) : (
+                                                <div className="flex flex-col items-center gap-1 opacity-40">
+                                                    <div className="text-[10px] text-slate-400 font-bold uppercase">ยังไม่ส่ง</div>
+                                                    <div className="w-8 h-8 bg-slate-100 text-slate-400 rounded-lg flex items-center justify-center">
+                                                        <i className="fa-solid fa-file-circle-xmark"></i>
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </td>
                                         <td className="px-5 py-4 text-center font-black text-sky-600 bg-sky-50/50 dark:bg-sky-900/10 group-hover:bg-sky-100/50 transition">
                                             {myScore ? myScore.totalScore : <span className="text-slate-300 font-normal">-</span>}
                                         </td>
@@ -436,53 +522,90 @@ const ReviewerPanel: React.FC<ReviewerPanelProps> = ({ submissions, settings, re
                               <span className="text-slate-500 font-medium">หมวดหมู่</span> 
                               <span className="col-span-2 text-slate-700 dark:text-slate-300">{WORK_TYPES.find(w => w.id === activeSubmission.workType)?.label}</span>
                           </div>
+                          <div className="grid grid-cols-3 gap-2 border-t border-sky-100 dark:border-sky-800/50 pt-4">
+                              <span className="text-slate-500 font-medium">ไฟล์นำเสนอ</span> 
+                              <span className="col-span-2">
+                                  {activeSubmission.presentationUrl ? (
+                                      <a 
+                                          href={activeSubmission.presentationUrl} 
+                                          target="_blank" 
+                                          rel="noreferrer"
+                                          className="inline-flex items-center gap-2 px-3 py-1.5 bg-emerald-500 text-white rounded-xl text-xs font-bold hover:bg-emerald-600 transition shadow-md shadow-emerald-200 dark:shadow-none"
+                                      >
+                                          <i className="fa-solid fa-file-powerpoint"></i> เปิดลิงก์นำเสนอ (Canva/Drive)
+                                      </a>
+                                  ) : (
+                                      <span className="text-xs text-rose-500 font-bold bg-rose-50 px-2 py-1 rounded-lg">
+                                          <i className="fa-solid fa-circle-exclamation"></i> ยังไม่ได้แนบลิงก์นำเสนอ
+                                      </span>
+                                  )}
+                              </span>
+                          </div>
                       </div>
                   </div>
 
-                  {mainPdf ? (
-                      <div className="flex-1 min-h-[500px] border border-slate-200 dark:border-slate-800 rounded-3xl overflow-hidden flex flex-col bg-slate-900 shadow-md relative group">
-                          <div className="absolute top-2 right-2 p-2 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity z-10">
-                              <a href={mainPdf.value} target="_blank" rel="noreferrer" className="w-10 h-10 bg-black/60 hover:bg-sky-500 text-white rounded-xl backdrop-blur-md flex items-center justify-center transition border border-white/10" title="เปิดเต็มจอ (แท็บใหม่)">
-                                  <i className="fa-solid fa-external-link-alt text-sm"></i>
-                              </a>
-                          </div>
-                          {(() => {
-                              let embedUrl = mainPdf.value;
-                              let canEmbed = false;
-                              
-                              if (embedUrl.includes('.pdf') || embedUrl.startsWith('blob:')) {
-                                  canEmbed = true;
-                              } else if (embedUrl.includes('drive.google.com/file/d/')) {
-                                  embedUrl = embedUrl.replace(/\/view.*$/, '/preview');
-                                  canEmbed = true;
-                              } else if (embedUrl.includes('canva.com/design/')) {
-                                  canEmbed = true;
-                              } else if (embedUrl.startsWith('http')) {
-                                  // As a fallback, we allow embedding any HTTP link just in case it works.
-                                  canEmbed = true;
-                              }
-
-                              if (canEmbed) {
-                                  return <iframe src={embedUrl} className="w-full h-full flex-1 border-0 bg-white" title="Document Viewer" />;
+                  {/* Document Preview Logic */}
+                  {(() => {
+                      let embedUrl = "";
+                      let isGoogleDrive = false;
+                      let isCanva = false;
+                      
+                      const pUrl = activeSubmission.presentationUrl;
+                      const fUrl = activeSubmission.fileUrl;
+                      
+                      // Priority 1: Presentation URL
+                      if (pUrl) {
+                          if (pUrl.includes('drive.google.com')) {
+                              embedUrl = pUrl.replace(/\/view.*$/, '/preview');
+                              isGoogleDrive = true;
+                          } else if (pUrl.includes('canva.com/design/')) {
+                              // Convert Canva link to embed if possible, or just use as is
+                              embedUrl = pUrl;
+                              isCanva = true;
+                          } else {
+                              embedUrl = pUrl;
+                          }
+                      } 
+                      // Priority 2: File URL (PDF/Drive)
+                      else if (fUrl) {
+                          const atts = parseAttachments(fUrl);
+                          const first = atts[0]?.value;
+                          if (first) {
+                              if (first.includes('drive.google.com')) {
+                                  embedUrl = first.replace(/\/view.*$/, '/preview');
+                                  isGoogleDrive = true;
                               } else {
-                                  return (
-                                      <div className="p-8 text-center m-auto text-slate-400">
-                                          <i className="fa-solid fa-file-image text-7xl mb-6 opacity-30"></i>
-                                          <div className="font-semibold text-lg text-white mb-2">ไม่สามารถแสดงตัวอย่างได้บนหน้านี้</div>
-                                          <p className="text-sm mb-6 max-w-xs mx-auto">ระบบไม่สามารถพรีวิวลิงก์หรือไฟล์รูปแบบนี้ได้ โปรดเปิดผ่านลิงก์ด้านล่าง</p>
-                                          <a href={mainPdf.value} target="_blank" className="px-6 py-2.5 bg-sky-500 text-white rounded-xl font-bold hover:bg-sky-400 transition inline-block">เปิดไฟล์ในแท็บใหม่</a>
-                                      </div>
-                                  );
+                                  embedUrl = first;
                               }
-                          })()}
-                      </div>
-                  ) : (
-                       <div className="flex-1 min-h-[300px] border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-3xl flex flex-col items-center justify-center bg-slate-50 dark:bg-slate-800/50 text-slate-400 p-8 text-center">
-                            <i className="fa-solid fa-folder-open text-6xl mb-4 opacity-50"></i>
-                            <div className="font-bold text-lg text-slate-600 dark:text-slate-300">ไม่มีไฟล์แนบที่เปิดได้</div>
-                            <p className="text-sm mt-2">ผลงานนี้อาจไม่มีไฟล์นำเสนอ หรือถูกบันทึกด้วยรูปแบบที่ไม่รองรับ</p>
-                       </div>
-                  )}
+                          }
+                      }
+
+                      if (!embedUrl) {
+                          return (
+                              <div className="flex-1 min-h-[300px] border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-3xl flex flex-col items-center justify-center bg-slate-50 dark:bg-slate-800/50 text-slate-400 p-8 text-center">
+                                  <i className="fa-solid fa-folder-open text-6xl mb-4 opacity-50"></i>
+                                  <div className="font-bold text-lg text-slate-600 dark:text-slate-300">ไม่มีไฟล์หรือลิงก์นำเสนอ</div>
+                                  <p className="text-sm mt-2">ผู้ส่งยังไม่ได้แนบลิงก์นำเสนอผลงาน</p>
+                              </div>
+                          );
+                      }
+
+                      return (
+                          <div className="flex-1 min-h-[500px] border border-slate-200 dark:border-slate-800 rounded-3xl overflow-hidden flex flex-col bg-slate-900 shadow-md relative group">
+                              <div className="absolute top-2 right-2 p-2 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                                  <a href={embedUrl} target="_blank" rel="noreferrer" className="w-10 h-10 bg-black/60 hover:bg-sky-500 text-white rounded-xl backdrop-blur-md flex items-center justify-center transition border border-white/10" title="เปิดในแท็บใหม่">
+                                      <i className="fa-solid fa-external-link-alt text-sm"></i>
+                                  </a>
+                              </div>
+                              <iframe 
+                                  src={embedUrl} 
+                                  className="w-full h-full flex-1 border-0 bg-white" 
+                                  title="Presentation Viewer"
+                                  allow="autoplay"
+                              />
+                          </div>
+                      );
+                  })()}
               </div>
 
               {/* Right Side: Scoring Form */}
