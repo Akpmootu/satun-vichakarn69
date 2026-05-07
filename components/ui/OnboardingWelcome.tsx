@@ -55,12 +55,6 @@ const OnboardingWelcome: React.FC<OnboardingWelcomeProps> = ({ currentUser, bann
 
                 {/* Right Side: Welcome Message & Guide */}
                 <div className="w-full md:w-1/2 p-8 md:p-12 flex flex-col justify-center relative pb-16 md:pb-12">
-                    {/* Add Developer Credit here */}
-                    <div className="absolute bottom-4 right-8 text-[10px] text-slate-400 dark:text-slate-500 font-light flex items-center gap-1.5 border border-slate-100 dark:border-slate-800 bg-white/50 dark:bg-slate-900/50 px-3 py-1.5 rounded-full backdrop-blur-sm z-20">
-                        <i className="fa-solid fa-code text-sky-500"></i>
-                        <span>พัฒนาโดย กลุ่มงานสุขภาพดิจิทัล สำนักงานสาธารณสุขจังหวัดสตูล 2569</span>
-                    </div>
-
                     <div className="inline-block px-3 py-1 bg-sky-100 dark:bg-sky-900/50 text-sky-600 dark:text-sky-400 font-bold text-xs rounded-full mb-4 w-max">
                         เริ่มใช้งานระบบ
                     </div>
@@ -104,10 +98,16 @@ const OnboardingWelcome: React.FC<OnboardingWelcomeProps> = ({ currentUser, bann
 
                     <button 
                         onClick={handleClose}
-                        className="w-full py-4 bg-slate-900 dark:bg-sky-600 text-white font-bold rounded-2xl hover:bg-slate-800 dark:hover:bg-sky-500 transition-all shadow-lg hover:shadow-xl hover:-translate-y-1"
+                        className="w-full py-4 bg-slate-900 dark:bg-sky-600 text-white font-bold rounded-2xl hover:bg-slate-800 dark:hover:bg-sky-500 transition-all shadow-lg hover:shadow-xl hover:-translate-y-1 mt-auto"
                     >
                         เริ่มต้นใช้งาน <i className="fa-solid fa-arrow-right ml-2 text-sm"></i>
                     </button>
+
+                    <div className="mt-8 text-[10px] text-slate-400 dark:text-slate-500 font-light flex flex-col items-center text-center">
+                        <i className="fa-solid fa-code text-sky-500 mb-1"></i>
+                        <span className="font-medium text-slate-600 dark:text-slate-400 leading-tight">พัฒนาโดย กลุ่มงานสุขภาพดิจิทัล</span>
+                        <span className="leading-tight">สำนักงานสาธารณสุขจังหวัดสตูล 2569</span>
+                    </div>
                 </div>
                 
             </div>

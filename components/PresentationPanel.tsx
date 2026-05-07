@@ -11,9 +11,15 @@ interface PresentationPanelProps {
     currentUser: UserProfile;
     refreshData: () => void;
     showToast: (t: any) => void;
+    hasMoreSubmissions?: boolean;
+    onLoadMore?: () => void;
+    loadingMore?: boolean;
 }
 
-const PresentationPanel: React.FC<PresentationPanelProps> = ({ submissions, settings, currentUser, refreshData, showToast }) => {
+const PresentationPanel: React.FC<PresentationPanelProps> = ({ 
+    submissions, settings, currentUser, refreshData, showToast,
+    hasMoreSubmissions, onLoadMore, loadingMore
+}) => {
     const [loadingMap, setLoadingMap] = useState<Record<string, boolean>>({});
 
     const userSubmissions = submissions.filter(s => s.userId === currentUser.id);
@@ -193,6 +199,26 @@ const PresentationPanel: React.FC<PresentationPanelProps> = ({ submissions, sett
                             )}
                         </motion.div>
                     ))}
+                </div>
+            )}
+
+            {hasMoreSubmissions && (
+                <div className="mt-8 flex justify-center">
+                    <button
+                        onClick={onLoadMore}
+                        disabled={loadingMore}
+                        className="group bg-white hover:bg-sky-50 dark:bg-slate-900/50 dark:hover:bg-sky-900/20 text-sky-600 dark:text-sky-400 px-10 py-3.5 rounded-2xl font-black text-sm shadow-sm hover:shadow-md transition-all active:scale-95 disabled:opacity-50 flex items-center gap-3 border-2 border-sky-100 dark:border-sky-800"
+                    >
+                        {loadingMore ? (
+                            <i className="fa-solid fa-circle-notch fa-spin text-lg"></i>
+                        ) : (
+                            <i className="fa-solid fa-cloud-arrow-down text-lg group-hover:animate-bounce"></i>
+                        )}
+                        <div className="flex flex-col items-start leading-tight text-left">
+                            <span>{loadingMore ? 'กำลังดึงข้อมูล...' : 'แสดงผลงานเพิ่ม'}</span>
+                            <span className="text-[10px] opacity-60 font-bold uppercase tracking-wider">{loadingMore ? 'โปรดรอสักครู่' : `โหลดก้อนถัดไป (+20 รายการ)`}</span>
+                        </div>
+                    </button>
                 </div>
             )}
 

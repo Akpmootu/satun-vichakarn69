@@ -121,8 +121,10 @@ export interface NewsItem {
 }
 
 export interface AppSettings {
-  mode: 'mock' | 'real';
+  mode: 'demo' | 'real' | 'mock';
   apiBaseUrl: string;
+  currentYear?: number;
+  openRegistration?: boolean;
 }
 
 export interface ToastMessage {

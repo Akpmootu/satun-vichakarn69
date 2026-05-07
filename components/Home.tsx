@@ -78,13 +78,10 @@ const Home: React.FC<HomeProps> = ({ onNavigate, currentUser, onLoginRequest, us
      }
   }, [currentUser, userSubmissions, onNavigate]);
 
-  // Get latest submission photo if available
+  // Get latest submission photo if available (fallback to currentUser avatar)
   const displayPhoto = useMemo(() => {
-      if (!userSubmissions || userSubmissions.length === 0) return null;
-      // Sort by latest
-      const sorted = [...userSubmissions].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-      return sorted[0].authorPhoto;
-  }, [userSubmissions]);
+      return currentUser?.avatarUrl || null;
+  }, [currentUser]);
 
   const handleActionClick = (action: string) => {
     if (!currentUser) {
@@ -144,9 +141,21 @@ const Home: React.FC<HomeProps> = ({ onNavigate, currentUser, onLoginRequest, us
                     {/* Official Photo Display or Default Avatar */}
                     <div className="mb-6 h-32 w-32 rounded-full border-4 border-white/20 shadow-2xl overflow-hidden bg-slate-800 relative group cursor-default">
                         {displayPhoto ? (
-                            <img src={displayPhoto} alt="Author" className="w-full h-full object-cover transition transform group-hover:scale-110" />
+                            <img 
+                                src={displayPhoto} 
+                                alt="Author" 
+                                className="w-full h-full object-cover transition transform group-hover:scale-110" 
+                                loading="lazy"
+                                referrerPolicy="no-referrer"
+                            />
                         ) : currentUser.avatarUrl ? (
-                            <img src={currentUser.avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+                            <img 
+                                src={currentUser.avatarUrl} 
+                                alt="Avatar" 
+                                className="w-full h-full object-cover" 
+                                loading="lazy"
+                                referrerPolicy="no-referrer"
+                            />
                         ) : (
                             <div className="w-full h-full flex items-center justify-center text-4xl font-bold text-slate-500 bg-slate-200">
                                 {currentUser.firstName.charAt(0)}
@@ -639,7 +648,13 @@ const Home: React.FC<HomeProps> = ({ onNavigate, currentUser, onLoginRequest, us
                                   {/* Image/Icon */}
                                   <div className="shrink-0 w-full sm:w-32 h-32 sm:h-auto rounded-2xl overflow-hidden relative">
                                       {item.imageUrl ? (
-                                          <img src={item.imageUrl} alt={item.title} className="w-full h-full object-cover transform group-hover:scale-110 transition duration-700"/>
+                                          <img 
+                                            src={item.imageUrl} 
+                                            alt={item.title} 
+                                            className="w-full h-full object-cover transform group-hover:scale-110 transition duration-700"
+                                            loading="lazy"
+                                            referrerPolicy="no-referrer"
+                                          />
                                       ) : (
                                           <div className="w-full h-full bg-rose-50 dark:bg-rose-900/20 flex items-center justify-center text-rose-300">
                                               <i className="fa-regular fa-image text-4xl"></i>

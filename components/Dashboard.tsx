@@ -85,9 +85,10 @@ const SectionHeader: React.FC<{ title: string; subtitle?: string; icon?: string 
 interface DashboardProps {
     submissions: Submission[];
     onViewAll?: () => void;
+    loading?: boolean;
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ submissions, onViewAll }) => {
+const Dashboard: React.FC<DashboardProps> = ({ submissions, onViewAll, loading = false }) => {
   const [filterYear, setFilterYear] = useState<string>(String(BUDGET_YEAR));
   const [filterMonth, setFilterMonth] = useState<string>('all');
   const [filterOrg, setFilterOrg] = useState<string>('all');
@@ -261,6 +262,19 @@ const Dashboard: React.FC<DashboardProps> = ({ submissions, onViewAll }) => {
 
   return (
     <div className="pb-12 relative font-sans fade-in">
+       {loading && (
+          <div className="absolute inset-0 z-50 bg-white/60 dark:bg-slate-900/60 backdrop-blur-[2px] flex flex-col items-center justify-center rounded-3xl min-h-[600px]">
+             <div className="relative">
+                <div className="w-16 h-16 border-4 border-sky-100 dark:border-slate-800 rounded-full"></div>
+                <div className="absolute top-0 w-16 h-16 border-4 border-sky-500 border-t-transparent rounded-full animate-spin"></div>
+             </div>
+             <p className="mt-4 font-black text-slate-800 dark:text-white flex items-center gap-2">
+                <i className="fa-solid fa-cloud-arrow-down animate-bounce text-sky-500"></i>
+                กำลังประมวลผลข้อมูลทางสถิติ...
+             </p>
+             <p className="text-xs text-slate-500 dark:text-slate-400 font-bold uppercase tracking-widest mt-1">Optimization in progress</p>
+          </div>
+       )}
        
        {/* Sticky Filter Bar */}
        <div className="sticky top-20 z-30 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-slate-200 dark:border-slate-700 py-3 mb-8 transition-all duration-300">

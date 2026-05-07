@@ -2,12 +2,13 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, Legend, BarChart, Bar, XAxis, YAxis, CartesianGrid, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar } from 'recharts';
 import { Submission, NewsItem, AppSettings, SubmissionStatus, UserProfile, UserRole } from '../types';
-import { apiUpdateSubmission, apiDeleteSubmission, apiGetNews, apiAddNews, apiDeleteNews, apiUpdateNews, apiGetAllUsers, apiUpdateUserProfileAdmin, apiDeleteUserProfile, apiGetUsersByRole } from '../services/apiService';
+import { apiUpdateSubmission, apiDeleteSubmission, apiGetNews, apiAddNews, apiDeleteNews, apiUpdateNews, apiGetAllUsers, apiUpdateUserProfileAdmin, apiDeleteUserProfile, apiGetUsersByRole, apiGetSubmissionById } from '../services/apiService';
 import { BRANCHES, WORK_TYPES, HEALTH_POSITIONS, JOB_LEVELS, EDUCATION_LEVELS, BRANCH_GROUPS } from '../constants';
 import Badge from './ui/Badge';
 import OrgAutocomplete from './ui/OrgAutocomplete';
 import UniversityAutocomplete from './ui/UniversityAutocomplete';
 import Pagination from './ui/Pagination';
+import Dashboard from './Dashboard';
 
 declare const Swal: any;
 
@@ -19,15 +20,22 @@ interface AdminPanelProps {
   newsList: NewsItem[];
   onNewsUpdate: () => void;
   currentUser: UserProfile;
+  hasMoreSubmissions?: boolean;
+  onLoadMore?: () => void;
+  loadingMore?: boolean;
 }
 
-const AdminPanel: React.FC<AdminPanelProps> = ({ submissions, settings, refreshData, showToast, newsList, onNewsUpdate, currentUser }) => {
+const AdminPanel: React.FC<AdminPanelProps> = ({ 
+    submissions, settings, refreshData, showToast, newsList, onNewsUpdate, currentUser,
+    hasMoreSubmissions, onLoadMore, loadingMore
+}) => {
   const [activeTab, setActiveTab] = useState<'submissions' | 'users' | 'news' | 'dashboard'>('dashboard');
   // const [newsList, setNewsList] = useState<NewsItem[]>([]); // Removed local state
   const [userList, setUserList] = useState<UserProfile[]>([]);
   const [reviewerList, setReviewerList] = useState<UserProfile[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(false);
   const [updatingUser, setUpdatingUser] = useState<string | null>(null); // Track specific user update
+  const [isFetchingDetail, setIsFetchingDetail] = useState(false);
 
   // Submissions Filter State
   const [filter, setFilter] = useState({ q: '', type: 'all', date: '', org: '', branch: 'all', status: 'all' });
@@ -188,16 +196,27 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ submissions, settings, refreshD
 
   // --- Action Handlers ---
 
-  const handleOpenManageModal = (s: Submission) => {
+  const handleOpenManageModal = async (s: Submission) => {
       // Refresh reviewers list when opening modal to ensure it's up to date
       fetchReviewers();
-      
-      setSelectedSubmission(s);
-      // Logic: If status is 'reviewed' or beyond, docs are assumed verified
-      const isVerified = ['reviewed', 'scored', 'accepted', 'rejected'].includes(s.status);
-      setDocsStatus(isVerified ? 'verified' : 'pending');
-      setReworkComment('');
-      setSelectedReviewers(s.reviewerIds || (s.reviewerId ? [s.reviewerId] : []));
+      setIsFetchingDetail(true);
+      setSelectedSubmission(s); // Set temporary to open modal
+
+      try {
+          const fullSub = await apiGetSubmissionById(s.id);
+          setSelectedSubmission(fullSub);
+          
+          // Logic: If status is 'reviewed' or beyond, docs are assumed verified
+          const isVerified = ['reviewed', 'scored', 'accepted', 'rejected'].includes(fullSub.status);
+          setDocsStatus(isVerified ? 'verified' : 'pending');
+          setReworkComment('');
+          setSelectedReviewers(fullSub.reviewerIds || (fullSub.reviewerId ? [fullSub.reviewerId] : []));
+      } catch (e: any) {
+          showToast({ type: 'error', title: 'โหลดข้อมูลล้มเหลว', message: e.message });
+          setSelectedSubmission(null);
+      } finally {
+          setIsFetchingDetail(false);
+      }
   };
 
   const handleUpdateStatus = async (id: string, newStatus: string) => {
@@ -333,7 +352,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ submissions, settings, refreshD
           level: user.level || '',
           role: user.role,
           isVerified: user.isVerified || false,
-          educationHistory: user.educationHistory || []
+          educationHistory: user.educationHistory || [],
+          branchId: user.branchId || ''
       });
       setShowUserModal(true);
   };
@@ -682,7 +702,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ submissions, settings, refreshD
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white dark:bg-slate-800 p-6 rounded-3xl shadow-sm ring-1 ring-slate-200 dark:ring-slate-700">
                     <div>
                         <h2 className="text-xl font-black text-slate-800 dark:text-white"><i className="fa-solid fa-chart-line text-indigo-500 mr-2"></i> ภาพรวมระบบ (Overview)</h2>
-                        <p className="text-sm text-slate-500 mt-1">ข้อมูลเชิงสถิติและการจัดการระบบ</p>
+                        <p className="text-sm text-slate-500 mt-1">อ้างอิงข้อมูลจากหน้า Dashboard ของระบบ</p>
                     </div>
                     <button 
                         onClick={handleSendTelegramSummary}
@@ -691,150 +711,48 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ submissions, settings, refreshD
                         <i className="fa-brands fa-telegram text-xl"></i> ส่งสรุปเข้า Telegram
                     </button>
                 </div>
-
-                <div className="flex flex-col md:flex-row gap-4">
-                    <div className="flex-1 relative">
-                        <i className="fa-solid fa-magnifying-glass absolute left-4 top-3 text-slate-400"></i>
-                        <input 
-                            placeholder="ค้นหาชื่อ, หน่วยงาน..." 
-                            className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 outline-none focus:ring-2 focus:ring-slate-900 dark:text-white"
-                            value={filter.q}
-                            onChange={e => setFilter({...filter, q: e.target.value})}
-                        />
-                    </div>
-                    <select 
-                        className="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 outline-none dark:text-white"
-                        value={filter.branch}
-                        onChange={e => setFilter({...filter, branch: e.target.value})}
-                    >
-                        <option value="all">ทุกสาขา</option>
-                        {BRANCH_GROUPS.map(group => (
-                            <optgroup key={group.label} label={group.label}>
-                                {BRANCHES.filter(b => group.ids.includes(b.id)).map(b => (
-                                    <option key={b.id} value={b.id}>
-                                        สาขาที่ {b.id}: {b.label}
-                                    </option>
-                                ))}
-                            </optgroup>
-                        ))}
-                    </select>
-                    <select 
-                        className="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 outline-none dark:text-white"
-                        value={filter.status}
-                        onChange={e => setFilter({...filter, status: e.target.value})}
-                    >
-                        <option value="all">ทุกสถานะ</option>
-                        <option value="draft">ฉบับร่าง (Draft)</option>
-                        <option value="submitted">รอตรวจสอบ (Submitted)</option>
-                        <option value="reviewed">กำลังพิจารณา (Under Review)</option>
-                        <option value="scored">ให้คะแนนแล้ว (Scored)</option>
-                        <option value="accepted">ผ่านการคัดเลือก (Accepted)</option>
-                        <option value="revision_requested">ตีกลับแก้ไข (Rework)</option>
-                        <option value="rejected">ไม่ผ่าน (Rejected)</option>
-                    </select>
-                </div>
-
-                <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
-                    <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl shadow-sm ring-1 ring-slate-200 dark:ring-slate-700 flex flex-col items-center justify-center">
-                        <i className="fa-solid fa-file-contract text-4xl text-sky-500 mb-2"></i>
-                        <div className="text-3xl font-black text-slate-800 dark:text-white">{filteredSubmissions.length}</div>
-                        <div className="text-sm font-bold text-slate-500">ที่กรองพบ</div>
-                    </div>
-                    <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl shadow-sm ring-1 ring-slate-200 dark:ring-slate-700 flex flex-col items-center justify-center">
-                        <i className="fa-solid fa-paper-plane text-4xl text-amber-500 mb-2"></i>
-                        <div className="text-3xl font-black text-slate-800 dark:text-white">{filteredSubmissions.filter(s => s.status === 'submitted').length}</div>
-                        <div className="text-sm font-bold text-slate-500 text-center">รอตรวจสอบ<br/><span className="text-[10px]">(Submitted)</span></div>
-                    </div>
-                    <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl shadow-sm ring-1 ring-slate-200 dark:ring-slate-700 flex flex-col items-center justify-center">
-                        <i className="fa-solid fa-star text-4xl text-purple-500 mb-2"></i>
-                        <div className="text-3xl font-black text-slate-800 dark:text-white">{filteredSubmissions.filter(s => s.status === 'scored').length}</div>
-                        <div className="text-sm font-bold text-slate-500 text-center">ให้คะแนนแล้ว<br/><span className="text-[10px]">(Scored)</span></div>
-                    </div>
-                    <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl shadow-sm ring-1 ring-slate-200 dark:ring-slate-700 flex flex-col items-center justify-center">
-                        <i className="fa-solid fa-check-circle text-4xl text-emerald-500 mb-2"></i>
-                        <div className="text-3xl font-black text-slate-800 dark:text-white">{filteredSubmissions.filter(s => s.status === 'accepted').length}</div>
-                        <div className="text-sm font-bold text-slate-500 text-center">อนุมัติผ่าน<br/><span className="text-[10px]">(Accepted)</span></div>
-                    </div>
-                    <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl shadow-sm ring-1 ring-slate-200 dark:ring-slate-700 flex flex-col items-center justify-center col-span-2 lg:col-span-1">
-                        <i className="fa-solid fa-user-clock text-4xl text-rose-500 mb-2"></i>
-                        <div className="text-3xl font-black text-slate-800 dark:text-white">{filteredSubmissions.filter(s => s.status === 'revision_requested').length}</div>
-                        <div className="text-sm font-bold text-slate-500 text-center">ตีกลับแก้ไข<br/><span className="text-[10px]">(Rework)</span></div>
-                    </div>
-                </div>
-
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl shadow-sm ring-1 ring-slate-200 dark:ring-slate-700 flex flex-col">
-                        <h3 className="font-black text-slate-800 dark:text-white mb-6 text-lg"><i className="fa-solid fa-chart-column text-sky-500 mr-2"></i> จำนวนผลงานแยกตามสาขา (Bar Chart)</h3>
-                        <div className="h-80 w-full">
-                            <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
-                                <BarChart data={BRANCHES.map(b => ({ name: `สาขา ${b.id}`, fullLabel: b.label, value: filteredSubmissions.filter(s => s.branchId === b.id).length }))} margin={{ top: 20, right: 30, left: 0, bottom: 5 }}>
-                                    <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
-                                    <XAxis dataKey="name" tick={{fontSize: 10}} interval={0} angle={-45} textAnchor="end" height={60} />
-                                    <YAxis />
-                                    <RechartsTooltip 
-                                        contentStyle={{ borderRadius: '1rem', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)' }}
-                                        labelFormatter={(label, payload) => payload?.[0]?.payload?.fullLabel || label}
-                                    />
-                                    <Bar dataKey="value" fill="#0ea5e9" radius={[4, 4, 0, 0]} name="ผลงาน (เรื่อง)" />
-                                </BarChart>
-                            </ResponsiveContainer>
-                        </div>
-                    </div>
-
-                    <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl shadow-sm ring-1 ring-slate-200 dark:ring-slate-700 flex flex-col">
-                        <h3 className="font-black text-slate-800 dark:text-white mb-6 text-lg"><i className="fa-solid fa-spider text-amber-500 mr-2"></i> ความสนใจรายสาขา (Radar Chart)</h3>
-                        <div className="h-80 w-full">
-                            <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
-                                <RadarChart cx="50%" cy="50%" outerRadius="70%" data={BRANCHES.map(b => ({ name: `สาขา ${b.id}`, fullLabel: b.label, value: filteredSubmissions.filter(s => s.branchId === b.id).length }))}>
-                                    <PolarGrid strokeOpacity={0.2} />
-                                    <PolarAngleAxis dataKey="name" tick={{fontSize: 10}} />
-                                    <PolarRadiusAxis angle={30} domain={[0, 'dataMax']} />
-                                    <Radar name="จำนวนผลงาน" dataKey="value" stroke="#f59e0b" fill="#f59e0b" fillOpacity={0.3} />
-                                    <RechartsTooltip 
-                                        contentStyle={{ borderRadius: '1rem', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)' }}
-                                        labelFormatter={(label, payload) => payload?.[0]?.payload?.fullLabel || label}
-                                    />
-                                </RadarChart>
-                            </ResponsiveContainer>
-                        </div>
-                    </div>
-                </div>
-
-                <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl shadow-sm ring-1 ring-slate-200 dark:ring-slate-700">
-                    <h3 className="font-black text-slate-800 dark:text-white mb-6 text-lg"><i className="fa-solid fa-chart-pie text-purple-500 mr-2"></i> สัดส่วนผลงานจำแนกตามสาขา (Pie Chart)</h3>
-                    <div className="h-80 w-full">
-                        <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
-                            <PieChart>
-                                <Pie 
-                                  data={BRANCHES.map(b => ({ name: b.label, value: filteredSubmissions.filter(s => s.branchId === b.id).length })).filter(d => d.value > 0)} 
-                                  dataKey="value" 
-                                  nameKey="name" 
-                                  cx="50%" 
-                                  cy="50%" 
-                                  outerRadius={100} 
-                                  fill="#8884d8"
-                                  label={({name, percent}) => `${(percent || 0 * 100).toFixed(0)}%`}
-                                >
-                                    {
-                                        BRANCHES.map((entry, index) => (
-                                            <Cell key={`cell-${index}`} fill={`hsl(${(index * 360 / BRANCHES.length)}, 70%, 50%)`} />
-                                        ))
-                                    }
-                                </Pie>
-                                <RechartsTooltip 
-                                    contentStyle={{ borderRadius: '1rem', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)' }}
-                                    itemStyle={{ fontWeight: 'bold' }}
-                                />
-                                <Legend />
-                            </PieChart>
-                        </ResponsiveContainer>
-                    </div>
+                
+                {/* ดึง Dashboard มาแสดงเลย */}
+                <div className="-mx-4 sm:mx-0">
+                    <Dashboard submissions={submissions} />
                 </div>
             </div>
         )}
 
         {activeTab === 'submissions' && (
             <div className="bg-white dark:bg-slate-800 rounded-3xl p-6 shadow-sm ring-1 ring-slate-200 dark:ring-slate-700">
+                {/* Stats Cards for Submissions */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                    <button 
+                        onClick={() => setFilter({ ...filter, type: 'all' })}
+                        className={`text-left p-4 rounded-2xl border transition ${filter.type === 'all' ? 'bg-sky-100 dark:bg-sky-900/40 border-sky-300 dark:border-sky-600 shadow-md transform -translate-y-1' : 'bg-sky-50 dark:bg-sky-900/20 border-sky-100 dark:border-sky-800 hover:shadow-md hover:-translate-y-1'}`}
+                    >
+                        <div className="text-sky-500 font-bold text-sm mb-1">ผลงานทั้งหมด</div>
+                        <div className="text-2xl font-black text-slate-800 dark:text-white">{submissions.length}</div>
+                    </button>
+                    <button 
+                        onClick={() => setFilter({ ...filter, type: 'oral' })}
+                        className={`text-left flex flex-col justify-between p-4 rounded-2xl border transition ${filter.type === 'oral' ? 'bg-amber-100 dark:bg-amber-900/40 border-amber-300 dark:border-amber-600 shadow-md transform -translate-y-1' : 'bg-amber-50 dark:bg-amber-900/20 border-amber-100 dark:border-amber-800 hover:shadow-md hover:-translate-y-1'}`}
+                    >
+                        <div className="text-amber-600 dark:text-amber-500 font-bold text-sm mb-1 flex items-center gap-2"><i className="fa-solid fa-microphone"></i> Oral Presentation</div>
+                        <div className="text-2xl font-black text-slate-800 dark:text-white">{submissions.filter(s => s.workType === 'oral').length}</div>
+                    </button>
+                    <button 
+                        onClick={() => setFilter({ ...filter, type: 'eposter' })}
+                        className={`text-left flex flex-col justify-between p-4 rounded-2xl border transition ${filter.type === 'eposter' ? 'bg-purple-100 dark:bg-purple-900/40 border-purple-300 dark:border-purple-600 shadow-md transform -translate-y-1' : 'bg-purple-50 dark:bg-purple-900/20 border-purple-100 dark:border-purple-800 hover:shadow-md hover:-translate-y-1'}`}
+                    >
+                        <div className="text-purple-600 dark:text-purple-500 font-bold text-sm mb-1 flex items-center gap-2"><i className="fa-solid fa-image"></i> E-Poster</div>
+                        <div className="text-2xl font-black text-slate-800 dark:text-white">{submissions.filter(s => s.workType === 'eposter').length}</div>
+                    </button>
+                    <button 
+                        onClick={() => setFilter({ ...filter, type: 'innovation' })}
+                        className={`text-left flex flex-col justify-between p-4 rounded-2xl border transition ${filter.type === 'innovation' ? 'bg-emerald-100 dark:bg-emerald-900/40 border-emerald-300 dark:border-emerald-600 shadow-md transform -translate-y-1' : 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-100 dark:border-emerald-800 hover:shadow-md hover:-translate-y-1'}`}
+                    >
+                        <div className="text-emerald-600 dark:text-emerald-500 font-bold text-sm mb-1 flex items-center gap-2"><i className="fa-solid fa-lightbulb"></i> N-Innovation</div>
+                        <div className="text-2xl font-black text-slate-800 dark:text-white">{submissions.filter(s => s.workType === 'innovation').length}</div>
+                    </button>
+                </div>
+
                 <div className="flex flex-col gap-4 mb-6">
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div className="border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 rounded-xl flex items-center overflow-hidden focus-within:ring-2 focus-within:ring-sky-200">
@@ -1057,6 +975,27 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ submissions, settings, refreshD
                     </table>
                     {filteredSubmissions.length === 0 && <div className="text-center p-8 text-slate-400">ไม่พบข้อมูล</div>}
                     
+                    {/* Pagination Logic for Loading More from Server */}
+                    {activeTab === 'submissions' && hasMoreSubmissions && (
+                        <div className="my-6 flex justify-center">
+                            <button
+                               onClick={onLoadMore}
+                               disabled={loadingMore}
+                               className="group relative overflow-hidden bg-white hover:bg-sky-50 dark:bg-slate-900/50 dark:hover:bg-sky-900/20 text-sky-600 dark:text-sky-400 px-10 py-3.5 rounded-2xl font-black text-sm shadow-sm hover:shadow-md transition-all active:scale-95 disabled:opacity-50 flex items-center gap-3 border-2 border-sky-100 dark:border-sky-800"
+                            >
+                               {loadingMore ? (
+                                   <i className="fa-solid fa-circle-notch fa-spin text-lg"></i>
+                               ) : (
+                                   <i className="fa-solid fa-cloud-arrow-down text-lg group-hover:animate-bounce"></i>
+                               )}
+                               <div className="flex flex-col items-start leading-tight">
+                                   <span>{loadingMore ? 'กำลังดึงข้อมูล...' : 'แสดงรายการเพิ่มเติม'}</span>
+                                   <span className="text-[10px] opacity-60 font-bold uppercase tracking-wider">{loadingMore ? 'โปรดรอสักครู่' : `โหลดก้อนถัดไป (+20 รายการ)`}</span>
+                               </div>
+                            </button>
+                        </div>
+                    )}
+                    
                     {submissionTotalPages > 1 && (
                         <div className="p-4 border-t border-slate-100 dark:border-slate-700 flex justify-center">
                             <Pagination 
@@ -1080,6 +1019,38 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ submissions, settings, refreshD
                      </h3>
                      <button onClick={fetchUsers} disabled={loadingUsers} className="text-sm font-bold text-slate-500 hover:text-sky-600 transition flex items-center gap-2">
                         <i className={`fa-solid fa-rotate ${loadingUsers ? 'animate-spin' : ''}`}></i> รีโหลดข้อมูล
+                     </button>
+                 </div>
+
+                 {/* Stats Cards for Users */}
+                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                     <button 
+                        onClick={() => setUserFilter({ ...userFilter, role: 'all' })}
+                        className={`text-left p-4 rounded-2xl border transition ${userFilter.role === 'all' ? 'bg-sky-100 dark:bg-sky-900/40 border-sky-300 dark:border-sky-600 shadow-md transform -translate-y-1' : 'bg-sky-50 dark:bg-sky-900/20 border-sky-100 dark:border-sky-800 hover:shadow-md hover:-translate-y-1'}`}
+                     >
+                        <div className="text-sky-500 font-bold text-sm mb-1">ผู้เข้าใช้ระบบทั้งหมด</div>
+                        <div className="text-2xl font-black text-slate-800 dark:text-white">{userList.length}</div>
+                     </button>
+                     <button 
+                        onClick={() => setUserFilter({ ...userFilter, role: 'user' })}
+                        className={`text-left p-4 rounded-2xl border transition ${userFilter.role === 'user' ? 'bg-slate-200 dark:bg-slate-700 border-slate-400 dark:border-slate-500 shadow-md transform -translate-y-1' : 'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:shadow-md hover:-translate-y-1'}`}
+                     >
+                        <div className="text-slate-600 dark:text-slate-400 font-bold text-sm mb-1">ทั่วไป (User)</div>
+                        <div className="text-2xl font-black text-slate-800 dark:text-white">{userList.filter(u => u.role === 'user').length}</div>
+                     </button>
+                     <button 
+                        onClick={() => setUserFilter({ ...userFilter, role: 'reviewer' })}
+                        className={`text-left p-4 rounded-2xl border transition ${userFilter.role === 'reviewer' ? 'bg-indigo-100 dark:bg-indigo-900/40 border-indigo-300 dark:border-indigo-600 shadow-md transform -translate-y-1' : 'bg-indigo-50 dark:bg-indigo-900/20 border-indigo-100 dark:border-indigo-800 hover:shadow-md hover:-translate-y-1'}`}
+                     >
+                        <div className="text-indigo-600 dark:text-indigo-400 font-bold text-sm mb-1">กรรมการ (Reviewer)</div>
+                        <div className="text-2xl font-black text-slate-800 dark:text-white">{userList.filter(u => u.role === 'reviewer').length}</div>
+                     </button>
+                     <button 
+                        onClick={() => setUserFilter({ ...userFilter, role: 'admin' })}
+                        className={`text-left p-4 rounded-2xl border transition ${userFilter.role === 'admin' ? 'bg-rose-100 dark:bg-rose-900/40 border-rose-300 dark:border-rose-600 shadow-md transform -translate-y-1' : 'bg-rose-50 dark:bg-rose-900/20 border-rose-100 dark:border-rose-800 hover:shadow-md hover:-translate-y-1'}`}
+                     >
+                        <div className="text-rose-600 dark:text-rose-400 font-bold text-sm mb-1">ผู้ดูแลระบบ (Admin)</div>
+                        <div className="text-2xl font-black text-slate-800 dark:text-white">{userList.filter(u => u.role === 'admin').length}</div>
                      </button>
                  </div>
 
@@ -1177,6 +1148,14 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ submissions, settings, refreshD
                                                 </>
                                             )}
                                         </div>
+                                        {u.role === 'reviewer' && u.branchId && (
+                                            <div className="mt-2 flex flex-wrap gap-1 max-w-[200px]">
+                                                {u.branchId.split(',').map(bId => {
+                                                    const branch = BRANCHES.find(b => b.id.toString() === bId);
+                                                    return <span key={bId} className="px-2 py-0.5 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-800 rounded-md text-[10px] break-words">{branch?.label || bId}</span>
+                                                })}
+                                            </div>
+                                        )}
                                     </td>
                                     <td className="p-4 text-right">
                                         <div className="text-xs text-slate-400 mb-2">
@@ -1271,6 +1250,13 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ submissions, settings, refreshD
                  <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" onClick={() => setSelectedSubmission(null)}></div>
                  
                  <div className="relative bg-white dark:bg-slate-900 rounded-3xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto flex flex-col ring-1 ring-slate-200 dark:ring-slate-700 animate-bounce-in">
+                      {isFetchingDetail && (
+                          <div className="absolute inset-0 z-[110] bg-white/80 dark:bg-slate-900/80 backdrop-blur-[2px] flex flex-col items-center justify-center">
+                              <div className="w-12 h-12 border-4 border-sky-100 dark:border-slate-800 rounded-full"></div>
+                              <div className="absolute w-12 h-12 border-4 border-sky-500 border-t-transparent rounded-full animate-spin"></div>
+                              <p className="mt-4 text-sm font-bold text-slate-600 dark:text-slate-300">กำลังโหลดรายละเอียดเชิงลึก...</p>
+                          </div>
+                      )}
                       <div className="p-6 md:p-8 flex-1">
                           <div className="flex justify-between items-start mb-6">
                               <div>
@@ -1624,73 +1610,108 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ submissions, settings, refreshD
                             </div>
                         </div>
 
-                        {/* Education Section */}
-                        <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700">
-                            <h4 className="font-bold text-slate-700 dark:text-slate-300 mb-3 text-sm flex items-center gap-2">
-                                <i className="fa-solid fa-graduation-cap"></i> ประวัติการศึกษา
-                            </h4>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div>
-                                    <label className="text-xs font-bold text-slate-500 mb-1 block">ระดับการศึกษา</label>
-                                    <select
-                                        value={userForm.educationHistory?.[0]?.degree || ''}
-                                        onChange={(e) => {
-                                            const edu = [...(userForm.educationHistory || [{ id: 'primary', degree: '', major: '', institution: '', year: '' }])];
-                                            edu[0] = { ...edu[0], degree: e.target.value };
-                                            setUserForm({ ...userForm, educationHistory: edu });
-                                        }}
-                                        className="w-full p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 outline-none focus:ring-2 focus:ring-sky-200 dark:text-white"
-                                    >
-                                        <option value="">-- เลือกระดับ --</option>
-                                        {EDUCATION_LEVELS.map((l) => (
-                                            <option key={l} value={l}>{l}</option>
-                                        ))}
-                                    </select>
-                                </div>
-                                <div>
-                                    <label className="text-xs font-bold text-slate-500 mb-1 block">สาขาวิชา</label>
-                                    <input
-                                        value={userForm.educationHistory?.[0]?.major || ''}
-                                        onChange={(e) => {
-                                            const edu = [...(userForm.educationHistory || [{ id: 'primary', degree: '', major: '', institution: '', year: '' }])];
-                                            edu[0] = { ...edu[0], major: e.target.value };
-                                            setUserForm({ ...userForm, educationHistory: edu });
-                                        }}
-                                        className="w-full p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 outline-none focus:ring-2 focus:ring-sky-200 dark:text-white"
-                                        placeholder="เช่น สาธารณสุขศาสตร์"
-                                    />
-                                </div>
-                                <div className="md:col-span-2">
-                                    <label className="text-xs font-bold text-slate-500 mb-1 block">สถาบันการศึกษา</label>
-                                    <UniversityAutocomplete
-                                        value={userForm.educationHistory?.[0]?.institution || ''}
-                                        onChange={(val) => {
-                                            const edu = [...(userForm.educationHistory || [{ id: 'primary', degree: '', major: '', institution: '', year: '' }])];
-                                            edu[0] = { ...edu[0], institution: val };
-                                            setUserForm({ ...userForm, educationHistory: edu });
-                                        }}
-                                        className="w-full p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 outline-none focus:ring-2 focus:ring-sky-200 dark:text-white"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="text-xs font-bold text-slate-500 mb-1 block">ปีที่จบ (พ.ศ.)</label>
-                                    <select
-                                        value={userForm.educationHistory?.[0]?.year || ''}
-                                        onChange={(e) => {
-                                            const edu = [...(userForm.educationHistory || [{ id: 'primary', degree: '', major: '', institution: '', year: '' }])];
-                                            edu[0] = { ...edu[0], year: e.target.value };
-                                            setUserForm({ ...userForm, educationHistory: edu });
-                                        }}
-                                        className="w-full p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 outline-none focus:ring-2 focus:ring-sky-200 dark:text-white"
-                                    >
-                                        <option value="">-- ปีที่จบ --</option>
-                                        {Array.from({length: 50}, (_, i) => (new Date().getFullYear() + 543) - i).map(y => (
-                                            <option key={y} value={y.toString()}>{y}</option>
-                                        ))}
-                                    </select>
+                        {/* Education / Reviewer Branches Section */}
+                        {userForm.role !== 'reviewer' ? (
+                            <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700">
+                                <h4 className="font-bold text-slate-700 dark:text-slate-300 mb-3 text-sm flex items-center gap-2">
+                                    <i className="fa-solid fa-graduation-cap"></i> ประวัติการศึกษา
+                                </h4>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="text-xs font-bold text-slate-500 mb-1 block">ระดับการศึกษา</label>
+                                        <select
+                                            value={userForm.educationHistory?.[0]?.degree || ''}
+                                            onChange={(e) => {
+                                                const edu = [...(userForm.educationHistory || [{ id: 'primary', degree: '', major: '', institution: '', year: '' }])];
+                                                edu[0] = { ...edu[0], degree: e.target.value };
+                                                setUserForm({ ...userForm, educationHistory: edu });
+                                            }}
+                                            className="w-full p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 outline-none focus:ring-2 focus:ring-sky-200 dark:text-white"
+                                        >
+                                            <option value="">-- เลือกระดับ --</option>
+                                            {EDUCATION_LEVELS.map((l) => (
+                                                <option key={l} value={l}>{l}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="text-xs font-bold text-slate-500 mb-1 block">สาขาวิชา</label>
+                                        <input
+                                            value={userForm.educationHistory?.[0]?.major || ''}
+                                            onChange={(e) => {
+                                                const edu = [...(userForm.educationHistory || [{ id: 'primary', degree: '', major: '', institution: '', year: '' }])];
+                                                edu[0] = { ...edu[0], major: e.target.value };
+                                                setUserForm({ ...userForm, educationHistory: edu });
+                                            }}
+                                            className="w-full p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 outline-none focus:ring-2 focus:ring-sky-200 dark:text-white"
+                                            placeholder="เช่น สาธารณสุขศาสตร์"
+                                        />
+                                    </div>
+                                    <div className="md:col-span-2">
+                                        <label className="text-xs font-bold text-slate-500 mb-1 block">สถาบันการศึกษา</label>
+                                        <UniversityAutocomplete
+                                            value={userForm.educationHistory?.[0]?.institution || ''}
+                                            onChange={(val) => {
+                                                const edu = [...(userForm.educationHistory || [{ id: 'primary', degree: '', major: '', institution: '', year: '' }])];
+                                                edu[0] = { ...edu[0], institution: val };
+                                                setUserForm({ ...userForm, educationHistory: edu });
+                                            }}
+                                            className="w-full p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 outline-none focus:ring-2 focus:ring-sky-200 dark:text-white"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="text-xs font-bold text-slate-500 mb-1 block">ปีที่จบ (พ.ศ.)</label>
+                                        <select
+                                            value={userForm.educationHistory?.[0]?.year || ''}
+                                            onChange={(e) => {
+                                                const edu = [...(userForm.educationHistory || [{ id: 'primary', degree: '', major: '', institution: '', year: '' }])];
+                                                edu[0] = { ...edu[0], year: e.target.value };
+                                                setUserForm({ ...userForm, educationHistory: edu });
+                                            }}
+                                            className="w-full p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 outline-none focus:ring-2 focus:ring-sky-200 dark:text-white"
+                                        >
+                                            <option value="">-- ปีที่จบ --</option>
+                                            {Array.from({length: 50}, (_, i) => (new Date().getFullYear() + 543) - i).map(y => (
+                                                <option key={y} value={y.toString()}>{y}</option>
+                                            ))}
+                                        </select>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
+                        ) : (
+                            <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700">
+                                <h4 className="font-bold text-indigo-700 dark:text-indigo-400 mb-3 text-sm flex items-center gap-2">
+                                    <i className="fa-solid fa-gavel"></i> สาขาที่รับผิดชอบ (Reviewer)
+                                </h4>
+                                <div>
+                                    <label className="text-xs font-bold text-slate-500 mb-2 block">เลือกสาขา (เลือกได้หลายข้อ)</label>
+                                    <div className="space-y-2 border border-slate-200 dark:border-slate-700 rounded-xl p-3 bg-slate-50 dark:bg-slate-800 overflow-y-auto max-h-48">
+                                        {BRANCHES.map(branch => {
+                                            const isSelected = (userForm.branchId || '').split(',').includes(branch.id.toString());
+                                            return (
+                                                <label key={branch.id} className="flex items-start gap-3 cursor-pointer p-2 hover:bg-white dark:hover:bg-slate-700 rounded-lg transition border border-transparent hover:border-slate-200 dark:hover:border-slate-600">
+                                                    <input 
+                                                        type="checkbox"
+                                                        checked={isSelected}
+                                                        onChange={(e) => {
+                                                            let currentBranches = (userForm.branchId || '').split(',').filter(Boolean);
+                                                            if (e.target.checked) {
+                                                                if (!currentBranches.includes(branch.id.toString())) currentBranches.push(branch.id.toString());
+                                                            } else {
+                                                                currentBranches = currentBranches.filter(id => id !== branch.id.toString());
+                                                            }
+                                                            setUserForm({ ...userForm, branchId: currentBranches.join(',') });
+                                                        }}
+                                                        className="mt-1 w-4 h-4 text-indigo-600 bg-white border-slate-300 rounded focus:ring-indigo-500 dark:focus:ring-indigo-600 dark:ring-offset-slate-800 focus:ring-2 dark:bg-slate-700 dark:border-slate-600"
+                                                    />
+                                                    <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{branch.label}</span>
+                                                </label>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
 
                         <div className="flex flex-col gap-2 p-4 bg-sky-50 dark:bg-sky-900/20 rounded-xl border border-sky-100 dark:border-sky-800 mt-4">
                             <div className="flex items-center gap-3">

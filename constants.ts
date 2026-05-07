@@ -57,7 +57,7 @@ export const PR_NEWS: NewsItem[] = [
     date: "15 ก.พ. 2569",
     desc: "ขอเชิญบุคลากรสาธารณสุขร่วมส่งผลงานถอดบทเรียน (Best Practice) และนวัตกรรม เพื่อยกระดับระบบบริการ",
     type: "news",
-    imageUrl: "https://images.unsplash.com/photo-1552664730-d307ca884978?q=80&w=800&auto=format&fit=crop"
+    imageUrl: "https://images.unsplash.com/photo-1552664730-d307ca884978?q=75&w=600&auto=format&fit=crop"
   },
   {
     id: 2,

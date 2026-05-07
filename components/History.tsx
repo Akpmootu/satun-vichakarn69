@@ -2,6 +2,7 @@
 import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { Submission, AppSettings, SubmissionStatus, AuditLog, UserProfile } from '../types';
 import { BRANCHES, WORK_TYPES, BUDGET_YEAR, BRANCH_GROUPS } from '../constants';
+import { apiGetSubmissionById } from '../services/apiService';
 import Badge from './ui/Badge';
 
 import Pagination from './ui/Pagination';
@@ -199,6 +200,7 @@ const History: React.FC<HistoryProps> = ({ submissions, loading, refreshList, se
   
   // States
   const [historyModalData, setHistoryModalData] = useState<Submission | null>(null);
+  const [isFetchingTimeline, setIsFetchingTimeline] = useState(false);
   const [activeMenuId, setActiveMenuId] = useState<string | null>(null); // For Dropdown Menu
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
@@ -542,10 +544,26 @@ const History: React.FC<HistoryProps> = ({ submissions, loading, refreshList, se
                                     })}
                                 </div>
                                 <button 
-                                    onClick={() => setHistoryModalData(s)}
-                                    className="text-xs font-bold text-slate-500 hover:text-sky-600 transition flex items-center gap-1 group"
+                                    onClick={async () => {
+                                        if (isFetchingTimeline) return;
+                                        setIsFetchingTimeline(true);
+                                        try {
+                                            const fullSub = await apiGetSubmissionById(s.id);
+                                            setHistoryModalData(fullSub);
+                                        } catch (e: any) {
+                                            showToast({ type: 'error', title: 'เกิดข้อผิดพลาด', message: 'ไม่สามารถโหลดประวัติได้' });
+                                        } finally {
+                                            setIsFetchingTimeline(false);
+                                        }
+                                    }}
+                                    className="text-xs font-bold text-slate-500 hover:text-sky-600 transition flex items-center gap-1 group disabled:opacity-50"
+                                    disabled={isFetchingTimeline}
                                 >
-                                    ดูประวัติทั้งหมด ({auditLogs.length}) <i className="fa-solid fa-arrow-right text-[10px] opacity-0 group-hover:opacity-100 transition-all transform group-hover:translate-x-1"></i>
+                                    {isFetchingTimeline ? (
+                                        <><i className="fa-solid fa-circle-notch fa-spin"></i> กำลังโหลด...</>
+                                    ) : (
+                                        <>ดูประวัติทั้งหมด ({auditLogs.length}) <i className="fa-solid fa-arrow-right text-[10px] opacity-0 group-hover:opacity-100 transition-all transform group-hover:translate-x-1"></i></>
+                                    )}
                                 </button>
                           </div>
                       </div>

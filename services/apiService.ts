@@ -1,7 +1,7 @@
 
 import { AppSettings, Submission, UserProfile, NewsItem, UserRole, VisitorStats, ReviewerScore } from '../types';
 import { supabase } from '../lib/supabaseClient';
-import { PR_NEWS, BRANCHES, WORK_TYPES } from '../constants';
+import { PR_NEWS, BRANCHES, WORK_TYPES, BUDGET_YEAR } from '../constants';
 
 // --- Helper Types for DB Mapping ---
 const mapSubmissionFromDB = (data: any): Submission => ({
@@ -51,6 +51,32 @@ const mapProfileFromDB = (data: any): UserProfile => ({
     committeeRole: data.committee_role
 });
 
+// --- Cache Helper ---
+const API_CACHE: Record<string, { data: any, timestamp: number }> = {};
+const CACHE_TTL = 5 * 60 * 1000; // 5 Minutes
+
+function getCachedData(key: string) {
+    const cached = API_CACHE[key];
+    if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+        return cached.data;
+    }
+    return null;
+}
+
+function setCachedData(key: string, data: any) {
+    API_CACHE[key] = { data, timestamp: Date.now() };
+}
+
+export function apiClearCache(pattern?: string) {
+    if (!pattern) {
+        Object.keys(API_CACHE).forEach(key => delete API_CACHE[key]);
+    } else {
+        Object.keys(API_CACHE).forEach(key => {
+            if (key.includes(pattern)) delete API_CACHE[key];
+        });
+    }
+}
+
 // --- Auth Methods (Supabase Auth) ---
 
 export function getCurrentUser(): UserProfile | null {
@@ -61,9 +87,14 @@ export function getCurrentUser(): UserProfile | null {
 export function logoutUser() {
     supabase.auth.signOut().catch(() => {});
     localStorage.removeItem("svk_supabase_user");
+    apiClearCache();
 }
 
 export async function apiGetUserProfile(userId: string): Promise<UserProfile> {
+    const cacheKey = `user_profile_${userId}`;
+    const cached = getCachedData(cacheKey);
+    if (cached) return cached;
+
     const { data, error } = await supabase
         .from('profiles')
         .select('*')
@@ -71,7 +102,9 @@ export async function apiGetUserProfile(userId: string): Promise<UserProfile> {
         .single();
 
     if (error) throw new Error(error.message);
-    return mapProfileFromDB(data);
+    const profile = mapProfileFromDB(data);
+    setCachedData(cacheKey, profile);
+    return profile;
 }
 
 export async function apiUpdateUserProfile(userId: string, updates: Partial<UserProfile>): Promise<UserProfile> {
@@ -110,6 +143,11 @@ export async function apiUpdateUserProfile(userId: string, updates: Partial<User
     
     const updatedProfile = mapProfileFromDB(data);
     localStorage.setItem("svk_supabase_user", JSON.stringify(updatedProfile)); // Update local storage
+    
+    // Clear caches
+    apiClearCache(`user_profile_${userId}`);
+    apiClearCache('all_users');
+    
     return updatedProfile;
 }
 
@@ -229,15 +267,27 @@ export async function apiLoginUser(email: string, password?: string): Promise<Us
 
 // --- User Management API (Admin Only) ---
 export async function apiGetAllUsers(): Promise<UserProfile[]> {
+    const cacheKey = 'all_users';
+    const cached = getCachedData(cacheKey);
+    if (cached) return cached;
+
     const { data, error } = await supabase.from('profiles').select('*').order('first_name', { ascending: true });
     if (error) throw new Error(error.message);
-    return data.map(mapProfileFromDB);
+    const users = data.map(mapProfileFromDB);
+    setCachedData(cacheKey, users);
+    return users;
 }
 
 export async function apiGetUsersByRole(role: UserRole): Promise<UserProfile[]> {
+    const cacheKey = `users_role_${role}`;
+    const cached = getCachedData(cacheKey);
+    if (cached) return cached;
+
     const { data, error } = await supabase.from('profiles').select('*').eq('role', role).order('first_name', { ascending: true });
     if (error) throw new Error(error.message);
-    return data.map(mapProfileFromDB);
+    const users = data.map(mapProfileFromDB);
+    setCachedData(cacheKey, users);
+    return users;
 }
 
 export async function apiUpdateUserPasswordAdmin(userId: string, newPassword?: string): Promise<void> {
@@ -285,21 +335,33 @@ export async function apiUpdateUserProfileAdmin(userId: string, updates: Partial
     
     const { error } = await supabase.from('profiles').update(dbPayload).eq('id', userId);
     if (error) throw new Error(error.message);
+    
+    // Clear caches
+    apiClearCache(`user_profile_${userId}`);
+    apiClearCache('users_role');
+    apiClearCache('all_users');
 }
 
 // --- News Management ---
 export function apiGetNews(): NewsItem[] { return PR_NEWS; } 
 export async function apiFetchNewsAsync(): Promise<NewsItem[]> {
+    const cacheKey = 'news_list';
+    const cached = getCachedData(cacheKey);
+    if (cached) return cached;
+
     const { data, error } = await supabase.from('news').select('*').order('id', { ascending: false });
     if (error) { return PR_NEWS; }
-    return data.map((d: any) => ({
+    const news = data.map((d: any) => ({
         id: d.id, title: d.title, date: d.date, desc: d.desc, type: d.type, imageUrl: d.image_url, fileType: d.file_type
     }));
+    setCachedData(cacheKey, news);
+    return news;
 }
 export async function apiAddNews(item: Omit<NewsItem, 'id'>): Promise<NewsItem> {
     const payload = { title: item.title, date: item.date, desc: item.desc, type: item.type, image_url: item.imageUrl, file_type: item.fileType };
     const { data, error } = await supabase.from('news').insert([payload]).select().single();
     if (error) throw new Error(error.message);
+    apiClearCache('news_list');
     return { ...item, id: data.id };
 }
 export async function apiUpdateNews(id: number, item: Partial<NewsItem>): Promise<void> {
@@ -312,11 +374,13 @@ export async function apiUpdateNews(id: number, item: Partial<NewsItem>): Promis
 
     const { error } = await supabase.from('news').update(payload).eq('id', id);
     if (error) throw new Error(error.message);
+    apiClearCache('news_list');
 }
 
 export async function apiDeleteNews(id: number): Promise<void> {
     const { error } = await supabase.from('news').delete().eq('id', id);
     if (error) throw new Error(error.message);
+    apiClearCache('news_list');
 }
 
 export async function apiDeleteUserProfile(userId: string): Promise<void> {
@@ -339,12 +403,69 @@ export function saveSettings(s: AppSettings) { /* No-op */ }
 export function nowISO(): string { return new Date().toISOString(); }
 
 // --- API Methods (Submissions) ---
-export async function apiListSubmissions(settings: AppSettings, userId?: string): Promise<Submission[]> {
-    let query = supabase.from('submissions').select('*').order('created_at', { ascending: false });
+const SUBMISSION_LIST_COLUMNS = 'id, user_id, reviewer_id, reviewer_ids, budget_year, first_name, last_name, email, phone, position, organization, work_type, branch_id, file_url, file_name, status, created_at, updated_at, presentation_url, co_authors';
+
+/**
+ * List submissions with only essential columns for dashboard statistics
+ * This helps reduce bandwidth usage
+ */
+export async function apiListSubmissionsBrief(settings: AppSettings): Promise<Submission[]> {
+    const { data, error } = await supabase
+        .from('submissions')
+        .select('id, createdAt:created_at, budgetYear:budget_year, status, workType:work_type, branchId:branch_id, organization, firstName:first_name, lastName:last_name, fileName:file_name')
+        .eq('budget_year', settings.currentYear || BUDGET_YEAR)
+        .order('created_at', { ascending: false });
+
+    if (error) {
+        console.error("Error fetching brief submissions:", error);
+        throw error;
+    }
+    return data as any[];
+}
+
+export async function apiListSubmissions(settings: AppSettings, userId?: string, page: number = 1, pageSize: number = 20): Promise<{ data: Submission[], hasNextPage: boolean }> {
+    const from = (page - 1) * pageSize;
+    const to = from + pageSize; // Fetch one extra to check for next page
+
+    let query = supabase
+        .from('submissions')
+        .select(SUBMISSION_LIST_COLUMNS)
+        .order('created_at', { ascending: false })
+        .order('id', { ascending: false })
+        .range(from, to);
+
     if (userId) query = query.eq('user_id', userId); 
+    
     const { data, error } = await query;
     if (error) throw new Error(error.message);
-    return data.map(mapSubmissionFromDB);
+
+    const hasNextPage = data.length > pageSize;
+    const resultData = hasNextPage ? data.slice(0, pageSize) : data;
+
+    return {
+        data: resultData.map(mapSubmissionFromDB),
+        hasNextPage
+    };
+}
+
+/**
+ * Fetch full submission data including audit logs
+ */
+export async function apiGetSubmissionById(id: string): Promise<Submission> {
+    const cacheKey = `submission_full_${id}`;
+    const cached = getCachedData(cacheKey);
+    if (cached) return cached;
+
+    const { data, error } = await supabase
+        .from('submissions')
+        .select('*')
+        .eq('id', id)
+        .single();
+
+    if (error) throw new Error(error.message);
+    const submission = mapSubmissionFromDB(data);
+    setCachedData(cacheKey, submission);
+    return submission;
 }
 
 export async function apiSearchUsers(queryText: string): Promise<UserProfile[]> {
@@ -662,6 +783,28 @@ export async function apiDeleteSubmission(settings: AppSettings, id: string): Pr
 }
 
 // --- Visitor Statistics Service ---
+let visitorLogQueue: any[] = [];
+let flushTimeout: any = null;
+const FLUSH_INTERVAL = 30 * 1000; // 30 seconds
+const MAX_QUEUE_SIZE = 10;
+
+async function flushVisitorLogs() {
+    if (visitorLogQueue.length === 0) return;
+    
+    const logsToSend = [...visitorLogQueue];
+    visitorLogQueue = [];
+    if (flushTimeout) {
+        clearTimeout(flushTimeout);
+        flushTimeout = null;
+    }
+
+    try {
+        await supabase.from('visitor_logs').insert(logsToSend);
+    } catch (e) {
+        console.error("Failed to flush visitor logs:", e);
+        // Put back in queue if it failed? (maybe not to avoid infinite loop of failures)
+    }
+}
 
 // 1. Presence (Who is online right now)
 export function subscribeToVisitorPresence(onCountChange: (count: number) => void) {
@@ -678,16 +821,15 @@ export function subscribeToVisitorPresence(onCountChange: (count: number) => voi
 }
 
 // 2. Persistent Stats (Listen to DB inserts)
-export function subscribeToStatsUpdates(onUpdate: (stats: Omit<VisitorStats, 'online'>) => void) {
+export function subscribeToStatsUpdates(onIncrement: () => void) {
     const channel = supabase
       .channel('visitor_stats_changes')
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'visitor_logs' },
-        async () => {
-            // When a new log is inserted, re-fetch the aggregated stats
-            const stats = await apiGetVisitorStats();
-            onUpdate(stats);
+        () => {
+            // When a new log is inserted, just signal to increment locally
+            onIncrement();
         }
       )
       .subscribe();
@@ -696,7 +838,18 @@ export function subscribeToStatsUpdates(onUpdate: (stats: Omit<VisitorStats, 'on
 }
 
 export async function apiRecordVisit(clientId: string, userId?: string) {
-    try { await supabase.from('visitor_logs').insert([{ client_id: clientId, user_id: userId || null, page_url: window.location.pathname }]); } catch (e) { console.error(e); }
+    visitorLogQueue.push({ 
+        client_id: clientId, 
+        user_id: userId || null, 
+        page_url: window.location.pathname,
+        created_at: new Date().toISOString() 
+    });
+
+    if (visitorLogQueue.length >= MAX_QUEUE_SIZE) {
+        flushVisitorLogs();
+    } else if (!flushTimeout) {
+        flushTimeout = setTimeout(flushVisitorLogs, FLUSH_INTERVAL);
+    }
 }
 
 export async function apiGetVisitorStats(): Promise<Omit<VisitorStats, 'online'>> {

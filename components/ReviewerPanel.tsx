@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { Submission, AppSettings, UserProfile, ReviewerScore } from '../types';
-import { apiGetAllScores, apiSaveReviewerScore, apiUpdateSubmission, apiGetUserProfile } from '../services/apiService';
+import { apiGetAllScores, apiSaveReviewerScore, apiUpdateSubmission, apiGetUserProfile, apiGetSubmissionById } from '../services/apiService';
 import { WORK_TYPES, BRANCHES, BRANCH_GROUPS } from '../constants';
 import Pagination from './ui/Pagination';
 
@@ -14,6 +14,9 @@ interface ReviewerPanelProps {
   showToast: (t: any) => void;
   currentUser: UserProfile;
   onTriggerFeedback?: () => void;
+  hasMoreSubmissions?: boolean;
+  onLoadMore?: () => void;
+  loadingMore?: boolean;
 }
 
 interface CriteriaItem {
@@ -84,13 +87,17 @@ const ScoreSelector = ({ value, onChange }: { value: number, onChange: (v: numbe
     );
 };
 
-const ReviewerPanel: React.FC<ReviewerPanelProps> = ({ submissions, settings, refreshData, showToast, currentUser, onTriggerFeedback }) => {
+const ReviewerPanel: React.FC<ReviewerPanelProps> = ({ 
+    submissions, settings, refreshData, showToast, currentUser, onTriggerFeedback,
+    hasMoreSubmissions, onLoadMore, loadingMore
+}) => {
   const [allScores, setAllScores] = useState<ReviewerScore[]>([]);
   const [loading, setLoading] = useState(true);
   const [hideCanvaExt, setHideCanvaExt] = useState(false);
   const [activeSubmission, setActiveSubmission] = useState<Submission | null>(null);
   const [activeProfile, setActiveProfile] = useState<UserProfile | null>(null);
   const [currentScoreData, setCurrentScoreData] = useState<Record<string, {score: number, comment: string}>>({});
+  const [isFetchingDetail, setIsFetchingDetail] = useState(false);
 
   useEffect(() => {
     setActiveProfile(null);
@@ -183,13 +190,24 @@ const ReviewerPanel: React.FC<ReviewerPanelProps> = ({ submissions, settings, re
 
   const totalPages = Math.ceil(branchSubmissions.length / ITEMS_PER_PAGE);
 
-  const handleOpenAssessment = (sub: Submission) => {
+  const handleOpenAssessment = async (sub: Submission) => {
+      setIsFetchingDetail(true);
       setActiveSubmission(sub);
-      const existing = allScores.find(s => s.submissionId === sub.id && s.reviewerId === currentUser.id);
-      if (existing) {
-          setCurrentScoreData(existing.scoreData);
-      } else {
-          setCurrentScoreData({});
+      
+      try {
+          const fullSub = await apiGetSubmissionById(sub.id);
+          setActiveSubmission(fullSub);
+          const existing = allScores.find(s => s.submissionId === sub.id && s.reviewerId === currentUser.id);
+          if (existing) {
+              setCurrentScoreData(existing.scoreData);
+          } else {
+              setCurrentScoreData({});
+          }
+      } catch (e: any) {
+          showToast({ type: 'error', title: 'โหลดข้อมูลล้มเหลว', message: e.message });
+          setActiveSubmission(null);
+      } finally {
+          setIsFetchingDetail(false);
       }
   };
 
@@ -290,11 +308,38 @@ const ReviewerPanel: React.FC<ReviewerPanelProps> = ({ submissions, settings, re
   };
 
   const renderTable = () => (
-      <div className="animate-fade-in space-y-6 max-w-7xl mx-auto pb-10">
+      <div className="animate-fade-in space-y-6 max-w-7xl mx-auto pb-10 relative">
+            {isFetchingDetail && (
+                <div className="fixed inset-0 z-[110] bg-white/40 dark:bg-slate-900/40 backdrop-blur-[2px] flex flex-col items-center justify-center">
+                    <div className="w-12 h-12 border-4 border-emerald-100 dark:border-slate-800 rounded-full"></div>
+                    <div className="absolute w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
+                    <p className="mt-4 text-sm font-bold text-slate-700 dark:text-slate-300">กำลังเข้าสู่โหมดประเมิน...</p>
+                </div>
+            )}
             <div className="bg-gradient-to-r from-sky-600 to-indigo-600 text-white rounded-2xl p-6 shadow-xl relative overflow-hidden">
                 <i className="fa-solid fa-chart-bar absolute -bottom-5 -right-5 text-8xl opacity-20 transform -rotate-12"></i>
                 <div className="relative z-10">
                     <h2 className="font-black text-2xl mb-1"><i className="fa-solid fa-list-check opacity-70 mr-2"></i>รายชื่อผลงานที่รับผิดชอบ</h2>
+                    
+                    {/* Show assigned branches */}
+                    {currentUser.branchId && (
+                        <div className="flex flex-wrap gap-2 mb-3 mt-2">
+                            {(currentUser.branchId || "").toString().split(',').filter(Boolean).map(bId => {
+                                const branch = BRANCHES.find(b => b.id.toString() === bId);
+                                return (
+                                    <button 
+                                        key={bId} 
+                                        onClick={() => setFilter({ ...filter, branch: filter.branch === bId ? 'all' : bId })}
+                                        className={`px-2.5 py-1 ${filter.branch === bId ? 'bg-sky-500 text-white border-sky-400 shadow-md' : 'bg-white/20 dark:bg-white/10 border-white/20 hover:bg-white/30'} rounded-lg text-sm backdrop-blur-sm border flex items-center gap-2 transition`}
+                                    >
+                                        <i className="fa-solid fa-tag text-sky-200"></i>
+                                        {branch?.label || `สาขา ${bId}`}
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    )}
+
                     <p className="text-sky-100 font-medium mb-4">
                         คุณมีผลงานที่ได้รับมอบหมายทั้งหมด {branchSubmissions.length} รายการ
                     </p>
@@ -333,8 +378,8 @@ const ReviewerPanel: React.FC<ReviewerPanelProps> = ({ submissions, settings, re
                         value={filter.branch}
                         onChange={e => setFilter({...filter, branch: e.target.value})}
                     >
-                        <option value="all">ทุกสาขา</option>
-                        {BRANCHES.map(b => <option key={b.id} value={b.id}>{String(b.id).padStart(2,'0')} - {b.label}</option>)}
+                        <option value="all">ทุกสาขาที่รับผิดชอบ</option>
+                        {BRANCHES.filter(b => (currentUser.branchId || '').toString().split(',').includes(b.id.toString())).map(b => <option key={b.id} value={b.id}>{String(b.id).padStart(2,'0')} - {b.label}</option>)}
                     </select>
                     <select 
                         className="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 outline-none dark:text-white text-sm max-w-[200px] overflow-hidden text-ellipsis"
@@ -342,8 +387,8 @@ const ReviewerPanel: React.FC<ReviewerPanelProps> = ({ submissions, settings, re
                         onChange={e => setFilter({...filter, org: e.target.value})}
                     >
                         <option value="all">ทุกสถานพยาบาล</option>
-                        {Array.from(new Set(submissions.map(s => s.organization).filter(Boolean))).map(org => 
-                            <option key={org} value={org}>{org}</option>
+                        {Array.from(new Set(branchSubmissions.map(s => s.organization).filter(Boolean))).map(org => 
+                            <option key={org} value={org as string}>{org as string}</option>
                         )}
                     </select>
                 </div>
@@ -351,34 +396,46 @@ const ReviewerPanel: React.FC<ReviewerPanelProps> = ({ submissions, settings, re
 
             {/* Dashboard Summary */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-                <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 flex items-center gap-4">
+                <button 
+                    onClick={() => setFilter({ ...filter, type: 'all' })}
+                    className={`text-left p-5 rounded-2xl shadow-sm border flex items-center gap-4 transition ${filter.type === 'all' ? 'bg-sky-50 dark:bg-sky-900/40 border-sky-300 dark:border-sky-600 shadow-md transform -translate-y-1' : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:shadow-md hover:-translate-y-1'}`}
+                >
                     <div className="h-12 w-12 rounded-xl bg-sky-100 dark:bg-sky-900/50 text-sky-500 flex items-center justify-center text-xl shrink-0"><i className="fa-solid fa-list-check"></i></div>
                     <div>
                         <div className="text-2xl font-black text-slate-800 dark:text-white leading-none">{branchSubmissions.length}</div>
                         <div className="text-xs font-bold text-slate-500 mt-1">ผลงานในความรับผิดชอบ</div>
                     </div>
-                </div>
-                <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 flex items-center gap-4">
+                </button>
+                <button 
+                    onClick={() => setFilter({ ...filter, type: 'oral' })}
+                    className={`text-left p-5 rounded-2xl shadow-sm border flex items-center gap-4 transition ${filter.type === 'oral' ? 'bg-amber-50 dark:bg-amber-900/40 border-amber-300 dark:border-amber-600 shadow-md transform -translate-y-1' : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:shadow-md hover:-translate-y-1'}`}
+                >
                     <div className="h-12 w-12 rounded-xl bg-amber-100 dark:bg-amber-900/50 text-amber-600 flex items-center justify-center text-xl shrink-0"><i className="fa-solid fa-microphone-lines"></i></div>
                     <div>
                         <div className="text-2xl font-black text-slate-800 dark:text-white leading-none">{branchSubmissions.filter(s => s.workType === 'oral').length}</div>
                         <div className="text-xs font-bold text-slate-500 mt-1">ประเภท Oral</div>
                     </div>
-                </div>
-                <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 flex items-center gap-4">
+                </button>
+                <button 
+                    onClick={() => setFilter({ ...filter, type: 'eposter' })}
+                    className={`text-left p-5 rounded-2xl shadow-sm border flex items-center gap-4 transition ${filter.type === 'eposter' ? 'bg-purple-50 dark:bg-purple-900/40 border-purple-300 dark:border-purple-600 shadow-md transform -translate-y-1' : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:shadow-md hover:-translate-y-1'}`}
+                >
                     <div className="h-12 w-12 rounded-xl bg-purple-100 dark:bg-purple-900/50 text-purple-600 flex items-center justify-center text-xl shrink-0"><i className="fa-solid fa-images"></i></div>
                     <div>
                         <div className="text-2xl font-black text-slate-800 dark:text-white leading-none">{branchSubmissions.filter(s => s.workType === 'eposter').length}</div>
                         <div className="text-xs font-bold text-slate-500 mt-1">ประเภท E-Poster</div>
                     </div>
-                </div>
-                <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 flex items-center gap-4">
+                </button>
+                <button 
+                    onClick={() => setFilter({ ...filter, type: 'innovation' })}
+                    className={`text-left p-5 rounded-2xl shadow-sm border flex items-center gap-4 transition ${filter.type === 'innovation' ? 'bg-emerald-50 dark:bg-emerald-900/40 border-emerald-300 dark:border-emerald-600 shadow-md transform -translate-y-1' : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:shadow-md hover:-translate-y-1'}`}
+                >
                     <div className="h-12 w-12 rounded-xl bg-emerald-100 dark:bg-emerald-900/50 text-emerald-600 flex items-center justify-center text-xl shrink-0"><i className="fa-solid fa-lightbulb"></i></div>
                     <div>
                         <div className="text-2xl font-black text-slate-800 dark:text-white leading-none">{branchSubmissions.filter(s => s.workType === 'innovation').length}</div>
                         <div className="text-xs font-bold text-slate-500 mt-1">ประเภท N-Innovation</div>
                     </div>
-                </div>
+                </button>
             </div>
 
             <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm overflow-hidden">
@@ -424,8 +481,8 @@ const ReviewerPanel: React.FC<ReviewerPanelProps> = ({ submissions, settings, re
                                             `}>
                                                 {workTypeName}
                                             </div>
-                                            <div className="text-[10px] text-slate-400 line-clamp-1 max-w-[150px]" title={s.branchId ? BRANCHES.find(b => b.id.toString() === s.branchId?.toString())?.label : ''}>
-                                                {s.branchId ? `สาขา: ${String(s.branchId).padStart(2,'0')}` : '-'}
+                                            <div className="text-[10px] text-slate-500 line-clamp-2 max-w-[200px]" title={s.branchId ? BRANCHES.find(b => b.id.toString() === s.branchId?.toString())?.label : ''}>
+                                                {s.branchId ? `สาขา ${s.branchId}: ${BRANCHES.find(b => b.id.toString() === s.branchId?.toString())?.label || ''}` : '-'}
                                             </div>
                                         </td>
                                         <td className="px-5 py-4" title={s.fileName}>
@@ -482,6 +539,27 @@ const ReviewerPanel: React.FC<ReviewerPanelProps> = ({ submissions, settings, re
                             )}
                         </tbody>
                     </table>
+
+                {/* Pagination Logic for Loading More from Server */}
+                {hasMoreSubmissions && (
+                    <div className="my-8 flex justify-center">
+                        <button
+                           onClick={onLoadMore}
+                           disabled={loadingMore}
+                           className="group bg-white hover:bg-sky-50 dark:bg-slate-900/50 dark:hover:bg-sky-900/20 text-sky-600 dark:text-sky-400 px-10 py-3.5 rounded-2xl font-black text-sm shadow-sm hover:shadow-md transition-all active:scale-95 disabled:opacity-50 flex items-center gap-3 border-2 border-sky-100 dark:border-sky-800"
+                        >
+                           {loadingMore ? (
+                               <i className="fa-solid fa-circle-notch fa-spin text-lg"></i>
+                           ) : (
+                               <i className="fa-solid fa-cloud-arrow-down text-lg group-hover:animate-bounce"></i>
+                           )}
+                           <div className="flex flex-col items-start leading-tight text-left">
+                               <span>{loadingMore ? 'กำลังดึงข้อมูล...' : 'แสดงรายการเพิ่มเติม'}</span>
+                               <span className="text-[10px] opacity-60 font-bold uppercase tracking-wider">{loadingMore ? 'โปรดรอสักครู่' : `โหลดก้อนถัดไป (+20 รายการ)`}</span>
+                           </div>
+                        </button>
+                    </div>
+                )}
                 </div>
                 {totalPages > 1 && (
                     <div className="p-4 border-t border-slate-100 dark:border-slate-800 flex justify-center">

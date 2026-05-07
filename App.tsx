@@ -2,7 +2,7 @@
 import React, { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { BUDGET_YEAR, BRANCHES } from "./constants";
 import { AppSettings, Submission, ToastMessage, UserProfile, VisitorStats, NewsItem } from "./types";
-import { apiListSubmissions, loadSettings, getCurrentUser, logoutUser, apiGetUserProfile, subscribeToVisitorPresence, subscribeToStatsUpdates, apiGetVisitorStats, apiRecordVisit, apiFetchNewsAsync } from "./services/apiService";
+import { apiListSubmissions, apiListSubmissionsBrief, loadSettings, getCurrentUser, logoutUser, apiGetUserProfile, subscribeToVisitorPresence, subscribeToStatsUpdates, apiGetVisitorStats, apiRecordVisit, apiFetchNewsAsync } from "./services/apiService";
 import { supabase } from "./lib/supabaseClient";
 import Registration from "./components/Registration";
 import History from "./components/History";
@@ -76,7 +76,12 @@ export default function App() {
 
   // Shared Data State
   const [allSubmissions, setAllSubmissions] = useState<Submission[]>([]);
+  const [dashboardSubmissions, setDashboardSubmissions] = useState<Submission[]>([]); // New: Brief data for dashboard
+  const [hasMoreSubmissions, setHasMoreSubmissions] = useState(false);
+  const [currentSubPage, setCurrentSubPage] = useState(1);
+  const SUB_PAGE_SIZE = 20;
   const [loading, setLoading] = useState(false);
+  const [loadingDashboard, setLoadingDashboard] = useState(false); // New: Loader for dashboard data
 
   // Stats State
   const [visitorStats, setVisitorStats] = useState<VisitorStats>({ online: 1, today: 0, week: 0, month: 0, year: 0, total: 0 });
@@ -195,8 +200,15 @@ export default function App() {
       }).catch(err => console.error("Visitor stats load error:", err));
 
       // 3. Realtime Stats Updates (Listen for new logs)
-      const unsubscribeStats = subscribeToStatsUpdates((newStats) => {
-          setVisitorStats(prev => ({ ...prev, ...newStats }));
+      const unsubscribeStats = subscribeToStatsUpdates(() => {
+          setVisitorStats(prev => ({ 
+              ...prev, 
+              today: prev.today + 1,
+              week: prev.week + 1,
+              month: prev.month + 1,
+              year: prev.year + 1,
+              total: prev.total + 1
+          }));
       });
 
       // 4. Record Visit (Once per session)
@@ -329,19 +341,56 @@ export default function App() {
       }
   };
 
-  const loadData = async () => {
-    setLoading(true);
-    try {
-      const data = await apiListSubmissions(settings, undefined);
-      setAllSubmissions(Array.isArray(data) ? data : []);
-    } catch (e: any) {
-      if (!e.message?.includes("Refresh Token") && !e.message?.includes("session") && !e.message?.includes("token")) {
-          showToast({ type: "error", title: "Error loading data", message: e.message });
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
+  const [isDataLoaded, setIsDataLoaded] = useState(false);
+
+    const loadDashboardData = async () => {
+        try {
+            setLoadingDashboard(true);
+            const data = await apiListSubmissionsBrief(settings);
+            setDashboardSubmissions(data);
+        } catch (error) {
+            console.error("Error loading dashboard data:", error);
+        } finally {
+            setLoadingDashboard(false);
+        }
+    };
+
+    // forceRefresh helps when we genuinely need new data (e.g. after adding a submission)
+    const loadData = async (isLoadMore: boolean = false, forceRefresh: boolean = false) => {
+        if (loading) return;
+        if (!isLoadMore && !forceRefresh && isDataLoaded) return; // Use cache state
+
+        if (!isLoadMore) {
+            setLoading(true);
+            if (!isDataLoaded || forceRefresh) {
+                loadDashboardData();
+            }
+        }
+        try {
+            const pageToLoad = isLoadMore ? currentSubPage + 1 : 1;
+            const { data, hasNextPage } = await apiListSubmissions(settings, undefined, pageToLoad, SUB_PAGE_SIZE);
+            
+            if (isLoadMore) {
+                setAllSubmissions(prev => {
+                    const existingIds = new Set(prev.map(item => item.id));
+                    const uniqueNewData = data.filter(item => !existingIds.has(item.id));
+                    return [...prev, ...uniqueNewData];
+                });
+                setCurrentSubPage(pageToLoad);
+            } else {
+                setAllSubmissions(data);
+                setCurrentSubPage(1);
+            }
+            setHasMoreSubmissions(hasNextPage);
+            setIsDataLoaded(true);
+        } catch (e: any) {
+            if (!e.message?.includes("Refresh Token") && !e.message?.includes("session") && !e.message?.includes("token")) {
+                showToast({ type: "error", title: "เกิดข้อผิดพลาดในการโหลดข้อมูล", message: e.message });
+            }
+        } finally {
+            setLoading(false);
+        }
+    };
 
   const handleTabChange = (tabId: string) => {
       if (tabId === activeTab && tabId !== 'home') return;
@@ -455,7 +504,7 @@ export default function App() {
                 // Check for missing presentations for regular user
                 setTimeout(async () => {
                    try {
-                       const subs = await apiListSubmissions(loadSettings(), user.id);
+                       const { data: subs } = await apiListSubmissions(loadSettings(), user.id);
                        const pending = subs.filter(s => !s.presentationUrl);
                        if (pending.length > 0) {
                            Swal.fire({
@@ -748,11 +797,14 @@ export default function App() {
                 <AdminPanel 
                     submissions={allSubmissions} 
                     settings={settings} 
-                    refreshData={loadData} 
+                    refreshData={() => loadData(false, true)} 
                     showToast={showToast}
                     newsList={newsList}
                     onNewsUpdate={fetchNews}
                     currentUser={currentUser}
+                    hasMoreSubmissions={hasMoreSubmissions}
+                    onLoadMore={() => loadData(true)}
+                    loadingMore={loading}
                 />
             )
         ) : isReviewer ? (
@@ -770,7 +822,8 @@ export default function App() {
                 )}
                 {activeTab === 'analytics' && (
                     <Dashboard 
-                        submissions={allSubmissions} 
+                        submissions={dashboardSubmissions} 
+                        loading={loadingDashboard}
                         onViewAll={() => handleTabChange('history')}
                     />
                 )}
@@ -785,10 +838,13 @@ export default function App() {
                     <ReviewerPanel 
                         submissions={allSubmissions} 
                         settings={settings} 
-                        refreshData={loadData} 
+                        refreshData={() => loadData(false, true)} 
                         showToast={showToast}
                         currentUser={currentUser!}
                         onTriggerFeedback={() => setShowFeedbackModal(true)}
+                        hasMoreSubmissions={hasMoreSubmissions}
+                        onLoadMore={() => loadData(true)}
+                        loadingMore={loading}
                     />
                 )}
             </div>
@@ -812,7 +868,7 @@ export default function App() {
                         showToast={showToast}
                         currentUser={currentUser} 
                         onSuccess={() => {
-                            loadData(); 
+                            loadData(false, true); 
                             handleTabChange('history');
                         }} 
                         editingSubmission={editingSubmission}
@@ -826,8 +882,11 @@ export default function App() {
                         submissions={allSubmissions}
                         settings={settings}
                         currentUser={currentUser}
-                        refreshData={loadData}
+                        refreshData={() => loadData(false, true)}
                         showToast={showToast}
+                        hasMoreSubmissions={hasMoreSubmissions}
+                        onLoadMore={() => loadData(true)}
+                        loadingMore={loading}
                     />
                 )}
                 
@@ -835,7 +894,7 @@ export default function App() {
                     <History 
                         submissions={mySubmissions}
                         loading={loading} 
-                        refreshList={loadData} 
+                        refreshList={() => loadData(false, true)} 
                         settings={settings} 
                         showToast={showToast} 
                         onEdit={handleEditSubmission}
@@ -845,7 +904,8 @@ export default function App() {
                 
                 {activeTab === 'analytics' && (
                     <Dashboard 
-                        submissions={allSubmissions} 
+                        submissions={dashboardSubmissions} 
+                        loading={loadingDashboard}
                         onViewAll={() => handleTabChange('history')}
                     />
                 )}
@@ -1027,7 +1087,7 @@ export default function App() {
               <div className="border-t border-slate-800 pt-8 flex flex-col md:flex-row justify-between items-center gap-4 text-xs font-medium text-slate-500">
                   <div className="flex items-center gap-2">
                        <i className="fa-solid fa-code text-sky-500"></i>
-                       <span>พัฒนาโดย กลุ่มงานสุขภาพดิจิทัล สำนักงานสาธารณสุขจังหวัดสตูล 2569 | <a href="#" onClick={(e) => {e.preventDefault(); Swal.fire({title: 'รายละเอียดอัปเดต v1.3.29', html: '<ul class="text-left space-y-2 text-sm"><li>✨ <b>System Core:</b> นำรูปแบบ CSS CDN กลับมาใช้งานเพื่อให้การแสดงผลเป็นไปตามรูปแบบเดิมที่สมบูรณ์ (v1.3.29)</li><li>✨ <b>System Core:</b> เปลี่ยนการเรียกใช้ Tailwind CSS จาก CDN เป็น PostCSS เพื่อประสิทธิภาพที่ดียิ่งขึ้นตามมาตรฐาน Production (v1.3.28)</li><li>✨ <b>Presentation Panel:</b> เพิ่ม Iframe สำหรับพรีวิวการแสดงผลไฟล์นำเสนอ, เพิ่มการแสดงเวลาอัปเดตล่าสุด และแสดงสาขาผลงาน (v1.3.27)</li></ul>', icon: 'info', confirmButtonColor: '#0ea5e9'}); }}>v1.3.29</a></span>
+                       <span>พัฒนาโดย กลุ่มงานสุขภาพดิจิทัล สำนักงานสาธารณสุขจังหวัดสตูล 2569 | <a href="#" onClick={(e) => {e.preventDefault(); Swal.fire({title: 'รายละเอียดอัปเดต v1.3.44', html: '<ul class="text-left space-y-2 text-sm"><li>🚀 <b>Performance Refactor:</b> ใส่ระบบ Pagination และ Brief Data Selection เพื่อลดการโหลดข้อมูลส่วนเกิน (v1.3.41)</li><li>💾 <b>Caching Layer:</b> เพิ่มระบบ Memory Cache สำหรับ User Profiles และ News เพื่อความรวดเร็วในการแสดงผล (v1.3.41)</li><li>🖼️ <b>Image Optimization:</b> นำ <code>author_photo</code> ออกจากการโหลดเพื่อให้เบาขึ้น (v1.3.43)</li><li>👥 <b>Admin & User Management:</b> แอดมินสามารถดูและแก้ไขสาขาวิชา (Branches) ของคณะกรรมการได้ทันทีจากเมนูจัดการผู้ใช้งาน (v1.3.44)</li></ul>', icon: 'info', confirmButtonColor: '#0ea5e9'}); }}>v1.3.44</a></span>
                   </div>
                   <div className="flex gap-6">
                       <button onClick={() => setShowPrivacyPolicy(true)} className="hover:text-slate-300 transition">นโยบายความเป็นส่วนตัว</button>

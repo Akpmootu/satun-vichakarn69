@@ -198,7 +198,13 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({ currentUser, onUpdate
                              <div className="flex items-center gap-3 mb-3">
                                  <div className="h-10 w-10 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden shrink-0">
                                      {avatarUrl ? (
-                                         <img src={avatarUrl} className="h-full w-full object-cover" alt="Profile" />
+                                         <img 
+                                            src={avatarUrl} 
+                                            className="h-full w-full object-cover" 
+                                            alt="Profile" 
+                                            loading="lazy"
+                                            referrerPolicy="no-referrer"
+                                         />
                                      ) : (
                                          <div className="h-full w-full flex items-center justify-center text-slate-400 font-bold">{currentUser.firstName.charAt(0)}</div>
                                      )}
@@ -235,7 +241,13 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({ currentUser, onUpdate
                                             className="h-24 w-24 rounded-full bg-slate-100 dark:bg-slate-700 ring-4 ring-white dark:ring-slate-600 shadow-lg overflow-hidden cursor-pointer relative"
                                         >
                                             {avatarUrl ? (
-                                                <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+                                                <img 
+                                                    src={avatarUrl} 
+                                                    alt="Avatar" 
+                                                    className="w-full h-full object-cover" 
+                                                    loading="lazy"
+                                                    referrerPolicy="no-referrer"
+                                                />
                                             ) : (
                                                 <div className="w-full h-full flex items-center justify-center text-3xl font-bold text-slate-300">
                                                     {currentUser.firstName.charAt(0)}
