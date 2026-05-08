@@ -349,46 +349,54 @@ const Dashboard: React.FC<DashboardProps> = ({ submissions, onViewAll, loading =
            <section>
                <SectionHeader title="สรุปผลการดำเนินงาน" subtitle="Key Performance Indicators (KPIs)" icon="fa-gauge-high" />
                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                  <StatCard 
-                    title="ผลงานทั้งหมด" 
-                    subtitle="Total Submissions"
-                    value={stats.total.toLocaleString()} 
-                    icon="fa-folder-open" 
-                    tone="blue"
-                    trend={12} 
-                    trendLabel="จากปีก่อน"
-                  />
-                  {/* Participation Rate (Mock Data Calculation) */}
-                  <StatCard 
-                    title="การมีส่วนร่วม (Participation)" 
-                    subtitle={`จาก ${orgOptions.length} หน่วยงาน`}
-                    value={`${((stats.uniqueOrgs / Math.max(orgOptions.length, 1)) * 100).toFixed(0)}%`} 
-                    icon="fa-hand-holding-heart" 
-                    tone="indigo"
-                    trend={5}
-                    trendLabel="หน่วยงานใหม่"
-                  />
+                  <div onClick={() => setTableFilterStatus('all')} className="cursor-pointer">
+                      <StatCard 
+                        title="ผลงานทั้งหมด" 
+                        subtitle="Total Submissions"
+                        value={stats.total.toLocaleString()} 
+                        icon="fa-folder-open" 
+                        tone="blue"
+                        trend={12} 
+                        trendLabel="จากปีก่อน"
+                      />
+                  </div>
+                  {/* Participation Rate (Mock Data Calculation) - Click to clear filter */}
+                  <div onClick={() => setTableFilterStatus('all')} className="cursor-pointer">
+                      <StatCard 
+                        title="การมีส่วนร่วม (Participation)" 
+                        subtitle={`จาก ${orgOptions.length} หน่วยงาน`}
+                        value={`${((stats.uniqueOrgs / Math.max(orgOptions.length, 1)) * 100).toFixed(0)}%`} 
+                        icon="fa-hand-holding-heart" 
+                        tone="indigo"
+                        trend={5}
+                        trendLabel="หน่วยงานใหม่"
+                      />
+                  </div>
                   
                   {/* Incomplete Drafts */}
-                  <StatCard 
-                    title="งานที่รอส่ง (Drafts)" 
-                    subtitle="Incomplete Submissions"
-                    value={stats.statusCounts.draft.toLocaleString()} 
-                    icon="fa-file-circle-exclamation" 
-                    tone="amber"
-                    trend={-2}
-                    trendLabel="ลดลงจากเดือนก่อน"
-                  />
+                  <div onClick={() => setTableFilterStatus('draft')} className="cursor-pointer">
+                      <StatCard 
+                        title="งานที่รอส่ง (Drafts)" 
+                        subtitle="Incomplete Submissions"
+                        value={stats.statusCounts.draft.toLocaleString()} 
+                        icon="fa-file-circle-exclamation" 
+                        tone="amber"
+                        trend={-2}
+                        trendLabel="ลดลงจากเดือนก่อน"
+                      />
+                  </div>
 
-                  <StatCard 
-                    title="อัตราความสำเร็จ" 
-                    subtitle="Success Rate"
-                    value={`${stats.completionRate.toFixed(1)}%`} 
-                    icon="fa-clipboard-check" 
-                    tone="emerald"
-                    trend={stats.completionRate > 80 ? 2 : -1}
-                    trendLabel="เทียบเป้าหมาย"
-                  />
+                  <div onClick={() => setTableFilterStatus('accepted')} className="cursor-pointer">
+                      <StatCard 
+                        title="อัตราความสำเร็จ" 
+                        subtitle="Success Rate"
+                        value={`${stats.completionRate.toFixed(1)}%`} 
+                        icon="fa-clipboard-check" 
+                        tone="emerald"
+                        trend={stats.completionRate > 80 ? 2 : -1}
+                        trendLabel="เทียบเป้าหมาย"
+                      />
+                  </div>
                </div>
            </section>
 
@@ -472,7 +480,7 @@ const Dashboard: React.FC<DashboardProps> = ({ submissions, onViewAll, loading =
                      </h3>
                      
                      <div className="flex-1 flex flex-col items-center justify-center relative min-h-[300px]">
-                            <ResponsiveContainer width="100%" height="100%">
+                            <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
                                 <PieChart>
                                     <Pie 
                                       data={stats.typeCounts} 
@@ -596,7 +604,7 @@ const Dashboard: React.FC<DashboardProps> = ({ submissions, onViewAll, loading =
                         {stats.branchCountsAll.length === 0 ? (
                             <div className="absolute inset-0 flex items-center justify-center text-slate-400">ไม่มีข้อมูล</div>
                         ) : (
-                            <ResponsiveContainer width="100%" height="100%">
+                            <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
                                 <RadarChart cx="50%" cy="50%" outerRadius="70%" data={stats.branchCountsAll}>
                                     <PolarGrid strokeOpacity={0.2} />
                                     <PolarAngleAxis 

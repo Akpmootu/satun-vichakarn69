@@ -1034,8 +1034,8 @@ export default function App() {
                   </div>
               </div>
 
-              {/* Visitor Stats Section */}
-              <div className="mb-8 border-t border-slate-800 pt-6">
+              {/* Visitor Stats Section (Hidden from UI as requested, but logic remains) */}
+              <div className="mb-8 border-t border-slate-800 pt-6 hidden">
                   <div className="flex flex-wrap items-center justify-center md:justify-between gap-4 bg-slate-900/50 p-4 rounded-2xl border border-slate-800">
                       <div className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-2">
                           <i className="fa-solid fa-chart-simple text-sky-500"></i> สถิติการเข้าชม

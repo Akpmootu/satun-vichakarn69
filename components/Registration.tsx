@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { BRANCHES, BUDGET_YEAR, WORK_TYPES, HEALTH_POSITIONS, JOB_LEVELS } from '../constants';
 import { AppSettings, Submission, UserProfile, SubmissionStatus, CoAuthor } from '../types';
-import { apiCreateSubmission, apiUpdateSubmission, nowISO, apiCheckTitleUnique, apiSearchUsers, apiSubmitFeedback } from '../services/apiService';
+import { apiCreateSubmission, apiUpdateSubmission, nowISO, apiCheckTitleUnique, apiSearchUsers, apiSubmitFeedback, apiUploadFile } from '../services/apiService';
 import Badge from './ui/Badge';
 import OrgAutocomplete from './ui/OrgAutocomplete';
 import { CoAuthorSearchModal } from './CoAuthorSearchModal';
@@ -293,6 +293,36 @@ const Registration: React.FC<RegistrationProps> = ({ settings, onSuccess, showTo
               updateCoAuthor(id, 'photoUrl', reader.result as string);
           };
           reader.readAsDataURL(file);
+      }
+  };
+
+  const [isUploading, setIsUploading] = useState(false);
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+
+      if (file.size > 50 * 1024 * 1024) { // 50MB limit
+          showToast({ type: 'error', title: 'ไฟล์มีขนาดใหญ่เกินไป', message: 'กรุณาอัปโหลดไฟล์ขนาดไม่เกิน 50MB' });
+          return;
+      }
+
+      setIsUploading(true);
+      try {
+          const publicUrl = await apiUploadFile(currentUser.id, 'work_files', file);
+          setAttachments(prev => [...prev, { 
+              type: 'file', 
+              value: publicUrl, 
+              name: file.name, 
+              size: file.size 
+          }]);
+          showToast({ type: 'success', title: 'อัปโหลดสำเร็จ', message: `ไฟล์ ${file.name} ถูกแนบแล้ว` });
+          // Clear input
+          e.target.value = '';
+      } catch (err: any) {
+          showToast({ type: 'error', title: 'อัปโหลดล้มเหลว', message: err.message });
+      } finally {
+          setIsUploading(false);
       }
   };
 
@@ -812,6 +842,33 @@ const Registration: React.FC<RegistrationProps> = ({ settings, onSuccess, showTo
                         </div>
                         <button onClick={handleAddLink} className="px-5 bg-indigo-600 text-white rounded-xl font-bold text-sm hover:bg-indigo-700 transition shadow-sm shrink-0 flex items-center justify-center gap-2"><i className="fa-solid fa-plus"></i> เพิ่มลิงก์</button>
                     </div>
+
+                    <div className="mb-6 p-4 rounded-xl border-2 border-dashed border-sky-200 dark:border-sky-900/50 bg-sky-50/30 dark:bg-sky-900/10 hover:border-sky-300 dark:hover:border-sky-800 transition-all group relative">
+                        <input 
+                            type="file" 
+                            accept=".pdf,.doc,.docx,.zip,.rar" 
+                            onChange={handleFileUpload} 
+                            disabled={isUploading}
+                            className="absolute inset-0 opacity-0 cursor-pointer z-10" 
+                        />
+                        <div className="flex flex-col items-center py-2">
+                            {isUploading ? (
+                                <div className="flex flex-col items-center">
+                                    <i className="fa-solid fa-spinner animate-spin text-3xl text-sky-500 mb-2"></i>
+                                    <span className="text-sm font-bold text-sky-600">กำลังอัปโหลดไฟล์...</span>
+                                </div>
+                             ) : (
+                                <>
+                                    <div className="w-12 h-12 rounded-full bg-sky-100 dark:bg-sky-900/40 text-sky-500 flex items-center justify-center text-xl mb-3 group-hover:scale-110 transition-transform">
+                                        <i className="fa-solid fa-cloud-arrow-up"></i>
+                                    </div>
+                                    <div className="text-sm font-bold text-slate-700 dark:text-slate-300">คลิกที่นี่เพื่ออัปโหลดไฟล์ผลงานจริง (Direct Upload)</div>
+                                    <p className="text-xs text-slate-500 mt-1">รองรับ PDF, Word, ZIP (สูงสุด 50MB)</p>
+                                </>
+                             )}
+                        </div>
+                    </div>
+
 
                     {attachments.length > 0 ? (
                         <div className="space-y-2 animate-fade-in">

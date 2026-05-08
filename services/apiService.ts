@@ -183,6 +183,30 @@ export async function apiUploadAvatar(userId: string, file: File): Promise<strin
     return data.publicUrl;
 }
 
+/**
+ * Generic file upload to 'submissions' bucket
+ */
+export async function apiUploadFile(userId: string, folderName: string, file: File): Promise<string> {
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${userId}/${folderName}/${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.]/g, '_')}`;
+
+    const { error: uploadError } = await supabase.storage
+        .from('submissions')
+        .upload(fileName, file, { 
+            upsert: true, 
+            contentType: file.type,
+            cacheControl: '3600'
+        });
+
+    if (uploadError) {
+        console.error("Supabase Storage Error:", uploadError);
+        throw new Error("Upload Failed: " + uploadError.message);
+    }
+
+    const { data } = supabase.storage.from('submissions').getPublicUrl(fileName);
+    return data.publicUrl;
+}
+
 export async function apiRegisterUser(user: UserProfile, password?: string): Promise<UserProfile> {
     const finalPassword = password || 'password123';
     

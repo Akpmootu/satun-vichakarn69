@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Submission, AppSettings, UserProfile } from '../types';
-import { apiUpdateSubmission } from '../services/apiService';
+import { apiUpdateSubmission, apiUploadFile } from '../services/apiService';
 import { BRANCHES } from '../constants';
 import { motion } from 'motion/react';
 import Swal from 'sweetalert2';
@@ -21,17 +21,48 @@ const PresentationPanel: React.FC<PresentationPanelProps> = ({
     hasMoreSubmissions, onLoadMore, loadingMore
 }) => {
     const [loadingMap, setLoadingMap] = useState<Record<string, boolean>>({});
+    const fileInputRef = useRef<HTMLInputElement>(null);
+    const [selectedSub, setSelectedSub] = useState<Submission | null>(null);
 
     const userSubmissions = submissions.filter(s => s.userId === currentUser.id);
 
     const validateUrl = (url: string) => {
         const lower = url.toLowerCase();
-        return lower.includes('drive.google.com') || lower.includes('canva.com') || lower.includes('canva.link');
+        return lower.includes('drive.google.com') || lower.includes('canva.com') || lower.includes('canva.link') || lower.includes('supabase.co');
+    };
+
+    const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, submission: Submission) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        if (file.size > 50 * 1024 * 1024) {
+            showToast({ type: 'error', title: 'ไฟล์มีขนาดใหญ่เกินไป', message: 'กรุณาอัปโหลดไฟล์ขนาดไม่เกิน 50MB' });
+            return;
+        }
+
+        setLoadingMap(prev => ({ ...prev, [submission.id]: true }));
+        try {
+            const publicUrl = await apiUploadFile(currentUser.id, 'presentations', file);
+            const newAudit = {
+                at: new Date().toISOString(),
+                action: 'อัปโหลดไฟล์นำเสนอ',
+                note: `อัปโหลดไฟล์นำเสนอ: ${file.name}`
+            };
+            const updatedAudit = [...(submission.audit || []), newAudit];
+            await apiUpdateSubmission(settings, submission.id, { presentationUrl: publicUrl, audit: updatedAudit });
+            showToast({ type: 'success', title: 'อัปโหลดสำเร็จ', message: 'บันทึกไฟล์นำเสนอเรียบร้อยแล้ว' });
+            refreshData();
+        } catch (err: any) {
+            showToast({ type: 'error', title: 'อัปโหลดล้มเหลว', message: err.message });
+        } finally {
+            setLoadingMap(prev => ({ ...prev, [submission.id]: false }));
+            if (fileInputRef.current) fileInputRef.current.value = '';
+        }
     };
 
     const handleUpdateLink = async (submission: Submission) => {
         const { value: url } = await Swal.fire({
-            title: 'ส่งไฟล์นำเสนอผลงาน',
+            title: 'ส่งรายละเอียดไฟล์นำเสนอ',
             input: 'url',
             inputLabel: 'กรุณาแนบลิงก์ (Google Drive หรือ Canva เท่านั้น)',
             inputValue: submission.presentationUrl || '',
@@ -150,12 +181,33 @@ const PresentationPanel: React.FC<PresentationPanelProps> = ({
                                     )}
                                 </div>
 
-                                <div className="shrink-0 flex items-center">
+                                <div className="shrink-0 flex flex-col md:flex-row items-center gap-2">
+                                    <div className="relative">
+                                        <input 
+                                            type="file" 
+                                            className="absolute inset-0 opacity-0 cursor-pointer z-10" 
+                                            accept=".pdf,.ppt,.pptx,.key"
+                                            onChange={(e) => handleFileUpload(e, s)}
+                                            disabled={loadingMap[s.id]}
+                                        />
+                                        <button
+                                            disabled={loadingMap[s.id]}
+                                            className="px-4 py-3 rounded-2xl text-sm font-black transition-all flex items-center gap-2 w-full md:w-auto justify-center bg-sky-50 dark:bg-sky-900/30 text-sky-600 dark:text-sky-400 border border-sky-200 dark:border-sky-800 hover:bg-sky-100 disabled:opacity-50 shadow-sm"
+                                        >
+                                            {loadingMap[s.id] ? (
+                                                <i className="fa-solid fa-circle-notch fa-spin text-sm"></i>
+                                            ) : (
+                                                <i className="fa-solid fa-cloud-arrow-up"></i>
+                                            )}
+                                            <span>อัปโหลดไฟล์</span>
+                                        </button>
+                                    </div>
+
                                     <button
                                         onClick={() => handleUpdateLink(s)}
                                         disabled={loadingMap[s.id]}
                                         className={`
-                                            px-6 py-3 rounded-2xl text-sm font-black transition-all flex items-center gap-2 w-full md:w-auto justify-center
+                                            px-4 py-3 rounded-2xl text-sm font-black transition-all flex items-center gap-2 w-full md:w-auto justify-center
                                             ${s.presentationUrl 
                                                 ? 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-sky-500 hover:text-white' 
                                                 : 'bg-sky-500 text-white shadow-lg shadow-sky-200 dark:shadow-none hover:bg-sky-600'}
@@ -163,11 +215,11 @@ const PresentationPanel: React.FC<PresentationPanelProps> = ({
                                         `}
                                     >
                                         {loadingMap[s.id] ? (
-                                            <i className="fa-solid fa-circle-notch fa-spin"></i>
+                                            <i className="fa-solid fa-circle-notch fa-spin text-sm"></i>
                                         ) : (
                                             <i className={`fa-solid ${s.presentationUrl ? 'fa-pen-to-square' : 'fa-plus'}`}></i>
                                         )}
-                                        {s.presentationUrl ? 'แก้ไขลิงก์' : 'แนบลิงก์นำเสนอ'}
+                                        {s.presentationUrl ? 'แก้ไขลิงก์' : 'แนบลิงก์'}
                                     </button>
                                 </div>
                             </div>
