@@ -96,6 +96,7 @@ const ReviewerPanel: React.FC<ReviewerPanelProps> = ({
   const [hideCanvaExt, setHideCanvaExt] = useState(false);
   const [activeSubmission, setActiveSubmission] = useState<Submission | null>(null);
   const [activeProfile, setActiveProfile] = useState<UserProfile | null>(null);
+  const [showAbstractModal, setShowAbstractModal] = useState(false);
   const [currentScoreData, setCurrentScoreData] = useState<Record<string, {score: number, comment: string}>>({});
   const [isFetchingDetail, setIsFetchingDetail] = useState(false);
 
@@ -513,12 +514,19 @@ const ReviewerPanel: React.FC<ReviewerPanelProps> = ({
                                         <td className="px-5 py-4 text-center">{subScores.length > 0 ? subScores.length : <span className="text-slate-300">-</span>}</td>
                                         <td className="px-5 py-4 text-center font-black text-emerald-600">{avgSc}</td>
                                         <td className="px-5 py-4 text-center">
-                                            {s.status === 'accepted' || s.status === 'reviewed' ? (
+                                            {myScore ? (
+                                                <button 
+                                                    onClick={() => handleOpenAssessment(s)}
+                                                    className="px-4 py-2 bg-emerald-50 text-emerald-600 border border-emerald-200 hover:bg-emerald-500 hover:text-white hover:border-emerald-500 hover:shadow-lg hover:shadow-emerald-200 dark:bg-emerald-900/40 dark:text-emerald-400 dark:border-emerald-800 dark:hover:bg-emerald-500 dark:hover:text-white dark:hover:shadow-none rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 mx-auto w-full md:w-auto"
+                                                >
+                                                    <i className="fa-regular fa-pen-to-square"></i> แก้ไขคะแนน
+                                                </button>
+                                            ) : (s.status === 'accepted' || s.status === 'reviewed') ? (
                                                 <button 
                                                     onClick={() => handleOpenAssessment(s)}
                                                     className="px-4 py-2 bg-slate-100 text-slate-600 hover:bg-emerald-500 hover:text-white hover:shadow-lg hover:shadow-emerald-200 dark:bg-slate-800/80 dark:hover:bg-emerald-500 dark:hover:shadow-none rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 mx-auto w-full md:w-auto"
                                                 >
-                                                    <i className="fa-regular fa-pen-to-square"></i> {myScore ? 'แก้ไขคะแนน' : 'ให้คะแนน'}
+                                                    <i className="fa-regular fa-pen-to-square"></i> ให้คะแนน
                                                 </button>
                                             ) : (
                                                 <div className="px-3 py-2 text-xs font-bold text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-slate-800 rounded-xl inline-flex items-center justify-center gap-1.5 whitespace-nowrap mx-auto w-full md:w-auto text-center" title="รอแอดมินยืนยันความสมบูรณ์ของเอกสารก่อน จึงจะสามารถให้คะแนนได้">
@@ -540,26 +548,6 @@ const ReviewerPanel: React.FC<ReviewerPanelProps> = ({
                         </tbody>
                     </table>
 
-                {/* Pagination Logic for Loading More from Server */}
-                {hasMoreSubmissions && (
-                    <div className="my-8 flex justify-center">
-                        <button
-                           onClick={onLoadMore}
-                           disabled={loadingMore}
-                           className="group bg-white hover:bg-sky-50 dark:bg-slate-900/50 dark:hover:bg-sky-900/20 text-sky-600 dark:text-sky-400 px-10 py-3.5 rounded-2xl font-black text-sm shadow-sm hover:shadow-md transition-all active:scale-95 disabled:opacity-50 flex items-center gap-3 border-2 border-sky-100 dark:border-sky-800"
-                        >
-                           {loadingMore ? (
-                               <i className="fa-solid fa-circle-notch fa-spin text-lg"></i>
-                           ) : (
-                               <i className="fa-solid fa-cloud-arrow-down text-lg group-hover:animate-bounce"></i>
-                           )}
-                           <div className="flex flex-col items-start leading-tight text-left">
-                               <span>{loadingMore ? 'กำลังดึงข้อมูล...' : 'แสดงรายการเพิ่มเติม'}</span>
-                               <span className="text-[10px] opacity-60 font-bold uppercase tracking-wider">{loadingMore ? 'โปรดรอสักครู่' : `โหลดก้อนถัดไป (+20 รายการ)`}</span>
-                           </div>
-                        </button>
-                    </div>
-                )}
                 </div>
                 {totalPages > 1 && (
                     <div className="p-4 border-t border-slate-100 dark:border-slate-800 flex justify-center">
@@ -616,24 +604,27 @@ const ReviewerPanel: React.FC<ReviewerPanelProps> = ({
                                   </span>
                               </div>
                               <div className="space-y-1 border-t border-sky-100 dark:border-sky-800/50 pt-3">
-                                  <span className="text-slate-500 font-medium block text-xs uppercase tracking-wider">ผู้นำเสนอ</span> 
-                                  <span className="font-bold text-slate-800 dark:text-slate-200 leading-tight flex items-center gap-3">
-                                      <img 
-                                          src={activeProfile?.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(activeSubmission.firstName + ' ' + activeSubmission.lastName)}&background=random`} 
-                                          alt="Profile Avatar" 
-                                          className="w-8 h-8 rounded-full border shadow-sm border-slate-200 dark:border-slate-700 bg-white object-cover" 
-                                      />
+                                   <div className="flex items-center justify-between gap-4 mb-2">
+                                       <span className="text-slate-500 font-medium block text-xs uppercase tracking-wider">ผู้นำเสนอ</span> 
+                                   </div>
+                                   <span className="font-bold text-slate-800 dark:text-slate-200 leading-tight flex items-center gap-3">
                                       <span>
                                          {activeSubmission.firstName} {activeSubmission.lastName}
                                       </span>
                                   </span>
                               </div>
-                              <div className="hidden sm:flex border-t border-sky-100 dark:border-sky-800/50 pt-3 justify-center items-center sm:row-span-2">
-                                  <img 
-                                      src={activeProfile?.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(activeSubmission.firstName + ' ' + activeSubmission.lastName)}&background=random&size=256`} 
-                                      alt="Large Profile Avatar" 
-                                      className="w-24 h-24 rounded-full border-4 shadow-lg border-white dark:border-slate-800 bg-white object-cover" 
-                                  />
+                              <div className="hidden sm:flex border-t border-sky-100 dark:border-sky-800/50 pt-3 justify-center items-center sm:row-span-3">
+                                  {attachments.length > 0 && attachments[0].value && (
+                                      <button 
+                                          onClick={() => setShowAbstractModal(true)}
+                                          className="w-full h-full min-h-[120px] bg-rose-50 hover:bg-rose-500 text-rose-600 hover:text-white dark:bg-rose-900/10 dark:text-rose-400 dark:hover:bg-rose-500 dark:hover:text-white rounded-2xl flex flex-col items-center justify-center gap-3 transition-all border-2 border-dashed border-rose-200 dark:border-rose-800/50 hover:border-transparent hover:shadow-lg hover:-translate-y-1"
+                                      >
+                                          <div className="w-12 h-12 rounded-full bg-white dark:bg-rose-900/50 flex items-center justify-center text-current shadow-sm">
+                                              <i className="fa-regular fa-file-pdf text-2xl"></i>
+                                          </div>
+                                          <span className="font-bold text-sm">เปิดบทคัดย่อ (Abstract)</span>
+                                      </button>
+                                  )}
                               </div>
                               <div className="space-y-1">
                                   <span className="text-slate-500 font-medium block text-xs uppercase tracking-wider">ตำแหน่ง</span> 
@@ -853,6 +844,40 @@ const ReviewerPanel: React.FC<ReviewerPanelProps> = ({
                       </div>
                   </div>
               </div>
+
+              {/* Abstract Modal Overlay */}
+              {showAbstractModal && activeSubmission.fileUrl && parseAttachments(activeSubmission.fileUrl).length > 0 && parseAttachments(activeSubmission.fileUrl)[0].value && createPortal(
+                  <div className="fixed inset-0 z-[99999] flex flex-col bg-slate-900/50 backdrop-blur-sm overflow-hidden p-4 md:p-8 animate-fade-in" style={{zIndex: 99999}}>
+                      <div className="absolute inset-0 bg-slate-900/50" onClick={() => setShowAbstractModal(false)}></div>
+                      <div className="relative z-10 w-full max-w-6xl mx-auto h-full flex flex-col bg-slate-50 dark:bg-slate-900 rounded-3xl shadow-2xl overflow-hidden ring-1 ring-white/20">
+                          <div className="bg-white dark:bg-slate-800 px-6 py-4 flex items-center justify-between border-b border-slate-200 dark:border-slate-700">
+                              <div className="font-bold flex items-center gap-3 text-lg text-slate-800 dark:text-white">
+                                  <div className="w-10 h-10 rounded-xl bg-rose-100 text-rose-500 dark:bg-rose-900/30 flex items-center justify-center">
+                                      <i className="fa-regular fa-file-pdf"></i>
+                                  </div>
+                                  บทคัดย่อ (Abstract)
+                              </div>
+                              <div className="flex items-center gap-3">
+                                  <a href={parseAttachments(activeSubmission.fileUrl)[0].value} target="_blank" rel="noreferrer" className="text-sm font-bold bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-600 dark:text-white px-4 py-2 rounded-xl transition-colors flex items-center gap-2">
+                                      เปิดแอปภายนอก <i className="fa-solid fa-external-link-alt"></i>
+                                  </a>
+                                  <button onClick={() => setShowAbstractModal(false)} className="w-10 h-10 flex items-center justify-center rounded-xl bg-rose-50 text-rose-500 hover:bg-rose-500 hover:text-white dark:bg-rose-500/10 dark:hover:bg-rose-500 transition-colors shadow-sm">
+                                      <i className="fa-solid fa-times text-lg"></i>
+                                  </button>
+                              </div>
+                          </div>
+                          <div className="flex-1 bg-slate-100 dark:bg-slate-950 p-2 md:p-4">
+                              <iframe 
+                                  src={parseAttachments(activeSubmission.fileUrl)[0].value.replace(/\/view.*$/, '/preview')} 
+                                  className="w-full h-full border-0 rounded-2xl shadow-inner bg-white dark:bg-slate-900" 
+                                  allow="autoplay" 
+                                  title="Abstract Document"
+                              />
+                          </div>
+                      </div>
+                  </div>,
+                  document.body
+              )}
 
           </div>
       );

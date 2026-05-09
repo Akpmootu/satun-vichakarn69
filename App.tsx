@@ -79,7 +79,7 @@ export default function App() {
   const [dashboardSubmissions, setDashboardSubmissions] = useState<Submission[]>([]); // New: Brief data for dashboard
   const [hasMoreSubmissions, setHasMoreSubmissions] = useState(false);
   const [currentSubPage, setCurrentSubPage] = useState(1);
-  const SUB_PAGE_SIZE = 20;
+  const SUB_PAGE_SIZE = 10000;
   const [loading, setLoading] = useState(false);
   const [loadingDashboard, setLoadingDashboard] = useState(false); // New: Loader for dashboard data
 
@@ -477,7 +477,7 @@ export default function App() {
   }, [isReviewer, isAdmin, activeTab]);
 
   return (
-    <div className={`min-h-screen font-sans pb-10 flex flex-col transition-colors duration-300 ${darkMode ? 'bg-slate-950 text-slate-100' : 'bg-slate-50 text-slate-900'}`}>
+    <div className={`min-h-screen font-sans pb-10 flex flex-col transition-colors duration-300 ${darkMode ? 'bg-slate-950 text-slate-100' : 'animated-bg text-slate-900'}`}>
       
       {/* Privacy Components */}
       <CookieConsent />

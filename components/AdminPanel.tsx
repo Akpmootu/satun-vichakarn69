@@ -468,6 +468,68 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       }
   };
 
+  const handleEditFileUrl = async (submission: Submission) => {
+      const currentUrls = submission?.fileUrl ? parseAttachments(submission.fileUrl).map((f:any) => f.value).join(', ') : '';
+      const result = await Swal.fire({
+          title: 'แก้ไขลิงก์เอกสารแนบ',
+          input: 'text',
+          inputValue: currentUrls,
+          inputPlaceholder: 'https://...',
+          showCancelButton: true,
+          confirmButtonText: 'บันทึก',
+          cancelButtonText: 'ยกเลิก',
+          customClass: { popup: 'rounded-3xl' }
+      });
+
+      if (result.isConfirmed && result.value !== undefined) {
+          try {
+              const val = result.value.trim();
+              const newFileUrl = val ? JSON.stringify([{ name: "เอกสารแนบ", value: val, type: "link" }]) : "";
+              const audit = submission.audit || [];
+              audit.push({ action: 'edited_file_url', note: 'แอดมินแก้ไขลิงก์โดย ' + currentUser.firstName, at: new Date().toISOString() });
+              await apiUpdateSubmission(settings, submission.id, { fileUrl: newFileUrl, audit });
+              
+              if (selectedSubmission && selectedSubmission.id === submission.id) {
+                  setSelectedSubmission({ ...selectedSubmission, fileUrl: newFileUrl, audit });
+              }
+              refreshData();
+              showToast({ type: 'success', title: 'อัพเดทลิงก์เอกสารสำเร็จ' });
+          } catch (e: any) {
+              showToast({ type: 'error', title: 'อัพเดทล้มเหลว', message: e.message });
+          }
+      }
+  };
+
+  const handleEditPresentationUrl = async (submission: Submission) => {
+      const result = await Swal.fire({
+          title: 'แก้ไขลิงก์นำเสนอ (Canva/Drive)',
+          input: 'text',
+          inputValue: submission.presentationUrl || '',
+          inputPlaceholder: 'https://...',
+          showCancelButton: true,
+          confirmButtonText: 'บันทึก',
+          cancelButtonText: 'ยกเลิก',
+          customClass: { popup: 'rounded-3xl' }
+      });
+
+      if (result.isConfirmed && result.value !== undefined) {
+          try {
+              const val = result.value.trim();
+              const audit = submission.audit || [];
+              audit.push({ action: 'edited_presentation_url', note: 'แอดมินแก้ไขลิงก์โดย ' + currentUser.firstName, at: new Date().toISOString() });
+              await apiUpdateSubmission(settings, submission.id, { presentationUrl: val, audit });
+              
+              if (selectedSubmission && selectedSubmission.id === submission.id) {
+                  setSelectedSubmission({ ...selectedSubmission, presentationUrl: val, audit });
+              }
+              refreshData();
+              showToast({ type: 'success', title: 'อัพเดทลิงก์นำเสนอสำเร็จ' });
+          } catch (e: any) {
+              showToast({ type: 'error', title: 'อัพเดทล้มเหลว', message: e.message });
+          }
+      }
+  };
+
   const handleDeleteSubmission = async (id: string) => {
       const result = await Swal.fire({
           title: 'ยืนยันการลบข้อมูล?',
@@ -1306,7 +1368,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                               </div>
                               
                               <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700">
-                                  <div className="text-xs font-bold text-slate-400 uppercase mb-2">ไฟล์แนบ / เอกสาร</div>
+                                  <div className="flex items-center justify-between mb-2"><div className="text-xs font-bold text-slate-400 uppercase">ไฟล์แนบ / เอกสาร</div><button onClick={() => handleEditFileUrl(selectedSubmission)} className="text-xs text-sky-500 hover:text-sky-600 bg-sky-50 dark:bg-sky-900/20 px-2 py-1 rounded transition-colors flex items-center gap-1"><i className="fa-solid fa-pen-to-square"></i> แก้ไข URL</button></div>
                                   <div className="flex flex-wrap gap-2">
                                       {parseAttachments(selectedSubmission.fileUrl).length > 0 ? (
                                           parseAttachments(selectedSubmission.fileUrl).map((f: any, i: number) => (
@@ -1320,7 +1382,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                                       )}
                                   </div>
 
-                                  <div className="text-xs font-bold text-slate-400 uppercase mt-4 mb-2">ลิงก์นำเสนอผลงาน (Canva / Drive)</div>
+                                  <div className="flex items-center justify-between mt-4 mb-2"><div className="text-xs font-bold text-slate-400 uppercase">ลิงก์นำเสนอผลงาน (Canva / Drive)</div><button onClick={() => handleEditPresentationUrl(selectedSubmission)} className="text-xs text-emerald-500 hover:text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20 px-2 py-1 rounded transition-colors flex items-center gap-1"><i className="fa-solid fa-pen-to-square"></i> แก้ไข URL</button></div>
                                   <div>
                                       {selectedSubmission.presentationUrl ? (
                                           <a href={selectedSubmission.presentationUrl} target="_blank" className="flex items-center gap-2 px-3 py-2 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 text-emerald-600 dark:text-emerald-400 font-bold hover:bg-emerald-100 transition text-xs">
