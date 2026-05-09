@@ -1104,42 +1104,59 @@ const ReviewerPanel: React.FC<ReviewerPanelProps> = ({
 
                                 if(rankedList.length === 0) return <div className="text-center text-slate-500 py-8">ไม่มีข้อมูลผลงาน</div>;
 
-                                return rankedList.map((s, idx) => (
-                                    <div 
-                                        key={s.id} 
-                                        onClick={() => setSelectedRankingSubmission(s)}
-                                        className="bg-white dark:bg-slate-800 p-4 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 flex flex-col sm:flex-row items-center gap-4 cursor-pointer hover:border-emerald-300 dark:hover:border-emerald-600 hover:shadow-md transition-all group"
-                                    >
-                                        <div className={`w-12 h-12 shrink-0 rounded-full flex flex-col items-center justify-center font-black text-lg ${idx === 0 ? 'bg-yellow-100 text-yellow-600 dark:bg-yellow-900/30 dark:text-yellow-400 border-2 border-yellow-300 shadow-sm' : idx === 1 ? 'bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-300 border-2 border-slate-300 shadow-sm' : idx === 2 ? 'bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400 border-2 border-orange-300 shadow-sm' : 'bg-slate-50 text-slate-400 dark:bg-slate-800/50'}`}>
-                                            {idx + 1}
+                                return (
+                                    <div className="space-y-4">
+                                        <div className="flex justify-end print:hidden mb-4">
+                                            <button onClick={() => window.print()} className="text-sm font-bold bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-emerald-50 hover:text-emerald-600 dark:hover:bg-emerald-900/30 dark:hover:text-emerald-400 border border-slate-200 dark:border-slate-700 px-4 py-2 rounded-xl shadow-sm transition-colors flex items-center gap-2 cursor-pointer">
+                                                <i className="fa-solid fa-print"></i> พิมพ์รายงานสรุปทุกอันดับ
+                                            </button>
                                         </div>
-                                        <div className="flex-1 min-w-0 text-center sm:text-left">
-                                            <div className="font-bold text-slate-800 dark:text-white truncate text-lg group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors" title={s.fileName}>{s.fileName}</div>
-                                            <div className="text-xs text-slate-500 truncate mt-1">
-                                                {WORK_TYPES.find(w => w.id === s.workType)?.label} &bull; {BRANCHES.find(b => b.id === s.branchId)?.label}
-                                            </div>
-                                            <div className="text-xs text-slate-500 truncate mt-0.5">ผู้นำเสนอ: {s.firstName} {s.lastName} ({s.position})</div>
+                                        
+                                        <div className="print:block hidden mb-6">
+                                            <h2 className="text-2xl font-black text-center mb-2">รายงานสรุปลำดับคะแนนผลงาน</h2>
+                                            <p className="text-center text-slate-500 text-sm">อ้างอิงข้อมูลคะแนนเฉลี่ยจากรรมการทั้งหมด</p>
                                         </div>
-                                        <div className="text-center sm:text-right shrink-0 flex items-center gap-4">
-                                            <div>
-                                                <div className="font-black text-emerald-500 text-3xl group-hover:scale-110 transition-transform">{s.avgSc.toFixed(2)}</div>
-                                                <div className="flex flex-wrap sm:flex-col items-center sm:items-end justify-center gap-1 mt-1">
-                                                    <div className="text-[10px] uppercase text-slate-400 font-bold bg-slate-100 dark:bg-slate-900 px-2 py-1 rounded inline-block">
-                                                        ผู้ประเมิน {s.scoredCount} คน
+
+                                        <div className="space-y-3">
+                                            {rankedList.map((s, idx) => (
+                                                <div 
+                                                    key={s.id} 
+                                                    onClick={() => setSelectedRankingSubmission(s)}
+                                                    className="bg-white dark:bg-slate-800 p-4 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 flex flex-col sm:flex-row items-center gap-4 cursor-pointer hover:border-emerald-300 dark:hover:border-emerald-600 hover:shadow-md transition-all group print:shadow-none print:border-b print:border-l-0 print:border-r-0 print:border-t-0 print:border-slate-300 print:rounded-none print:py-3 print:px-0"
+                                                >
+                                                    <div className={`w-12 h-12 shrink-0 rounded-full flex flex-col items-center justify-center font-black text-lg print:w-8 print:h-8 print:text-base print:bg-transparent print:border-none print:text-slate-800 ${idx === 0 ? 'bg-yellow-100 text-yellow-600 dark:bg-yellow-900/30 dark:text-yellow-400 border-2 border-yellow-300 shadow-sm' : idx === 1 ? 'bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-300 border-2 border-slate-300 shadow-sm' : idx === 2 ? 'bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400 border-2 border-orange-300 shadow-sm' : 'bg-slate-50 text-slate-400 dark:bg-slate-800/50'}`}>
+                                                        {idx + 1}
                                                     </div>
-                                                    {s.hasOutlier && (
-                                                        <div className="text-[10px] uppercase text-rose-500 font-bold bg-rose-50 dark:bg-rose-900/30 px-2 py-1 rounded inline-flex items-center gap-1 border border-rose-200 dark:border-rose-800" title="คะแนนห่างกันผิดปกติ (>= 15 แต้ม)">
-                                                            <i className="fa-solid fa-triangle-exclamation animate-pulse"></i> Outlier
+                                                    <div className="flex-1 min-w-0 text-center sm:text-left print:text-left">
+                                                        <div className="font-bold text-slate-800 dark:text-white truncate text-lg group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors print:text-base print:text-slate-800 print:whitespace-normal" title={s.fileName}>{s.fileName}</div>
+                                                        <div className="text-xs text-slate-500 truncate mt-1 print:whitespace-normal print:text-slate-600">
+                                                            {WORK_TYPES.find(w => w.id === s.workType)?.label} &bull; {BRANCHES.find(b => b.id === s.branchId)?.label}
                                                         </div>
-                                                    )}
+                                                        <div className="text-xs text-slate-500 truncate mt-0.5 print:whitespace-normal print:text-slate-600">ผู้นำเสนอ: {s.firstName} {s.lastName} ({s.position})</div>
+                                                    </div>
+                                                    <div className="text-center sm:text-right shrink-0 flex items-center gap-4 print:text-right">
+                                                        <div>
+                                                            <div className="font-black text-emerald-500 text-3xl group-hover:scale-110 transition-transform print:text-slate-800 print:text-2xl">{s.avgSc.toFixed(2)}</div>
+                                                            <div className="flex flex-wrap sm:flex-col items-center sm:items-end justify-center gap-1 mt-1">
+                                                                <div className="text-[10px] uppercase text-slate-400 font-bold bg-slate-100 dark:bg-slate-900 px-2 py-1 rounded inline-block print:bg-transparent print:border print:border-slate-300 print:text-slate-600">
+                                                                    ผู้ประเมิน {s.scoredCount} คน
+                                                                </div>
+                                                                {s.hasOutlier && (
+                                                                    <div className="text-[10px] uppercase text-rose-500 font-bold bg-rose-50 dark:bg-rose-900/30 px-2 py-1 rounded inline-flex items-center gap-1 border border-rose-200 dark:border-rose-800 print:bg-transparent print:border-rose-300 print:text-rose-600" title="คะแนนห่างกันผิดปกติ (>= 15 แต้ม)">
+                                                                        <i className="fa-solid fa-triangle-exclamation animate-pulse print:animate-none"></i> Outlier
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                        <div className="hidden sm:flex text-slate-300 dark:text-slate-600 group-hover:text-emerald-400 transition-colors print:hidden">
+                                                            <i className="fa-solid fa-chevron-right text-xl"></i>
+                                                        </div>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="hidden sm:flex text-slate-300 dark:text-slate-600 group-hover:text-emerald-400 transition-colors">
-                                                <i className="fa-solid fa-chevron-right text-xl"></i>
-                                            </div>
+                                            ))}
                                         </div>
                                     </div>
-                                ));
+                                );
                             })()}
                         </div>
                     </div>
