@@ -920,7 +920,13 @@ const ReviewerPanel: React.FC<ReviewerPanelProps> = ({
                                     const subScores = allScores.filter(sc => sc.submissionId === s.id);
                                     const totalSc = subScores.reduce((acc, cr) => acc + cr.totalScore, 0);
                                     const avgSc = subScores.length > 0 ? (totalSc / subScores.length).toFixed(2) : '0.00';
-                                    return { ...s, avgSc: parseFloat(avgSc), totalSc, scoredCount: subScores.length };
+                                    
+                                    const scoreValues = subScores.map(sc => sc.totalScore);
+                                    const maxScore = scoreValues.length > 0 ? Math.max(...scoreValues) : 0;
+                                    const minScore = scoreValues.length > 0 ? Math.min(...scoreValues) : 0;
+                                    const hasOutlier = scoreValues.length > 1 && (maxScore - minScore >= 15);
+                                    
+                                    return { ...s, avgSc: parseFloat(avgSc), totalSc, scoredCount: subScores.length, hasOutlier };
                                 }).sort((a, b) => b.avgSc - a.avgSc);
 
                                 if(rankedList.length === 0) return <div className="text-center text-slate-500 py-8">ไม่มีข้อมูลผลงาน</div>;
@@ -939,8 +945,15 @@ const ReviewerPanel: React.FC<ReviewerPanelProps> = ({
                                         </div>
                                         <div className="text-center sm:text-right shrink-0">
                                             <div className="font-black text-emerald-500 text-3xl">{s.avgSc.toFixed(2)}</div>
-                                            <div className="text-[10px] uppercase text-slate-400 font-bold bg-slate-100 dark:bg-slate-900 px-2 py-1 rounded inline-block mt-1">
-                                                ผู้ประเมิน {s.scoredCount} คน
+                                            <div className="flex flex-wrap sm:flex-col items-center sm:items-end justify-center gap-1 mt-1">
+                                                <div className="text-[10px] uppercase text-slate-400 font-bold bg-slate-100 dark:bg-slate-900 px-2 py-1 rounded inline-block">
+                                                    ผู้ประเมิน {s.scoredCount} คน
+                                                </div>
+                                                {s.hasOutlier && (
+                                                    <div className="text-[10px] uppercase text-rose-500 font-bold bg-rose-50 dark:bg-rose-900/30 px-2 py-1 rounded inline-flex items-center gap-1 border border-rose-200 dark:border-rose-800" title="คะแนนห่างกันผิดปกติ (>= 15 แต้ม)">
+                                                        <i className="fa-solid fa-triangle-exclamation animate-pulse"></i> Outlier
+                                                    </div>
+                                                )}
                                             </div>
                                         </div>
                                     </div>
