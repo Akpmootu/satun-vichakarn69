@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { Submission, AppSettings, UserProfile, ReviewerScore } from '../types';
-import { apiGetAllScores, apiSaveReviewerScore, apiUpdateSubmission, apiGetUserProfile, apiGetSubmissionById } from '../services/apiService';
+import { apiGetAllScores, apiSaveReviewerScore, apiUpdateSubmission, apiGetUserProfile, apiGetSubmissionById, apiGetAllUsers } from '../services/apiService';
 import { WORK_TYPES, BRANCHES, BRANCH_GROUPS } from '../constants';
 import Pagination from './ui/Pagination';
 
@@ -92,12 +92,14 @@ const ReviewerPanel: React.FC<ReviewerPanelProps> = ({
     hasMoreSubmissions, onLoadMore, loadingMore
 }) => {
   const [allScores, setAllScores] = useState<ReviewerScore[]>([]);
+  const [allUsers, setAllUsers] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [hideCanvaExt, setHideCanvaExt] = useState(false);
   const [activeSubmission, setActiveSubmission] = useState<Submission | null>(null);
   const [activeProfile, setActiveProfile] = useState<UserProfile | null>(null);
   const [showAbstractModal, setShowAbstractModal] = useState(false);
   const [showRankingModal, setShowRankingModal] = useState(false);
+  const [selectedRankingSubmission, setSelectedRankingSubmission] = useState<Submission | null>(null);
   const [currentScoreData, setCurrentScoreData] = useState<Record<string, {score: number, comment: string}>>({});
   const [isFetchingDetail, setIsFetchingDetail] = useState(false);
 
@@ -111,8 +113,12 @@ const ReviewerPanel: React.FC<ReviewerPanelProps> = ({
   const loadScores = async () => {
       setLoading(true);
       try {
-          const scores = await apiGetAllScores();
+          const [scores, users] = await Promise.all([
+              apiGetAllScores(),
+              apiGetAllUsers()
+          ]);
           setAllScores(scores);
+          setAllUsers(users);
       } catch (err: any) {
           console.error(err);
       } finally {
@@ -899,23 +905,190 @@ const ReviewerPanel: React.FC<ReviewerPanelProps> = ({
 
         {/* Ranking Modal */}
         {showRankingModal && createPortal(
-            <div className="fixed inset-0 z-[99999] flex flex-col bg-slate-900/50 backdrop-blur-sm p-4 md:p-8 animate-fade-in" style={{zIndex: 99999}}>
-                <div className="absolute inset-0 bg-slate-900/50" onClick={() => setShowRankingModal(false)}></div>
-                <div className="relative z-10 w-full max-w-4xl mx-auto flex flex-col bg-slate-50 dark:bg-slate-900 rounded-3xl shadow-2xl overflow-hidden ring-1 ring-white/20 max-h-full">
-                    <div className="bg-white dark:bg-slate-800 px-6 py-4 flex items-center justify-between border-b border-slate-200 dark:border-slate-700 shrink-0">
+            <div className="fixed inset-0 z-[99999] flex flex-col bg-slate-900/50 backdrop-blur-sm p-4 md:p-8 animate-fade-in print:p-0 print:bg-white" style={{zIndex: 99999}}>
+                <style>{`
+                    @media print {
+                        body { background: white; }
+                        #root, .print-hidden-global { display: none !important; }
+                        * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+                    }
+                `}</style>
+                <div className="absolute inset-0 bg-slate-900/50 print:hidden" onClick={() => { setShowRankingModal(false); setSelectedRankingSubmission(null); }}></div>
+                <div className="relative z-10 w-full max-w-4xl mx-auto flex flex-col bg-slate-50 dark:bg-slate-900 rounded-3xl shadow-2xl overflow-hidden ring-1 ring-white/20 max-h-full print:max-h-none print:shadow-none print:ring-0 print:rounded-none">
+                    <div className="bg-white dark:bg-slate-800 px-6 py-4 flex items-center justify-between border-b border-slate-200 dark:border-slate-700 shrink-0 print:hidden">
                         <div className="font-bold flex items-center gap-3 text-lg text-slate-800 dark:text-white">
                             <div className="w-10 h-10 rounded-xl bg-pink-100 text-pink-500 dark:bg-pink-900/30 flex items-center justify-center">
                                 <i className="fa-solid fa-ranking-star"></i>
                             </div>
                             สรุปลำดับคะแนน (Ranking)
                         </div>
-                        <button onClick={() => setShowRankingModal(false)} className="w-10 h-10 flex items-center justify-center rounded-xl bg-pink-50 text-pink-500 hover:bg-pink-500 hover:text-white dark:bg-pink-500/10 dark:hover:bg-pink-500 transition-colors shadow-sm">
+                        <button onClick={() => { setShowRankingModal(false); setSelectedRankingSubmission(null); }} className="w-10 h-10 flex items-center justify-center rounded-xl bg-pink-50 text-pink-500 hover:bg-pink-500 hover:text-white dark:bg-pink-500/10 dark:hover:bg-pink-500 transition-colors shadow-sm">
                             <i className="fa-solid fa-times text-lg"></i>
                         </button>
                     </div>
-                    <div className="flex-1 overflow-y-auto p-4 md:p-6 bg-slate-50 dark:bg-slate-950">
+                    <div className="flex-1 overflow-y-auto print:overflow-visible p-4 md:p-6 bg-slate-50 dark:bg-slate-950 print:bg-white print:p-0">
                         <div className="space-y-3">
                             {(() => {
+                                if (selectedRankingSubmission) {
+                                    const s = selectedRankingSubmission;
+                                    const subScores = allScores.filter(sc => sc.submissionId === s.id);
+                                    const totalSc = subScores.reduce((acc, cr) => acc + cr.totalScore, 0);
+                                    const avgSc = subScores.length > 0 ? (totalSc / subScores.length).toFixed(2) : '0.00';
+                                    const criteria = s.workType === 'innovation' ? INNOVATION_CRITERIA : ORAL_CRITERIA;
+                                    
+                                    const scoreValues = subScores.map(sc => sc.totalScore);
+                                    const maxScore = scoreValues.length > 0 ? Math.max(...scoreValues) : 0;
+                                    const minScore = scoreValues.length > 0 ? Math.min(...scoreValues) : 0;
+                                    const hasOutlier = scoreValues.length > 1 && (maxScore - minScore >= 15);
+                                    
+                                    return (
+                                        <div className="animate-fade-in space-y-6">
+                                            <div className="flex justify-between items-center print:hidden">
+                                                <button onClick={() => setSelectedRankingSubmission(null)} className="text-sm font-bold text-slate-500 hover:text-slate-800 dark:hover:text-white transition-colors flex items-center gap-2">
+                                                    <i className="fa-solid fa-arrow-left"></i> กลับไปหน้ารวม
+                                                </button>
+                                                <button onClick={() => window.print()} className="text-sm font-bold bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-emerald-50 hover:text-emerald-600 dark:hover:bg-emerald-900/30 dark:hover:text-emerald-400 border border-slate-200 dark:border-slate-700 px-4 py-2 rounded-xl shadow-sm transition-colors flex items-center gap-2 cursor-pointer">
+                                                    <i className="fa-solid fa-print"></i> พิมพ์รายงาน
+                                                </button>
+                                            </div>
+                                            
+                                            <div className="print:block hidden mb-4">
+                                                <h2 className="text-2xl font-black text-center mb-2">รายงานสรุปผลการประเมิน</h2>
+                                                <p className="text-center text-slate-500 text-sm">พิมพ์เมื่อ: {new Date().toLocaleString('th-TH')}</p>
+                                            </div>
+
+                                            <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-700 print:shadow-none print:border-slate-300 print:rounded-xl">
+                                                <div className="font-bold text-slate-800 dark:text-white text-xl mb-1">{s.fileName}</div>
+                                                <div className="text-sm text-slate-500 mb-4">{WORK_TYPES.find(w => w.id === s.workType)?.label} &bull; ผู้นำเสนอ: {s.firstName} {s.lastName}</div>
+                                                
+                                                <div className="flex flex-wrap items-center gap-4">
+                                                    <div className="bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400 px-6 py-4 rounded-2xl border border-emerald-200 dark:border-emerald-800/50 flex-1 text-center">
+                                                        <div className="text-sm font-bold mb-1">คะแนนเฉลี่ยรวม</div>
+                                                        <div className="text-4xl font-black">{avgSc}</div>
+                                                    </div>
+                                                    <div className="bg-slate-50 text-slate-600 dark:bg-slate-900/50 dark:text-slate-400 px-6 py-4 rounded-2xl border border-slate-200 dark:border-slate-700/50 flex-1 text-center">
+                                                        <div className="text-sm font-bold mb-1">จำนวนผู้ประเมิน</div>
+                                                        <div className="text-4xl font-black">{subScores.length} <span className="text-lg font-normal text-slate-500">คน</span></div>
+                                                    </div>
+                                                    {hasOutlier && (
+                                                        <div className="bg-rose-50 text-rose-600 dark:bg-rose-900/30 dark:text-rose-400 px-6 py-4 rounded-2xl border border-rose-200 dark:border-rose-800/50 flex-1 text-center">
+                                                            <div className="text-sm font-bold mb-1">การให้คะแนนแตกต่างกัน</div>
+                                                            <div className="text-base font-black flex items-center gap-2 justify-center mt-1"><i className="fa-solid fa-triangle-exclamation animate-pulse"></i> Outlier</div>
+                                                            <div className="text-xs mt-1">คะแนนห่างกัน {maxScore - minScore} แต้ม</div>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+
+                                            <div className="space-y-4">
+                                                <h3 className="font-bold text-lg text-slate-800 dark:text-white flex items-center gap-2 mb-4">
+                                                    <i className="fa-solid fa-users text-sky-500"></i> รายละเอียดคะแนนจากกรรมการแต่ละท่าน
+                                                </h3>
+                                                {(() => {
+                                                    const assignedReviewers = allUsers.filter(u => 
+                                                        u.role === 'reviewer' && 
+                                                        ((u.branchId || '').toString().split(',').includes((s.branchId || '').toString()) || 
+                                                        (s.reviewerIds || []).includes(u.id) || 
+                                                        s.reviewerId === u.id)
+                                                    );
+                                                    
+                                                    // Map scores to reviewers who submitted them, and append those who scored but aren't in assignedReviewers (if any)
+                                                    const scoringReviewerIds = subScores.map(sc => sc.reviewerId);
+                                                    const additionalReviewers = allUsers.filter(u => scoringReviewerIds.includes(u.id) && !assignedReviewers.find(ar => ar.id === u.id));
+                                                    const displayReviewers = [...assignedReviewers, ...additionalReviewers];
+
+                                                    if (displayReviewers.length === 0 && subScores.length === 0) {
+                                                        return <div className="text-center text-slate-500 py-8 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700">ไม่มีข้อมูลกรรมการในสาขานี้</div>;
+                                                    }
+
+                                                    return (
+                                                        <div className="bg-white dark:bg-slate-800 rounded-3xl border border-slate-200 dark:border-slate-700 overflow-hidden shadow-sm print:shadow-none print:border-slate-300 print:rounded-lg">
+                                                            <div className="p-0 overflow-x-auto print:overflow-x-visible">
+                                                                <table className="w-full text-sm print:text-xs">
+                                                                    <thead className="bg-slate-100/50 dark:bg-slate-900/50 text-slate-500">
+                                                                        <tr>
+                                                                            <th className="text-left px-6 py-4 font-bold border-b border-slate-200 dark:border-slate-700 min-w-[250px] print:min-w-0 print:px-2 print:py-2">เกณฑ์การประเมิน</th>
+                                                                            {displayReviewers.map((reviewer) => {
+                                                                                const sc = subScores.find(score => score.reviewerId === reviewer.id);
+                                                                                return (
+                                                                                    <th key={reviewer.id} className={`text-center px-4 py-4 print:px-2 print:py-2 font-bold border-b border-slate-200 dark:border-slate-700 min-w-[150px] print:min-w-0 border-l border-slate-200 dark:border-slate-700 ${!sc ? 'opacity-60' : ''}`}>
+                                                                                        <div className="text-slate-700 dark:text-slate-300 break-words">{reviewer.prefix || ''}{reviewer.firstName} {reviewer.lastName}</div>
+                                                                                        {sc ? (
+                                                                                            <div className="text-sky-600 dark:text-sky-400 text-xs mt-1 font-black">รวม {sc.totalScore} คะแนน</div>
+                                                                                        ) : (
+                                                                                            <div className="text-slate-400 dark:text-slate-500 text-[10px] mt-1 font-medium bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full inline-block">ยังไม่ได้บันทึกผลการประเมิน</div>
+                                                                                        )}
+                                                                                    </th>
+                                                                                );
+                                                                            })}
+                                                                        </tr>
+                                                                    </thead>
+                                                                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
+                                                                        {criteria.map((c) => (
+                                                                            <tr key={c.id}>
+                                                                                <td className="px-6 py-4 print:px-2 print:py-2 text-slate-700 dark:text-slate-300 align-top">
+                                                                                    {c.label}
+                                                                                </td>
+                                                                                {displayReviewers.map((reviewer) => {
+                                                                                    const sc = subScores.find(score => score.reviewerId === reviewer.id);
+                                                                                    if (!sc) {
+                                                                                        return (
+                                                                                            <td key={`${c.id}-${reviewer.id}`} className="px-4 py-4 print:px-2 print:py-2 text-center border-l border-slate-100 dark:border-slate-800/60 align-middle bg-slate-50/30 dark:bg-slate-900/10">
+                                                                                                <span className="text-slate-300 dark:text-slate-700 text-lg">-</span>
+                                                                                            </td>
+                                                                                        );
+                                                                                    }
+                                                                                    const scoreDetail = sc.scoreData[c.id];
+                                                                                    return (
+                                                                                        <td key={`${c.id}-${reviewer.id}`} className="px-4 py-4 print:px-2 print:py-2 text-center border-l border-slate-100 dark:border-slate-800/60 align-top">
+                                                                                            <div className="font-bold text-slate-800 dark:text-white text-lg">
+                                                                                                {scoreDetail?.score ? scoreDetail.score * c.weight : 0}
+                                                                                            </div>
+                                                                                            <div className="text-xs text-slate-400 mt-0.5 mb-2" title="คะแนนที่ได้ × น้ำหนักคะแนน">
+                                                                                                <i className="fa-solid fa-star text-[10px] text-amber-400 mr-1 opacity-50"></i>
+                                                                                                ({scoreDetail?.score || 0} &times; {c.weight})
+                                                                                            </div>
+                                                                                            {scoreDetail?.comment && (
+                                                                                                <div className="mt-2 text-xs text-slate-500 italic bg-sky-50 dark:bg-sky-900/20 p-2 text-left break-words whitespace-pre-wrap border border-sky-100 dark:border-sky-800/50 rounded-xl relative">
+                                                                                                    <div className="absolute -top-2 left-4 text-sky-400 dark:text-sky-600"><i className="fa-solid fa-caret-up"></i></div>
+                                                                                                    <i className="fa-regular fa-comment-dots mr-1"></i>
+                                                                                                    {scoreDetail.comment}
+                                                                                                </div>
+                                                                                            )}
+                                                                                        </td>
+                                                                                    );
+                                                                                })}
+                                                                            </tr>
+                                                                        ))}
+                                                                        <tr className="bg-slate-50/50 dark:bg-slate-900/20">
+                                                                            <td className="px-6 py-4 print:px-2 print:py-2 text-right font-black text-slate-700 dark:text-slate-300">รวมคะแนนทั้งหมด</td>
+                                                                            {displayReviewers.map((reviewer) => {
+                                                                                const sc = subScores.find(score => score.reviewerId === reviewer.id);
+                                                                                if (!sc) {
+                                                                                    return (
+                                                                                        <td key={`total-${reviewer.id}`} className="px-4 py-4 print:px-2 print:py-2 text-center border-l border-slate-100 dark:border-slate-800/60">
+                                                                                            <span className="text-slate-300 dark:text-slate-700">-</span>
+                                                                                        </td>
+                                                                                    );
+                                                                                }
+                                                                                return (
+                                                                                    <td key={`total-${reviewer.id}`} className="px-4 py-4 print:px-2 print:py-2 text-center border-l border-slate-100 dark:border-slate-800/60 font-black text-emerald-600 dark:text-emerald-400 text-2xl print:text-xl">
+                                                                                        {sc.totalScore}
+                                                                                    </td>
+                                                                                );
+                                                                            })}
+                                                                        </tr>
+                                                                    </tbody>
+                                                                </table>
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })()}
+                                            </div>
+                                        </div>
+                                    );
+                                }
+
                                 const rankedList = branchSubmissions.map(s => {
                                     const subScores = allScores.filter(sc => sc.submissionId === s.id);
                                     const totalSc = subScores.reduce((acc, cr) => acc + cr.totalScore, 0);
@@ -932,28 +1105,37 @@ const ReviewerPanel: React.FC<ReviewerPanelProps> = ({
                                 if(rankedList.length === 0) return <div className="text-center text-slate-500 py-8">ไม่มีข้อมูลผลงาน</div>;
 
                                 return rankedList.map((s, idx) => (
-                                    <div key={s.id} className="bg-white dark:bg-slate-800 p-4 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 flex flex-col sm:flex-row items-center gap-4">
+                                    <div 
+                                        key={s.id} 
+                                        onClick={() => setSelectedRankingSubmission(s)}
+                                        className="bg-white dark:bg-slate-800 p-4 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 flex flex-col sm:flex-row items-center gap-4 cursor-pointer hover:border-emerald-300 dark:hover:border-emerald-600 hover:shadow-md transition-all group"
+                                    >
                                         <div className={`w-12 h-12 shrink-0 rounded-full flex flex-col items-center justify-center font-black text-lg ${idx === 0 ? 'bg-yellow-100 text-yellow-600 dark:bg-yellow-900/30 dark:text-yellow-400 border-2 border-yellow-300 shadow-sm' : idx === 1 ? 'bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-300 border-2 border-slate-300 shadow-sm' : idx === 2 ? 'bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400 border-2 border-orange-300 shadow-sm' : 'bg-slate-50 text-slate-400 dark:bg-slate-800/50'}`}>
                                             {idx + 1}
                                         </div>
                                         <div className="flex-1 min-w-0 text-center sm:text-left">
-                                            <div className="font-bold text-slate-800 dark:text-white truncate text-lg" title={s.fileName}>{s.fileName}</div>
+                                            <div className="font-bold text-slate-800 dark:text-white truncate text-lg group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors" title={s.fileName}>{s.fileName}</div>
                                             <div className="text-xs text-slate-500 truncate mt-1">
                                                 {WORK_TYPES.find(w => w.id === s.workType)?.label} &bull; {BRANCHES.find(b => b.id === s.branchId)?.label}
                                             </div>
                                             <div className="text-xs text-slate-500 truncate mt-0.5">ผู้นำเสนอ: {s.firstName} {s.lastName} ({s.position})</div>
                                         </div>
-                                        <div className="text-center sm:text-right shrink-0">
-                                            <div className="font-black text-emerald-500 text-3xl">{s.avgSc.toFixed(2)}</div>
-                                            <div className="flex flex-wrap sm:flex-col items-center sm:items-end justify-center gap-1 mt-1">
-                                                <div className="text-[10px] uppercase text-slate-400 font-bold bg-slate-100 dark:bg-slate-900 px-2 py-1 rounded inline-block">
-                                                    ผู้ประเมิน {s.scoredCount} คน
-                                                </div>
-                                                {s.hasOutlier && (
-                                                    <div className="text-[10px] uppercase text-rose-500 font-bold bg-rose-50 dark:bg-rose-900/30 px-2 py-1 rounded inline-flex items-center gap-1 border border-rose-200 dark:border-rose-800" title="คะแนนห่างกันผิดปกติ (>= 15 แต้ม)">
-                                                        <i className="fa-solid fa-triangle-exclamation animate-pulse"></i> Outlier
+                                        <div className="text-center sm:text-right shrink-0 flex items-center gap-4">
+                                            <div>
+                                                <div className="font-black text-emerald-500 text-3xl group-hover:scale-110 transition-transform">{s.avgSc.toFixed(2)}</div>
+                                                <div className="flex flex-wrap sm:flex-col items-center sm:items-end justify-center gap-1 mt-1">
+                                                    <div className="text-[10px] uppercase text-slate-400 font-bold bg-slate-100 dark:bg-slate-900 px-2 py-1 rounded inline-block">
+                                                        ผู้ประเมิน {s.scoredCount} คน
                                                     </div>
-                                                )}
+                                                    {s.hasOutlier && (
+                                                        <div className="text-[10px] uppercase text-rose-500 font-bold bg-rose-50 dark:bg-rose-900/30 px-2 py-1 rounded inline-flex items-center gap-1 border border-rose-200 dark:border-rose-800" title="คะแนนห่างกันผิดปกติ (>= 15 แต้ม)">
+                                                            <i className="fa-solid fa-triangle-exclamation animate-pulse"></i> Outlier
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                            <div className="hidden sm:flex text-slate-300 dark:text-slate-600 group-hover:text-emerald-400 transition-colors">
+                                                <i className="fa-solid fa-chevron-right text-xl"></i>
                                             </div>
                                         </div>
                                     </div>
