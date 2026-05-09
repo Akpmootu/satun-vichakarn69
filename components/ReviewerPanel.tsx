@@ -97,6 +97,7 @@ const ReviewerPanel: React.FC<ReviewerPanelProps> = ({
   const [activeSubmission, setActiveSubmission] = useState<Submission | null>(null);
   const [activeProfile, setActiveProfile] = useState<UserProfile | null>(null);
   const [showAbstractModal, setShowAbstractModal] = useState(false);
+  const [showRankingModal, setShowRankingModal] = useState(false);
   const [currentScoreData, setCurrentScoreData] = useState<Record<string, {score: number, comment: string}>>({});
   const [isFetchingDetail, setIsFetchingDetail] = useState(false);
 
@@ -346,9 +347,18 @@ const ReviewerPanel: React.FC<ReviewerPanelProps> = ({
                     </p>
                     
                     {branchSubmissions.length > 0 && (
-                        <div className="inline-flex items-center gap-2 bg-white/20 px-4 py-2 rounded-xl backdrop-blur-sm border border-white/10 text-sm font-bold shadow-sm">
-                            <i className="fa-solid fa-bell text-yellow-300 animate-pulse"></i> 
-                            มีผู้เสนอส่งผลงานมา จำนวน {branchSubmissions.length} รายการ
+                        <div className="flex flex-wrap items-center gap-3">
+                            <div className="inline-flex items-center gap-2 bg-white/20 px-4 py-2 rounded-xl backdrop-blur-sm border border-white/10 text-sm font-bold shadow-sm">
+                                <i className="fa-solid fa-bell text-yellow-300 animate-pulse"></i> 
+                                มีผู้เสนอส่งผลงานมา จำนวน {branchSubmissions.length} รายการ
+                            </div>
+                            <button 
+                                onClick={() => setShowRankingModal(true)}
+                                className="inline-flex items-center gap-2 bg-pink-500 hover:bg-pink-600 text-white px-4 py-2 rounded-xl text-sm font-bold shadow-sm transition-all"
+                            >
+                                <i className="fa-solid fa-ranking-star"></i>
+                                สรุปคะแนน (Ranking)
+                            </button>
                         </div>
                     )}
                 </div>
@@ -521,7 +531,7 @@ const ReviewerPanel: React.FC<ReviewerPanelProps> = ({
                                                 >
                                                     <i className="fa-regular fa-pen-to-square"></i> แก้ไขคะแนน
                                                 </button>
-                                            ) : (s.status === 'accepted' || s.status === 'reviewed') ? (
+                                            ) : (s.status === 'accepted' || s.status === 'reviewed' || s.status === 'scored') ? (
                                                 <button 
                                                     onClick={() => handleOpenAssessment(s)}
                                                     className="px-4 py-2 bg-slate-100 text-slate-600 hover:bg-emerald-500 hover:text-white hover:shadow-lg hover:shadow-emerald-200 dark:bg-slate-800/80 dark:hover:bg-emerald-500 dark:hover:shadow-none rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 mx-auto w-full md:w-auto"
@@ -886,6 +896,62 @@ const ReviewerPanel: React.FC<ReviewerPanelProps> = ({
   return (
     <div className="min-h-[500px] mb-20 relative z-10 w-full animate-fade-in">
         {!activeSubmission ? renderTable() : renderAssessment()}
+
+        {/* Ranking Modal */}
+        {showRankingModal && createPortal(
+            <div className="fixed inset-0 z-[99999] flex flex-col bg-slate-900/50 backdrop-blur-sm p-4 md:p-8 animate-fade-in" style={{zIndex: 99999}}>
+                <div className="absolute inset-0 bg-slate-900/50" onClick={() => setShowRankingModal(false)}></div>
+                <div className="relative z-10 w-full max-w-4xl mx-auto flex flex-col bg-slate-50 dark:bg-slate-900 rounded-3xl shadow-2xl overflow-hidden ring-1 ring-white/20 max-h-full">
+                    <div className="bg-white dark:bg-slate-800 px-6 py-4 flex items-center justify-between border-b border-slate-200 dark:border-slate-700 shrink-0">
+                        <div className="font-bold flex items-center gap-3 text-lg text-slate-800 dark:text-white">
+                            <div className="w-10 h-10 rounded-xl bg-pink-100 text-pink-500 dark:bg-pink-900/30 flex items-center justify-center">
+                                <i className="fa-solid fa-ranking-star"></i>
+                            </div>
+                            สรุปลำดับคะแนน (Ranking)
+                        </div>
+                        <button onClick={() => setShowRankingModal(false)} className="w-10 h-10 flex items-center justify-center rounded-xl bg-pink-50 text-pink-500 hover:bg-pink-500 hover:text-white dark:bg-pink-500/10 dark:hover:bg-pink-500 transition-colors shadow-sm">
+                            <i className="fa-solid fa-times text-lg"></i>
+                        </button>
+                    </div>
+                    <div className="flex-1 overflow-y-auto p-4 md:p-6 bg-slate-50 dark:bg-slate-950">
+                        <div className="space-y-3">
+                            {(() => {
+                                const rankedList = branchSubmissions.map(s => {
+                                    const subScores = allScores.filter(sc => sc.submissionId === s.id);
+                                    const totalSc = subScores.reduce((acc, cr) => acc + cr.totalScore, 0);
+                                    const avgSc = subScores.length > 0 ? (totalSc / subScores.length).toFixed(2) : '0.00';
+                                    return { ...s, avgSc: parseFloat(avgSc), totalSc, scoredCount: subScores.length };
+                                }).sort((a, b) => b.avgSc - a.avgSc);
+
+                                if(rankedList.length === 0) return <div className="text-center text-slate-500 py-8">ไม่มีข้อมูลผลงาน</div>;
+
+                                return rankedList.map((s, idx) => (
+                                    <div key={s.id} className="bg-white dark:bg-slate-800 p-4 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 flex flex-col sm:flex-row items-center gap-4">
+                                        <div className={`w-12 h-12 shrink-0 rounded-full flex flex-col items-center justify-center font-black text-lg ${idx === 0 ? 'bg-yellow-100 text-yellow-600 dark:bg-yellow-900/30 dark:text-yellow-400 border-2 border-yellow-300 shadow-sm' : idx === 1 ? 'bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-300 border-2 border-slate-300 shadow-sm' : idx === 2 ? 'bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400 border-2 border-orange-300 shadow-sm' : 'bg-slate-50 text-slate-400 dark:bg-slate-800/50'}`}>
+                                            {idx + 1}
+                                        </div>
+                                        <div className="flex-1 min-w-0 text-center sm:text-left">
+                                            <div className="font-bold text-slate-800 dark:text-white truncate text-lg" title={s.fileName}>{s.fileName}</div>
+                                            <div className="text-xs text-slate-500 truncate mt-1">
+                                                {WORK_TYPES.find(w => w.id === s.workType)?.label} &bull; {BRANCHES.find(b => b.id === s.branchId)?.label}
+                                            </div>
+                                            <div className="text-xs text-slate-500 truncate mt-0.5">ผู้นำเสนอ: {s.firstName} {s.lastName} ({s.position})</div>
+                                        </div>
+                                        <div className="text-center sm:text-right shrink-0">
+                                            <div className="font-black text-emerald-500 text-3xl">{s.avgSc.toFixed(2)}</div>
+                                            <div className="text-[10px] uppercase text-slate-400 font-bold bg-slate-100 dark:bg-slate-900 px-2 py-1 rounded inline-block mt-1">
+                                                ผู้ประเมิน {s.scoredCount} คน
+                                            </div>
+                                        </div>
+                                    </div>
+                                ));
+                            })()}
+                        </div>
+                    </div>
+                </div>
+            </div>,
+            document.body
+        )}
     </div>
   );
 };
