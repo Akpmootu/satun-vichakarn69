@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { Submission, AppSettings, UserProfile } from '../types';
-import { apiUpdateSubmission, apiUploadFile } from '../services/apiService';
+import { apiUpdateSubmission } from '../services/apiService';
 import { BRANCHES } from '../constants';
 import { motion } from 'motion/react';
 import Swal from 'sweetalert2';
@@ -28,45 +28,17 @@ const PresentationPanel: React.FC<PresentationPanelProps> = ({
 
     const validateUrl = (url: string) => {
         const lower = url.toLowerCase();
-        return lower.includes('drive.google.com') || lower.includes('canva.com') || lower.includes('canva.link') || lower.includes('supabase.co');
-    };
-
-    const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, submission: Submission) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
-
-        if (file.size > 50 * 1024 * 1024) {
-            showToast({ type: 'error', title: 'ไฟล์มีขนาดใหญ่เกินไป', message: 'กรุณาอัปโหลดไฟล์ขนาดไม่เกิน 50MB' });
-            return;
-        }
-
-        setLoadingMap(prev => ({ ...prev, [submission.id]: true }));
-        try {
-            const publicUrl = await apiUploadFile(currentUser.id, 'presentations', file);
-            const newAudit = {
-                at: new Date().toISOString(),
-                action: 'อัปโหลดไฟล์นำเสนอ',
-                note: `อัปโหลดไฟล์นำเสนอ: ${file.name}`
-            };
-            const updatedAudit = [...(submission.audit || []), newAudit];
-            await apiUpdateSubmission(settings, submission.id, { presentationUrl: publicUrl, audit: updatedAudit });
-            showToast({ type: 'success', title: 'อัปโหลดสำเร็จ', message: 'บันทึกไฟล์นำเสนอเรียบร้อยแล้ว' });
-            refreshData();
-        } catch (err: any) {
-            showToast({ type: 'error', title: 'อัปโหลดล้มเหลว', message: err.message });
-        } finally {
-            setLoadingMap(prev => ({ ...prev, [submission.id]: false }));
-            if (fileInputRef.current) fileInputRef.current.value = '';
-        }
+        // Allow ONLY google drive link (maybe with pdf mention but drive links usually look like drive.google.com/file/d/...)
+        return lower.includes('drive.google.com');
     };
 
     const handleUpdateLink = async (submission: Submission) => {
         const { value: url } = await Swal.fire({
             title: 'ส่งรายละเอียดไฟล์นำเสนอ',
             input: 'url',
-            inputLabel: 'กรุณาแนบลิงก์ (Google Drive หรือ Canva เท่านั้น)',
+            inputLabel: 'กรุณาแนบลิงก์ (Google Drive ที่เป็นไฟล์ .pdf เท่านั้น)',
             inputValue: submission.presentationUrl || '',
-            inputPlaceholder: 'https://drive.google.com/... หรือ https://canva.com/...',
+            inputPlaceholder: 'https://drive.google.com/...',
             inputAttributes: {
                 autocapitalize: 'off',
                 autocorrect: 'off'
@@ -82,7 +54,7 @@ const PresentationPanel: React.FC<PresentationPanelProps> = ({
             },
             inputValidator: (value: string) => {
                 if (!value) return 'กรุณาระบุลิงก์';
-                if (!validateUrl(value)) return 'รองรับเฉพาะลิงก์ Google Drive หรือ Canva เท่านั้น';
+                if (!validateUrl(value)) return 'รองรับเฉพาะลิงก์ Google Drive เท่านั้น';
                 return null;
             }
         });
@@ -117,7 +89,7 @@ const PresentationPanel: React.FC<PresentationPanelProps> = ({
                     ส่งไฟล์นำเสนอผลงาน
                 </h2>
                 <div className="mt-2 text-slate-500 dark:text-slate-400 text-sm">
-                    กรุณาแนบลิงก์ไฟล์นำเสนอผลงาน (Google Drive หรือ Canva) ให้ครบทุกผลงานที่ส่งเข้าร่วม
+                    กรุณาแนบลิงก์ไฟล์นำเสนอผลงาน (Google Drive ที่เป็นไฟล์ .pdf เท่านั้น) ให้ครบทุกผลงานที่ส่งเข้าร่วม
                 </div>
             </div>
 
@@ -182,27 +154,6 @@ const PresentationPanel: React.FC<PresentationPanelProps> = ({
                                 </div>
 
                                 <div className="shrink-0 flex flex-col md:flex-row items-center gap-2">
-                                    <div className="relative">
-                                        <input 
-                                            type="file" 
-                                            className="absolute inset-0 opacity-0 cursor-pointer z-10" 
-                                            accept=".pdf,.ppt,.pptx,.key"
-                                            onChange={(e) => handleFileUpload(e, s)}
-                                            disabled={loadingMap[s.id]}
-                                        />
-                                        <button
-                                            disabled={loadingMap[s.id]}
-                                            className="px-4 py-3 rounded-2xl text-sm font-black transition-all flex items-center gap-2 w-full md:w-auto justify-center bg-sky-50 dark:bg-sky-900/30 text-sky-600 dark:text-sky-400 border border-sky-200 dark:border-sky-800 hover:bg-sky-100 disabled:opacity-50 shadow-sm"
-                                        >
-                                            {loadingMap[s.id] ? (
-                                                <i className="fa-solid fa-circle-notch fa-spin text-sm"></i>
-                                            ) : (
-                                                <i className="fa-solid fa-cloud-arrow-up"></i>
-                                            )}
-                                            <span>อัปโหลดไฟล์</span>
-                                        </button>
-                                    </div>
-
                                     <button
                                         onClick={() => handleUpdateLink(s)}
                                         disabled={loadingMap[s.id]}
@@ -217,9 +168,9 @@ const PresentationPanel: React.FC<PresentationPanelProps> = ({
                                         {loadingMap[s.id] ? (
                                             <i className="fa-solid fa-circle-notch fa-spin text-sm"></i>
                                         ) : (
-                                            <i className={`fa-solid ${s.presentationUrl ? 'fa-pen-to-square' : 'fa-plus'}`}></i>
+                                            <i className={`fa-solid ${s.presentationUrl ? 'fa-pen-to-square' : 'fa-link'}`}></i>
                                         )}
-                                        {s.presentationUrl ? 'แก้ไขลิงก์' : 'แนบลิงก์'}
+                                        {s.presentationUrl ? 'แก้ไขลิงก์' : 'แนบลิงก์ Google Drive (.pdf)'}
                                     </button>
                                 </div>
                             </div>
@@ -231,16 +182,13 @@ const PresentationPanel: React.FC<PresentationPanelProps> = ({
                                         <div className="flex items-center gap-2">
                                             <i className="fa-solid fa-tv"></i> ตัวอย่างการแสดงผล (Preview)
                                         </div>
-                                        {s.presentationUrl.includes('canva.link') && (
-                                           <span className="text-amber-500"><i className="fa-solid fa-triangle-exclamation"></i> ลิงก์ย่อ canva.link อาจไม่เล่นอัตโนมัติ</span>
-                                        )}
+                                        {/* Canva warning removed */}
                                     </div>
                                     <div className="w-full aspect-video md:h-[400px] md:aspect-auto">
                                         <iframe 
                                             src={
-                                                s.presentationUrl.includes('drive.google.com') ? s.presentationUrl.replace(/\/view.*$/, '/preview') :
-                                                s.presentationUrl.includes('canva.com') ? (s.presentationUrl.includes('view') ? s.presentationUrl.replace('/view', '/view?embed') : s.presentationUrl) :
-                                                s.presentationUrl
+                                            s.presentationUrl.includes('drive.google.com') ? s.presentationUrl.replace(/\/view.*$/, '/preview') :
+                                            s.presentationUrl
                                             }
                                             className="w-full h-full border-0"
                                             allow="fullscreen"
@@ -282,15 +230,11 @@ const PresentationPanel: React.FC<PresentationPanelProps> = ({
                 <ul className="text-sm text-slate-500 dark:text-slate-400 space-y-3 leading-relaxed">
                     <li className="flex gap-2">
                         <span className="text-sky-500 font-bold">•</span>
-                        <span><b>Google Drive:</b> กรุณาตั้งค่าการแชร์ "ทุกคนที่มีลิงก์ (Anyone with the link)" ให้สามารถดูได้</span>
-                    </li>
-                    <li className="flex gap-2">
-                        <span className="text-sky-500 font-bold">•</span>
-                        <span><b>Canva:</b> ใช้ลิงก์ในหมวดหมู่ "ลิงก์แสดงตัวอย่างเพื่ออ่านอย่างเดียว (Public View Link)"</span>
+                        <span><b>Google Drive:</b> ไฟล์ที่แนบต้องเป็นนามสกุล .pdf และกรุณาตั้งค่าการแชร์ "ทุกคนที่มีลิงก์ (Anyone with the link)" ให้สามารถดูได้</span>
                     </li>
                     <li className="flex gap-2">
                         <span className="text-rose-500 font-bold">•</span>
-                        <span><b>ข้อควรระวัง:</b> หากพรีวิวไม่แสดงผล แสดงว่ากรรมการก็จะไม่สามารถดูไฟล์ได้ กรุณาตรวจสอบการตั้งค่าการแชร์ให้เป็นสาธารณะ และแนะนำให้ส่งเป็นไฟล์นามสกุล .pdf หากเป็นไปได้</span>
+                        <span><b>ข้อควรระวัง:</b> หากพรีวิวไม่แสดงผล แสดงว่ากรรมการก็จะไม่สามารถดูไฟล์ได้ กรุณาตรวจสอบการตั้งค่าการแชร์ให้เป็นสาธารณะ</span>
                     </li>
                     <li className="flex gap-2">
                         <span className="text-sky-500 font-bold">•</span>
