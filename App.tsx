@@ -15,6 +15,7 @@ import ProfileSettings from "./components/ProfileSettings";
 import NewsModal from "./components/NewsModal";
 import UserAuthModal from "./components/UserAuthModal";
 import PresentationPanel from "./components/PresentationPanel";
+import ScheduleSection from "./components/ScheduleSection";
 import FeedbackModal from "./components/FeedbackModal";
 import Toast from "./components/ui/Toast";
 import Logo from "./components/ui/Logo";
@@ -445,6 +446,7 @@ export default function App() {
   // --- Navigation Data Logic (Reordered) ---
   const allTabs = [
     { id: "home", label: "หน้าหลัก", icon: "fa-house" },
+    { id: "schedule", label: "กำหนดการ", icon: "fa-calendar-days" },
     { id: "analytics", label: "Dashboard", icon: "fa-chart-pie" },
     { id: "register", label: "ลงทะเบียนส่งผลงาน", icon: "fa-pen-to-square" },
     { id: "presentation", label: "ส่งไฟล์นำเสนอ", icon: "fa-file-powerpoint" },
@@ -821,6 +823,11 @@ export default function App() {
                         newsList={newsList}
                     />
                 )}
+                {activeTab === 'schedule' && (
+                    <div className="py-6 sm:py-10 animate-fade-in max-w-7xl mx-auto px-4 sm:px-6">
+                        <ScheduleSection />
+                    </div>
+                )}
                 {activeTab === 'analytics' && (
                     <Dashboard 
                         submissions={dashboardSubmissions} 
@@ -861,6 +868,12 @@ export default function App() {
                         onOpenNews={handleOpenNews}
                         newsList={newsList}
                     />
+                )}
+
+                {activeTab === 'schedule' && (
+                    <div className="py-6 sm:py-10 animate-fade-in max-w-7xl mx-auto px-4 sm:px-6">
+                        <ScheduleSection />
+                    </div>
                 )}
 
                 {activeTab === 'register' && (
@@ -1088,7 +1101,7 @@ export default function App() {
               <div className="border-t border-slate-800 pt-8 flex flex-col md:flex-row justify-between items-center gap-4 text-xs font-medium text-slate-500">
                   <div className="flex items-center gap-2">
                        <i className="fa-solid fa-code text-sky-500"></i>
-                       <span>พัฒนาโดย กลุ่มงานสุขภาพดิจิทัล สำนักงานสาธารณสุขจังหวัดสตูล 2569 | <a href="#" onClick={(e) => {e.preventDefault(); Swal.fire({title: 'รายละเอียดอัปเดต v1.3.45', html: '<ul class="text-left space-y-2 text-sm"><li>🚀 <b>Performance Refactor:</b> ใส่ระบบ Pagination และ Brief Data Selection เพื่อลดการโหลดข้อมูลส่วนเกิน (v1.3.41)</li><li>💾 <b>Caching Layer:</b> เพิ่มระบบ Memory Cache สำหรับ User Profiles และ News เพื่อความรวดเร็วในการแสดงผล (v1.3.41)</li><li>🖼️ <b>Image Optimization:</b> นำ <code>author_photo</code> ออกจากการโหลดเพื่อให้เบาขึ้น (v1.3.43)</li><li>📁 <b>UX Improvement:</b> เปลี่ยนช่องทางการรับผลงานนำเสนอเป็นลิงก์ Google Drive (.pdf) อย่างเดียว (v1.3.45)</li></ul>', icon: 'info', confirmButtonColor: '#0ea5e9'}); }}>v1.3.45</a></span>
+                       <span>พัฒนาโดย กลุ่มงานสุขภาพดิจิทัล สำนักงานสาธารณสุขจังหวัดสตูล 2569 | <a href="#" onClick={(e) => {e.preventDefault(); Swal.fire({title: 'รายละเอียดอัปเดต v1.3.48', html: '<ul class="text-left space-y-2 text-sm"><li>🚀 <b>Performance Refactor:</b> ใส่ระบบ Pagination และ Brief Data Selection เพื่อลดการโหลดข้อมูลส่วนเกิน (v1.3.41)</li><li>💾 <b>Caching Layer:</b> เพิ่มระบบ Memory Cache สำหรับ User Profiles และ News เพื่อความรวดเร็วในการแสดงผล (v1.3.41)</li><li>🖼️ <b>Image Optimization:</b> นำ <code>author_photo</code> ออกจากการโหลดเพื่อให้เบาขึ้น (v1.3.43)</li><li>📁 <b>UX Improvement:</b> เปลี่ยนช่องทางการรับผลงานนำเสนอเป็นลิงก์ Google Drive (.pdf) อย่างเดียว (v1.3.45)</li><li>📅 <b>Feature:</b> นำตารางกำหนดการแสดงผลในหน้าหลักสำหรับทุกคนเพื่อความสะดวกในการดูข้อมูล และเพิ่มแท็บกำหนดการแยกชัดเจน (v1.3.48)</li></ul>', icon: 'info', confirmButtonColor: '#0ea5e9'}); }}>v1.3.48</a></span>
                   </div>
                   <div className="flex gap-6">
                       <button onClick={() => setShowPrivacyPolicy(true)} className="hover:text-slate-300 transition">นโยบายความเป็นส่วนตัว</button>

@@ -3,6 +3,7 @@ import React, { useMemo, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { Submission, UserProfile, NewsItem } from '../types';
 import Timeline from './Timeline';
+import ScheduleSection from './ScheduleSection';
 
 // Declare Swal globally
 declare const Swal: any;
@@ -202,28 +203,8 @@ const Home: React.FC<HomeProps> = ({ onNavigate, currentUser, onLoginRequest, us
                         </button>
                     </div>
                     
-                    {/* Event Schedule Info */}
-                    <div className="mt-8 flex flex-col md:flex-row justify-center gap-4 text-left max-w-4xl mx-auto">
-                        <div className="bg-sky-900/40 backdrop-blur-sm border border-sky-700/50 rounded-xl p-4 flex items-start gap-4 flex-1">
-                            <div className="h-10 w-10 shrink-0 rounded-full bg-sky-500/20 flex items-center justify-center text-sky-400">
-                                <i className="fa-regular fa-calendar-check text-xl"></i>
-                            </div>
-                            <div>
-                                <h4 className="text-white font-bold mb-1">กำหนดการรับผลงาน</h4>
-                                <p className="text-sky-200 text-sm">7 เม.ย. - 6 พ.ค. 2569</p>
-                                <p className="text-slate-400 text-xs mt-1">ปิดส่งผลงานเวลา 16.30 น.</p>
-                            </div>
-                        </div>
-                        <div className="bg-emerald-900/40 backdrop-blur-sm border border-emerald-700/50 rounded-xl p-4 flex items-start gap-4 flex-1">
-                            <div className="h-10 w-10 shrink-0 rounded-full bg-emerald-500/20 flex items-center justify-center text-emerald-400">
-                                <i className="fa-solid fa-medal text-xl"></i>
-                            </div>
-                            <div>
-                                <h4 className="text-white font-bold mb-1">วันประกวดผลงาน</h4>
-                                <p className="text-emerald-200 text-sm">11 - 12 พ.ค. 2569</p>
-                                <p className="text-slate-400 text-xs mt-1">ณ สสจ.สตูล และ รพ.สตูล</p>
-                            </div>
-                        </div>
+                    <div className="mt-12 text-left w-full shadow-2xl rounded-[2.5rem]">
+                        <ScheduleSection />
                     </div>
                  </div>
              ) : (
@@ -260,28 +241,8 @@ const Home: React.FC<HomeProps> = ({ onNavigate, currentUser, onLoginRequest, us
                         </button>
                     </div>
 
-                    {/* Event Schedule Info (Logged out) */}
-                    <div className="mt-8 mb-8 flex flex-col md:flex-row justify-center gap-4 text-left max-w-4xl mx-auto">
-                        <div className="bg-sky-900/40 backdrop-blur-sm border border-sky-700/50 rounded-xl p-4 flex items-start gap-4 flex-1">
-                            <div className="h-10 w-10 shrink-0 rounded-full bg-sky-500/20 flex items-center justify-center text-sky-400">
-                                <i className="fa-regular fa-calendar-check text-xl"></i>
-                            </div>
-                            <div>
-                                <h4 className="text-white font-bold mb-1">กำหนดการรับผลงาน (15 สาขา)</h4>
-                                <p className="text-sky-200 text-sm">7 เม.ย. - 6 พ.ค. 2569</p>
-                                <p className="text-slate-400 text-xs mt-1">ปิดส่งผลงานเวลา 16.30 น.</p>
-                            </div>
-                        </div>
-                        <div className="bg-emerald-900/40 backdrop-blur-sm border border-emerald-700/50 rounded-xl p-4 flex items-start gap-4 flex-1">
-                            <div className="h-10 w-10 shrink-0 rounded-full bg-emerald-500/20 flex items-center justify-center text-emerald-400">
-                                <i className="fa-solid fa-medal text-xl"></i>
-                            </div>
-                            <div>
-                                <h4 className="text-white font-bold mb-1">วันประกวดผลงาน</h4>
-                                <p className="text-emerald-200 text-sm">11 - 12 พ.ค. 2569</p>
-                                <p className="text-slate-400 text-xs mt-1">ณ สสจ.สตูล และ รพ.สตูล</p>
-                            </div>
-                        </div>
+                    <div className="mt-12 text-left w-full shadow-2xl rounded-[2.5rem]">
+                        <ScheduleSection />
                     </div>
 
                     {/* Submission Links / QR Alternatives */}
