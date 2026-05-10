@@ -384,7 +384,8 @@ export default function App() {
             setHasMoreSubmissions(hasNextPage);
             setIsDataLoaded(true);
         } catch (e: any) {
-            if (!e.message?.includes("Refresh Token") && !e.message?.includes("session") && !e.message?.includes("token")) {
+            const msg = e.message || '';
+            if (!msg.includes("Refresh Token") && !msg.includes("session") && !msg.includes("token") && !msg.includes("Failed to fetch")) {
                 showToast({ type: "error", title: "เกิดข้อผิดพลาดในการโหลดข้อมูล", message: e.message });
             }
         } finally {
