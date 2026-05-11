@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import * as XLSX from 'xlsx';
 import { Submission, UserProfile, ReviewerScore } from '../types';
 import { apiGetAllScores, apiUpdateSubmission, apiGetAllUsers, apiSaveReviewerScore } from '../services/apiService';
 import { WORK_TYPES, BRANCHES, BRANCH_GROUPS } from '../constants';
@@ -35,7 +36,7 @@ export default function AdminScorePanel({ submissions, refreshData, showToast, c
     const [reviewers, setReviewers] = useState<UserProfile[]>([]);
     const [loading, setLoading] = useState(true);
 
-    const [activeTab, setActiveTab] = useState<'oral' | 'innovation'>('oral');
+    const [activeTab, setActiveTab] = useState<'oral' | 'eposter' | 'innovation'>('oral');
     const [selectedBranch, setSelectedBranch] = useState<string>('all');
     const [activeSubmission, setActiveSubmission] = useState<Submission | null>(null);
 
@@ -123,9 +124,72 @@ export default function AdminScorePanel({ submissions, refreshData, showToast, c
         }).sort((a, b) => b.avgScore - a.avgScore);
     }, [submissions, scores, activeTab, selectedBranch]);
 
+    const handleExportExcel = () => {
+        try {
+            const wb = XLSX.utils.book_new();
+            
+            const branchesToExport = selectedBranch === 'all' 
+                ? BRANCHES 
+                : BRANCHES.filter(b => b.id === parseInt(selectedBranch));
+
+            branchesToExport.forEach(branch => {
+                const branchSubmissions = submissions.filter(s => s.workType === activeTab && s.branchId === branch.id);
+                if (branchSubmissions.length === 0) return;
+
+                const sheetData = branchSubmissions.map((sub, idx) => {
+                    const subScores = scores.filter(sc => sc.submissionId === sub.id);
+                    const avgScore = subScores.length > 0 ? (subScores.reduce((a, b) => a + b.totalScore, 0) / subScores.length).toFixed(2) : '0.00';
+                    const workTypeLabel = WORK_TYPES.find(w => w.id === sub.workType)?.label || sub.workType;
+
+                    const row: any = {
+                        'ลำดับ': idx + 1,
+                        'ชื่อผลงาน': sub.fileName,
+                        'ประเภทผลงาน': workTypeLabel,
+                        'ผู้ส่งผลงาน': `${sub.firstName} ${sub.lastName}`,
+                        'หน่วยงาน': sub.organization,
+                        'คะแนนเฉลี่ย': parseFloat(avgScore)
+                    };
+
+                    if (sub.reviewerIds && sub.reviewerIds.length > 0) {
+                        sub.reviewerIds.forEach((revId, rIdx) => {
+                            const reviewer = reviewers.find(r => r.id === revId);
+                            const revName = reviewer ? `${reviewer.firstName} ${reviewer.lastName}` : 'ไม่ระบุ';
+                            const revScore = subScores.find(sc => sc.reviewerId === revId);
+                            
+                            row[`กรรมการคนที่ ${rIdx + 1}`] = revName;
+                            row[`คะแนนกรรมการคนที่ ${rIdx + 1}`] = revScore ? revScore.totalScore : 'ยังไม่ประเมิน';
+                        });
+                    }
+
+                    return row;
+                });
+
+                const ws = XLSX.utils.json_to_sheet(sheetData);
+                
+                let sheetName = branch.label.substring(0, 31);
+                if (wb.SheetNames.includes(sheetName)) {
+                    sheetName = sheetName.substring(0, 28) + '...';
+                }
+                XLSX.utils.book_append_sheet(wb, ws, sheetName);
+            });
+
+            if (wb.SheetNames.length === 0) {
+                 Swal.fire('ไม่พบข้อมูล', 'ไม่มีผลงานในเงื่อนไขที่เลือก', 'info');
+                 return;
+            }
+
+            const workTypeLabel = WORK_TYPES.find(w => w.id === activeTab)?.label || activeTab;
+            XLSX.writeFile(wb, `score_export_${workTypeLabel}_${new Date().getTime()}.xlsx`);
+            
+        } catch (error) {
+            console.error('Export Excel Error:', error);
+            Swal.fire('เกิดข้อผิดพลาด', 'ไม่สามารถส่งออกไฟล์ Excel ได้', 'error');
+        }
+    };
+
     const renderScoreEdit = () => {
         if (!editingScore || !activeSubmission) return null;
-        const criteria = activeSubmission.workType === 'oral' ? ORAL_CRITERIA : INNOVATION_CRITERIA;
+        const criteria = activeSubmission.workType === 'innovation' ? INNOVATION_CRITERIA : ORAL_CRITERIA;
 
         let totalScore = 0;
         criteria.forEach(c => {
@@ -272,13 +336,19 @@ export default function AdminScorePanel({ submissions, refreshData, showToast, c
                     <i className="fa-solid fa-microphone mr-2"></i> นำเสนอด้วยวาจา (Oral)
                 </button>
                 <button
+                    onClick={() => setActiveTab('eposter')}
+                    className={`px-6 py-2.5 rounded-2xl font-bold text-sm transition-all ${activeTab === 'eposter' ? 'bg-indigo-500 text-white shadow-md' : 'bg-slate-100 text-slate-500 hover:bg-slate-200 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600'}`}
+                >
+                    <i className="fa-solid fa-image mr-2"></i> โปสเตอร์ (E-Poster)
+                </button>
+                <button
                     onClick={() => setActiveTab('innovation')}
                     className={`px-6 py-2.5 rounded-2xl font-bold text-sm transition-all ${activeTab === 'innovation' ? 'bg-emerald-500 text-white shadow-md' : 'bg-slate-100 text-slate-500 hover:bg-slate-200 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600'}`}
                 >
                     <i className="fa-solid fa-lightbulb mr-2"></i> นวัตกรรม/สิ่งประดิษฐ์
                 </button>
                 
-                <div className="w-full sm:w-auto mt-2 sm:mt-0 flex-1 flex justify-end">
+                <div className="w-full sm:w-auto mt-2 sm:mt-0 flex-1 flex justify-end gap-2">
                     <select 
                         value={selectedBranch}
                         onChange={(e) => setSelectedBranch(e.target.value)}
@@ -293,6 +363,12 @@ export default function AdminScorePanel({ submissions, refreshData, showToast, c
                             </optgroup>
                         ))}
                     </select>
+                    <button 
+                        onClick={handleExportExcel}
+                        className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl flex items-center justify-center gap-2 transition whitespace-nowrap"
+                    >
+                         <i className="fa-solid fa-file-excel"></i> <span className="hidden xl:inline">Export Excel</span>
+                    </button>
                 </div>
             </div>
 
