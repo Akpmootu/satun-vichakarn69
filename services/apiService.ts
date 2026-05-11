@@ -436,7 +436,7 @@ const SUBMISSION_LIST_COLUMNS = 'id, user_id, reviewer_id, reviewer_ids, budget_
 export async function apiListSubmissionsBrief(settings: AppSettings): Promise<Submission[]> {
     const { data, error } = await supabase
         .from('submissions')
-        .select('id, createdAt:created_at, budgetYear:budget_year, status, workType:work_type, branchId:branch_id, organization, firstName:first_name, lastName:last_name, fileName:file_name')
+        .select('id, createdAt:created_at, budgetYear:budget_year, status, workType:work_type, branchId:branch_id, organization, firstName:first_name, lastName:last_name, fileName:file_name, reviewerIds:reviewer_ids')
         .eq('budget_year', settings.currentYear || BUDGET_YEAR)
         .order('created_at', { ascending: false });
 

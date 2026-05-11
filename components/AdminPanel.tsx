@@ -9,6 +9,7 @@ import OrgAutocomplete from './ui/OrgAutocomplete';
 import UniversityAutocomplete from './ui/UniversityAutocomplete';
 import Pagination from './ui/Pagination';
 import Dashboard from './Dashboard';
+import AdminScorePanel from './AdminScorePanel';
 
 declare const Swal: any;
 
@@ -29,7 +30,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     submissions, settings, refreshData, showToast, newsList, onNewsUpdate, currentUser,
     hasMoreSubmissions, onLoadMore, loadingMore
 }) => {
-  const [activeTab, setActiveTab] = useState<'submissions' | 'users' | 'news' | 'dashboard'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'submissions' | 'users' | 'news' | 'dashboard' | 'scores'>('dashboard');
   // const [newsList, setNewsList] = useState<NewsItem[]>([]); // Removed local state
   const [userList, setUserList] = useState<UserProfile[]>([]);
   const [reviewerList, setReviewerList] = useState<UserProfile[]>([]);
@@ -745,6 +746,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                     <i className="fa-solid fa-folder-tree"></i> <span className="hidden md:inline">จัดการผลงาน</span>
                 </button>
                 <button 
+                    onClick={() => setActiveTab('scores')}
+                    className={`px-4 py-2 rounded-xl font-bold transition flex items-center gap-2 ${activeTab === 'scores' ? 'bg-white text-slate-900 shadow-md' : 'text-slate-400 hover:text-white hover:bg-slate-700'}`}
+                >
+                    <i className="fa-solid fa-star-half-stroke"></i> <span className="hidden md:inline">จัดการคะแนน</span>
+                </button>
+                <button 
                     onClick={() => setActiveTab('users')}
                     className={`px-4 py-2 rounded-xl font-bold transition flex items-center gap-2 ${activeTab === 'users' ? 'bg-white text-slate-900 shadow-md' : 'text-slate-400 hover:text-white hover:bg-slate-700'}`}
                 >
@@ -1068,6 +1075,18 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                         </div>
                     )}
                 </div>
+            </div>
+        )}
+
+        {/* --- SCORE MANAGEMENT TAB --- */}
+        {activeTab === 'scores' && (
+            <div className="-mx-4 sm:mx-0">
+                <AdminScorePanel 
+                    submissions={submissions}
+                    refreshData={refreshData}
+                    showToast={showToast}
+                    currentUser={currentUser}
+                />
             </div>
         )}
 
@@ -1801,18 +1820,26 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                              <button 
                                 onClick={async () => {
                                     const result = await Swal.fire({
-                                        title: 'ยืนยันการตั้งรหัสผ่านใหม่',
-                                        html: `ต้องการตั้งรหัสผ่านของ <b>${editingUser.firstName}</b> เป็น <b>Satun@2569</b> หรือไม่?`,
+                                        title: 'รีเซ็ตรหัสผ่าน',
+                                        html: `กรุณากำหนดรหัสผ่านใหม่สำหรับ <b>${editingUser.firstName}</b>`,
+                                        input: 'text',
+                                        inputPlaceholder: 'กรอกรหัสผ่านใหม่ (อย่างน้อย 6 ตัวอักษร)',
+                                        inputValue: 'Satun@2569',
                                         icon: 'warning',
                                         showCancelButton: true,
                                         confirmButtonText: 'ยืนยัน',
-                                        cancelButtonText: 'ยกเลิก'
+                                        cancelButtonText: 'ยกเลิก',
+                                        inputValidator: (value: string) => {
+                                            if (!value) return 'กรุณากรอกรหัสผ่านใหม่!';
+                                            if (value.length < 6) return 'รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร';
+                                            return null;
+                                        }
                                     });
-                                    if (result.isConfirmed) {
+                                    if (result.isConfirmed && result.value) {
                                         try {
                                             Swal.fire({title: 'กำลังดำเนินการ...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); }});
-                                            await import('../services/apiService').then(m => m.apiUpdateUserPasswordAdmin(editingUser.id, 'Satun@2569'));
-                                            Swal.fire('สำเร็จ', 'รหัสผ่านถูกตั้งเป็น Satun@2569 แล้ว', 'success');
+                                            await import('../services/apiService').then(m => m.apiUpdateUserPasswordAdmin(editingUser.id, result.value));
+                                            Swal.fire('สำเร็จ', 'รหัสผ่านถูกเปลี่ยนเรียบร้อยแล้ว', 'success');
                                         } catch(e: any) {
                                             Swal.fire('ข้อผิดพลาด', e.message, 'error');
                                         }
@@ -1820,7 +1847,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                                 }}
                                 className="text-xs font-bold text-sky-600 hover:underline flex items-center gap-1"
                              >
-                                <i className="fa-solid fa-key"></i> รีเซ็ตรหัสผ่าน (เป็นค่าเริ่มต้น Satun@2569)
+                                <i className="fa-solid fa-key"></i> กำหนดรหัสผ่านใหม่ (รีเซ็ตรหัสผ่าน)
                              </button>
                         </div>
                     </div>

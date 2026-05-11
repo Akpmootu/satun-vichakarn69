@@ -44,10 +44,10 @@ async function startServer() {
   app.post('/api/admin/reset-password', async (req, res) => {
     try {
       const { targetUserId, newPassword } = req.body;
-      const url = process.env.VITE_SUPABASE_URL;
+      const url = process.env.VITE_SUPABASE_URL || 'https://qjkdjwqgnvfcfjsxjjpu.supabase.co';
       const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
       if (!url || !key) {
-        return res.status(500).json({ error: 'ไม่พบ SUPABASE_SERVICE_ROLE_KEY กรุณาเพิ่ม Environment Variable ในการตั้งค่า (Settings) เพื่อรีเซ็ตรหัสผ่าน' });
+        return res.status(500).json({ error: 'ไม่พบ SUPABASE_SERVICE_ROLE_KEY หรือ SUPABASE_URL กรุณาตรวจสอบการตั้งค่า Secret' });
       }
 
       const { createClient } = await import('@supabase/supabase-js');
@@ -100,7 +100,7 @@ async function startServer() {
 
   app.post('/api/admin-delete-user', async (req, res) => {
       try {
-          const url = process.env.VITE_SUPABASE_URL;
+          const url = process.env.VITE_SUPABASE_URL || 'https://qjkdjwqgnvfcfjsxjjpu.supabase.co';
           const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
           if (!url || !key) return res.status(500).json({ error: 'ไม่พบ SUPABASE_SERVICE_ROLE_KEY กรุณาเพิ่ม Environment Variable ในการตั้งค่า (Settings)' });
           
@@ -125,7 +125,7 @@ async function startServer() {
 
   cron.schedule('0 17 * * *', async () => {
     try {
-      const url = process.env.VITE_SUPABASE_URL;
+      const url = process.env.VITE_SUPABASE_URL || 'https://qjkdjwqgnvfcfjsxjjpu.supabase.co';
       const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
       if (!url || !key) return;
 
