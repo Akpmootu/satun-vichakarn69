@@ -65,10 +65,13 @@ export default function AdminScorePanel({ submissions, refreshData, showToast, c
 
     const handleSaveEdit = async () => {
         if (!editingScore || !activeSubmission || !editReviewerId) return;
+        const criteria = activeSubmission.workType === 'innovation' ? INNOVATION_CRITERIA : ORAL_CRITERIA;
         
         let total = 0;
-        Object.values(editScoreData).forEach(st => {
-            total += st.score;
+        criteria.forEach(c => {
+            if (editScoreData[c.id]) {
+                total += (editScoreData[c.id].score || 0) * c.weight;
+            }
         });
 
         try {
@@ -193,7 +196,7 @@ export default function AdminScorePanel({ submissions, refreshData, showToast, c
 
         let totalScore = 0;
         criteria.forEach(c => {
-            totalScore += editScoreData[c.id]?.score || 0;
+            totalScore += (editScoreData[c.id]?.score || 0) * c.weight;
         });
         const maxScore = criteria.reduce((a, b) => a + (b.weight * 5), 0);
 
@@ -228,7 +231,7 @@ export default function AdminScorePanel({ submissions, refreshData, showToast, c
                                     <div className="flex justify-between items-start mb-4">
                                         <div className="font-bold text-sm text-slate-800 dark:text-slate-200">{c.label} <span className="text-sky-600 dark:text-sky-400 font-normal ml-2">(ค่าน้ำหนัก: {c.weight})</span></div>
                                         <div className="text-sm font-black text-emerald-600 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-900/30 px-3 py-1 rounded-lg">
-                                            คะแนน: {(editScoreData[c.id]?.score || 0)} / {c.weight * 5}
+                                            คะแนน: {(editScoreData[c.id]?.score || 0) * c.weight} / {c.weight * 5}
                                         </div>
                                     </div>
                                     <div className="grid grid-cols-5 gap-2 mb-4">
@@ -238,11 +241,11 @@ export default function AdminScorePanel({ submissions, refreshData, showToast, c
                                                 onClick={() => {
                                                     setEditScoreData(prev => ({
                                                         ...prev,
-                                                        [c.id]: { ...prev[c.id], score: v * c.weight, comment: prev[c.id]?.comment || '' }
+                                                        [c.id]: { ...prev[c.id], score: v, comment: prev[c.id]?.comment || '' }
                                                     }));
                                                 }}
                                                 className={`py-2 rounded-lg border font-bold transition-all ${
-                                                    (editScoreData[c.id]?.score || 0) === v * c.weight 
+                                                    (editScoreData[c.id]?.score || 0) === v 
                                                     ? 'bg-sky-500 text-white border-sky-600 shadow-md transform scale-105' 
                                                     : 'bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 border-slate-300 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-600'
                                                 }`}
