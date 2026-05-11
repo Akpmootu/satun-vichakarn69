@@ -47,7 +47,7 @@ async function startServer() {
       const url = process.env.VITE_SUPABASE_URL;
       const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
       if (!url || !key) {
-        return res.status(500).json({ error: 'Missing SUPABASE_SERVICE_ROLE_KEY environment variable. Cannot reset passwords without it.' });
+        return res.status(500).json({ error: 'ไม่พบ SUPABASE_SERVICE_ROLE_KEY กรุณาเพิ่ม Environment Variable ในการตั้งค่า (Settings) เพื่อรีเซ็ตรหัสผ่าน' });
       }
 
       const { createClient } = await import('@supabase/supabase-js');
@@ -102,7 +102,7 @@ async function startServer() {
       try {
           const url = process.env.VITE_SUPABASE_URL;
           const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-          if (!url || !key) return res.status(500).json({ error: 'Supabase admin keys missing' });
+          if (!url || !key) return res.status(500).json({ error: 'ไม่พบ SUPABASE_SERVICE_ROLE_KEY กรุณาเพิ่ม Environment Variable ในการตั้งค่า (Settings)' });
           
           const { createClient } = await import('@supabase/supabase-js');
           const supabaseAdmin = createClient(url, key, { auth: { autoRefreshToken: false, persistSession: false } });
